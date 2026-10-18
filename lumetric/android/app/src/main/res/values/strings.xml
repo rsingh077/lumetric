@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Lumetric</string>
+    <string name="title_activity_main">Lumetric</string>
+    <string name="package_name">com.lumetric.studio</string>
+    <string name="custom_url_scheme">com.lumetric.studio</string>
+</resources>

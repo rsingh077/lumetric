@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js Build Outputs
+.next/
+out/
+
+# Android build outputs & local properties
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+
+# iOS build outputs
+ios/App/Pods/
+ios/App/build/
+ios/App/DerivedData/
+
+# Testing & logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+
+# Environment variables
+.env*.local
+.env
+
+# OS Files
+.DS_Store
+Thumbs.db

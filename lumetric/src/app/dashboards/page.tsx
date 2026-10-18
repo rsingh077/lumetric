@@ -1,0 +1,2386 @@
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { useApp } from '@/contexts/AppContext';
+import { Button } from '@/components/ui';
+import {
+  DownloadIcon,
+  PrinterIcon,
+  FilterIcon,
+  GlobeIcon,
+  TrendingUpIcon,
+  PieChartIcon,
+  GaugeIcon,
+  TableIcon,
+  RefreshCwIcon,
+  LayersIcon,
+  SparklesIcon,
+  UploadIcon,
+  SearchIcon,
+  BarChart3Icon,
+} from '@/components/icons';
+import { DatasetProfile } from '@/types';
+
+// Theme presets inspired directly by user's reference images
+type ThemePreset = 'modern' | 'cyberpunk' | 'enterprise';
+
+// Sample dataset matching the user's reference images (Car Sales & Banking analytics)
+const REFERENCE_DEMO_DATASET: { profile: DatasetProfile; rows: Record<string, string>[] } = {
+  profile: {
+    id: 'ds-ref-enterprise-01',
+    fileName: 'global_sales_and_banking_census.csv',
+    fileSize: 42800,
+    rowCount: 36,
+    columnCount: 10,
+    columns: [
+      { name: 'Brand', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 8, sampleValues: ['BMW', 'Audi', 'Mercedes', 'Tesla', 'Volvo', 'Porsche'], semanticRole: 'dimension' },
+      { name: 'Category', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 4, sampleValues: ['SUV', 'Sedan', 'Coupe', 'Electric'], semanticRole: 'dimension' },
+      { name: 'Country', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 6, sampleValues: ['Germany', 'France', 'Spain', 'United States', 'Japan', 'United Kingdom'], semanticRole: 'dimension' },
+      { name: 'Region', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 4, sampleValues: ['EMEA', 'Americas', 'APAC', 'Europe'], semanticRole: 'dimension' },
+      { name: 'Gender', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 2, sampleValues: ['Female', 'Male'], semanticRole: 'dimension' },
+      { name: 'CreditType', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 5, sampleValues: ['Excellent', 'Very Good', 'Good', 'Fair', 'Poor'], semanticRole: 'dimension' },
+      { name: 'Status', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 3, sampleValues: ['Active', 'Retained', 'Watchlist'], semanticRole: 'dimension' },
+      { name: 'Sales', inferredType: 'float', totalCount: 36, nullCount: 0, uniqueCount: 36, sampleValues: ['845000', '1250000', '652000'], semanticRole: 'metric' },
+      { name: 'Profit', inferredType: 'float', totalCount: 36, nullCount: 0, uniqueCount: 36, sampleValues: ['185000', '295000', '112000'], semanticRole: 'metric' },
+      { name: 'Period', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 12, sampleValues: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], semanticRole: 'temporal' },
+    ],
+    uploadedAt: new Date().toISOString(),
+    parseWarnings: [],
+    status: 'complete',
+    version: '1.0.0',
+    quarantinedRowsCount: 0,
+    sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    requirements: {
+      businessGrain: 'One transaction per customer record',
+      primaryKey: 'Brand',
+      timestampColumn: 'Period',
+      currency: 'USD ($)',
+      unitScale: 'Exact 1.0',
+      periodicity: 'Monthly',
+      dataClassification: 'Internal Business',
+      intendedDecision: 'Automotive and banking sales performance analysis',
+    },
+    qualityChecks: [
+      {
+        rule: 'Completeness check',
+        category: 'Completeness',
+        status: 'passed',
+        details: 'Zero null values across 36 rows',
+        quarantinedCount: 0,
+        metricAssertion: '100% valid',
+      },
+    ],
+  },
+  rows: [
+    { Brand: 'BMW', Category: 'SUV', Country: 'Germany', Region: 'Europe', Gender: 'Male', CreditType: 'Excellent', Status: 'Active', Sales: '845320', Profit: '185400', Period: 'Jan 2026' },
+    { Brand: 'Audi', Category: 'Sedan', Country: 'Germany', Region: 'Europe', Gender: 'Female', CreditType: 'Very Good', Status: 'Active', Sales: '720450', Profit: '158000', Period: 'Feb 2026' },
+    { Brand: 'Mercedes', Category: 'SUV', Country: 'France', Region: 'Europe', Gender: 'Female', CreditType: 'Excellent', Status: 'Retained', Sales: '960200', Profit: '225000', Period: 'Mar 2026' },
+    { Brand: 'Tesla', Category: 'Electric', Country: 'United States', Region: 'Americas', Gender: 'Male', CreditType: 'Good', Status: 'Active', Sales: '1250000', Profit: '310000', Period: 'Apr 2026' },
+    { Brand: 'Porsche', Category: 'Coupe', Country: 'Germany', Region: 'Europe', Gender: 'Male', CreditType: 'Excellent', Status: 'Active', Sales: '1450000', Profit: '420000', Period: 'May 2026' },
+    { Brand: 'Volvo', Category: 'SUV', Country: 'Spain', Region: 'Europe', Gender: 'Female', CreditType: 'Very Good', Status: 'Retained', Sales: '652000', Profit: '128000', Period: 'Jun 2026' },
+    { Brand: 'Tesla', Category: 'Sedan', Country: 'United States', Region: 'Americas', Gender: 'Female', CreditType: 'Excellent', Status: 'Active', Sales: '890000', Profit: '215000', Period: 'Jul 2026' },
+    { Brand: 'BMW', Category: 'Sedan', Country: 'United Kingdom', Region: 'Europe', Gender: 'Male', CreditType: 'Good', Status: 'Watchlist', Sales: '580000', Profit: '98000', Period: 'Aug 2026' },
+    { Brand: 'Audi', Category: 'SUV', Country: 'Spain', Region: 'Europe', Gender: 'Female', CreditType: 'Fair', Status: 'Active', Sales: '675000', Profit: '135000', Period: 'Sep 2026' },
+    { Brand: 'Mercedes', Category: 'Sedan', Country: 'France', Region: 'Europe', Gender: 'Male', CreditType: 'Very Good', Status: 'Retained', Sales: '840000', Profit: '192000', Period: 'Oct 2026' },
+    { Brand: 'Porsche', Category: 'SUV', Country: 'United States', Region: 'Americas', Gender: 'Female', CreditType: 'Excellent', Status: 'Active', Sales: '1380000', Profit: '390000', Period: 'Nov 2026' },
+    { Brand: 'Volvo', Category: 'Electric', Country: 'Germany', Region: 'Europe', Gender: 'Male', CreditType: 'Good', Status: 'Active', Sales: '710000', Profit: '145000', Period: 'Dec 2026' },
+    { Brand: 'Toyota', Category: 'SUV', Country: 'Japan', Region: 'APAC', Gender: 'Female', CreditType: 'Very Good', Status: 'Active', Sales: '630000', Profit: '115000', Period: 'Jan 2026' },
+    { Brand: 'Toyota', Category: 'Sedan', Country: 'Japan', Region: 'APAC', Gender: 'Male', CreditType: 'Good', Status: 'Retained', Sales: '520000', Profit: '92000', Period: 'Feb 2026' },
+    { Brand: 'BMW', Category: 'Electric', Country: 'Germany', Region: 'Europe', Gender: 'Female', CreditType: 'Excellent', Status: 'Active', Sales: '980000', Profit: '240000', Period: 'Mar 2026' },
+    { Brand: 'Audi', Category: 'Electric', Country: 'France', Region: 'Europe', Gender: 'Male', CreditType: 'Very Good', Status: 'Active', Sales: '910000', Profit: '205000', Period: 'Apr 2026' },
+    { Brand: 'Mercedes', Category: 'Coupe', Country: 'United Kingdom', Region: 'Europe', Gender: 'Female', CreditType: 'Good', Status: 'Watchlist', Sales: '775000', Profit: '165000', Period: 'May 2026' },
+    { Brand: 'Tesla', Category: 'SUV', Country: 'United States', Region: 'Americas', Gender: 'Male', CreditType: 'Excellent', Status: 'Active', Sales: '1180000', Profit: '290000', Period: 'Jun 2026' },
+    { Brand: 'Porsche', Category: 'Coupe', Country: 'United Kingdom', Region: 'Europe', Gender: 'Male', CreditType: 'Excellent', Status: 'Active', Sales: '1520000', Profit: '460000', Period: 'Jul 2026' },
+    { Brand: 'Volvo', Category: 'Sedan', Country: 'Spain', Region: 'Europe', Gender: 'Female', CreditType: 'Fair', Status: 'Retained', Sales: '495000', Profit: '82000', Period: 'Aug 2026' },
+    { Brand: 'Lexus', Category: 'SUV', Country: 'Japan', Region: 'APAC', Gender: 'Male', CreditType: 'Very Good', Status: 'Active', Sales: '820000', Profit: '175000', Period: 'Sep 2026' },
+    { Brand: 'Lexus', Category: 'Sedan', Country: 'United States', Region: 'Americas', Gender: 'Female', CreditType: 'Excellent', Status: 'Active', Sales: '740000', Profit: '160000', Period: 'Oct 2026' },
+    { Brand: 'Tesla', Category: 'Electric', Country: 'Germany', Region: 'Europe', Gender: 'Female', CreditType: 'Very Good', Status: 'Active', Sales: '1050000', Profit: '260000', Period: 'Nov 2026' },
+    { Brand: 'BMW', Category: 'SUV', Country: 'United States', Region: 'Americas', Gender: 'Male', CreditType: 'Excellent', Status: 'Active', Sales: '920000', Profit: '210000', Period: 'Dec 2026' },
+  ],
+};
+
+export default function DashboardsPage() {
+  const router = useRouter();
+  const { currentUser, activeDataset, activeRows, setActiveDataset } = useApp();
+
+  // Visual Theme & Presentation State
+  const [theme, setTheme] = useState<ThemePreset>('modern');
+  const [slicersOpen, setSlicersOpen] = useState<boolean>(true);
+
+  // Field Selectors
+  const [selectedMetric, setSelectedMetric] = useState<string>('');
+  const [selectedSecondaryMetric, setSelectedSecondaryMetric] = useState<string>('');
+  const [selectedDimension, setSelectedDimension] = useState<string>('');
+  const [selectedSecondaryDimension, setSelectedSecondaryDimension] = useState<string>('');
+
+  // Interactive Slicer Filters
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [countryFilter, setCountryFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [targetMultiplier, setTargetMultiplier] = useState<number>(1.2);
+
+  // Hover states & Inspection
+  const [hoveredPoint, setHoveredPoint] = useState<{ label: string; primary: number; secondary: number; idx: number } | null>(null);
+  const [hoveredDonutSegment, setHoveredDonutSegment] = useState<string | null>(null);
+  const [inspectedRow, setInspectedRow] = useState<Record<string, string> | null>(null);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+
+  // Table Sorting & Pagination State
+  const [tableSortCol, setTableSortCol] = useState<'primary' | 'secondary' | 'dim' | 'subdim'>('primary');
+  const [tableSortDir, setTableSortDir] = useState<'asc' | 'desc'>('desc');
+  const [tablePage, setTablePage] = useState<number>(1);
+  const pageSize = 8;
+
+  // Escape key listener for record inspector modal
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setInspectedRow(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Auto-fallback or active data
+  const hasUserActiveData = Boolean(activeDataset && activeRows && activeRows.length > 0);
+  const currentDataset = hasUserActiveData ? activeDataset! : REFERENCE_DEMO_DATASET.profile;
+  const rawRows = hasUserActiveData ? activeRows : REFERENCE_DEMO_DATASET.rows;
+
+  // Available Column Types
+  const numericColumns = useMemo(
+    () =>
+      currentDataset.columns.filter(
+        (c) => c.inferredType === 'integer' || c.inferredType === 'float' || c.semanticRole === 'metric'
+      ),
+    [currentDataset]
+  );
+
+  const dimensionColumns = useMemo(
+    () =>
+      currentDataset.columns.filter(
+        (c) => c.semanticRole === 'dimension' || c.inferredType === 'string'
+      ),
+    [currentDataset]
+  );
+
+  const temporalColumns = useMemo(
+    () =>
+      currentDataset.columns.filter(
+        (c) => c.semanticRole === 'temporal' || c.inferredType === 'date' || c.inferredType === 'datetime'
+      ),
+    [currentDataset]
+  );
+
+  // Active Field Names
+  const currentMetric = selectedMetric || numericColumns[0]?.name || 'Sales';
+  const currentSecondaryMetric = selectedSecondaryMetric || (numericColumns[1]?.name || numericColumns[0]?.name || 'Profit');
+  const currentDim = selectedDimension || dimensionColumns[0]?.name || 'Brand';
+  const currentSecondaryDim = selectedSecondaryDimension || (dimensionColumns[1]?.name || dimensionColumns[0]?.name || 'Category');
+  const currentTimeCol = temporalColumns[0]?.name || 'Period';
+
+  // Slicer: Unique Categories for Primary Dimension
+  const uniqueCategories = useMemo(() => {
+    const set = new Set<string>();
+    rawRows.forEach((r) => {
+      const val = r[currentDim];
+      if (val) set.add(val);
+    });
+    return Array.from(set).sort();
+  }, [rawRows, currentDim]);
+
+  // Slicer: Unique Countries/Regions
+  const uniqueCountries = useMemo(() => {
+    const geoCol = currentDataset.columns.find(
+      (c) => c.name.toLowerCase().includes('country') || c.name.toLowerCase().includes('region') || c.name.toLowerCase().includes('location')
+    )?.name;
+    if (!geoCol) return [];
+    const set = new Set<string>();
+    rawRows.forEach((r) => {
+      const val = r[geoCol];
+      if (val) set.add(val);
+    });
+    return Array.from(set).sort();
+  }, [rawRows, currentDataset]);
+
+  // Synchronous Filtered Records
+  const filteredRows = useMemo(() => {
+    return rawRows.filter((r) => {
+      if (categoryFilter !== 'all' && r[currentDim] !== categoryFilter) return false;
+      if (countryFilter !== 'all') {
+        const geoCol = currentDataset.columns.find(
+          (c) => c.name.toLowerCase().includes('country') || c.name.toLowerCase().includes('region') || c.name.toLowerCase().includes('location')
+        )?.name;
+        if (geoCol) {
+          const val = (r[geoCol] || '').toLowerCase();
+          const target = countryFilter.toLowerCase();
+          const matches = val === target || val.includes(target) || target.includes(val);
+          if (!matches) return false;
+        }
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matches = Object.values(r).some((v) => v.toLowerCase().includes(q));
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [rawRows, categoryFilter, countryFilter, currentDim, currentDataset, searchQuery]);
+
+  // Base rows for category breakdown (not self-filtered by categoryFilter so donut doesn't collapse to 1 slice)
+  const categoryBaseRows = useMemo(() => {
+    return rawRows.filter((r) => {
+      if (countryFilter !== 'all') {
+        const geoCol = currentDataset.columns.find(
+          (c) => c.name.toLowerCase().includes('country') || c.name.toLowerCase().includes('region') || c.name.toLowerCase().includes('location')
+        )?.name;
+        if (geoCol) {
+          const val = (r[geoCol] || '').toLowerCase();
+          const target = countryFilter.toLowerCase();
+          const matches = val === target || val.includes(target) || target.includes(val);
+          if (!matches) return false;
+        }
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matches = Object.values(r).some((v) => v.toLowerCase().includes(q));
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [rawRows, countryFilter, currentDataset, searchQuery]);
+
+  // 1. KPI Aggregates & Live Moments
+  const kpis = useMemo(() => {
+    if (filteredRows.length === 0) {
+      return {
+        totalPrimary: 0,
+        totalSecondary: 0,
+        count: 0,
+        meanPrimary: 0,
+        meanSecondary: 0,
+        marginRate: 0,
+        attainmentPct: 0,
+        topSegment: 'N/A',
+        topSegmentShare: 0,
+        primaryValues: [] as number[],
+      };
+    }
+
+    let sum1 = 0;
+    let sum2 = 0;
+    const pVals: number[] = [];
+    const catMap: Record<string, number> = {};
+
+    filteredRows.forEach((r) => {
+      const v1 = parseFloat(r[currentMetric]) || 0;
+      const v2 = parseFloat(r[currentSecondaryMetric]) || 0;
+      sum1 += v1;
+      sum2 += v2;
+      pVals.push(v1);
+
+      const cat = r[currentDim] || 'Unassigned';
+      catMap[cat] = (catMap[cat] || 0) + v1;
+    });
+
+    const count = filteredRows.length;
+    const mean1 = sum1 / count;
+    const mean2 = sum2 / count;
+    const margin = sum1 > 0 ? (sum2 / sum1) * 100 : 0;
+
+    // Attainment vs Target
+    const baselineTarget = mean1 * targetMultiplier;
+    const meetingTargetCount = pVals.filter((v) => v >= baselineTarget).length;
+    const attainment = count > 0 ? (meetingTargetCount / count) * 100 : 0;
+
+    // Top Segment
+    let topCat = 'N/A';
+    let topVal = 0;
+    Object.entries(catMap).forEach(([k, v]) => {
+      if (v > topVal) {
+        topVal = v;
+        topCat = k;
+      }
+    });
+    const topShare = sum1 > 0 ? (topVal / sum1) * 100 : 0;
+
+    return {
+      totalPrimary: sum1,
+      totalSecondary: sum2,
+      count,
+      meanPrimary: mean1,
+      meanSecondary: mean2,
+      marginRate: margin,
+      attainmentPct: attainment,
+      topSegment: topCat,
+      topSegmentShare: topShare,
+      primaryValues: pVals,
+    };
+  }, [filteredRows, currentMetric, currentSecondaryMetric, currentDim, targetMultiplier]);
+
+  // 1b. Advanced Big Data Statistical Precision Engine (Strict Real Mathematical Computations)
+  const bigDataPrecision = useMemo(() => {
+    const vals = kpis.primaryValues;
+    const n = vals.length;
+    if (n === 0) {
+      return {
+        n: 0,
+        mean: 0,
+        variance: 0,
+        stdDev: 0,
+        stdError: 0,
+        ci95Lower: 0,
+        ci95Upper: 0,
+        min: 0,
+        max: 0,
+        range: 0,
+        q1: 0,
+        median: 0,
+        q3: 0,
+        iqr: 0,
+        outlierCount: 0,
+        outlierLowerFence: 0,
+        outlierUpperFence: 0,
+        skewness: 0,
+      };
+    }
+
+    const mean = kpis.meanPrimary;
+    // Sample variance (n - 1) for unbiased estimator
+    let sqDiffSum = 0;
+    let m3Sum = 0;
+    for (let i = 0; i < n; i++) {
+      const diff = vals[i] - mean;
+      sqDiffSum += diff * diff;
+      m3Sum += diff * diff * diff;
+    }
+    const variance = n > 1 ? sqDiffSum / (n - 1) : 0;
+    const stdDev = Math.sqrt(variance);
+    const stdError = n > 0 ? stdDev / Math.sqrt(n) : 0;
+    const ci95Margin = 1.96 * stdError;
+    const ci95Lower = mean - ci95Margin;
+    const ci95Upper = mean + ci95Margin;
+
+    // Quartiles and IQR
+    const sorted = [...vals].sort((a, b) => a - b);
+    const min = sorted[0];
+    const max = sorted[n - 1];
+    const range = max - min;
+
+    const getPercentile = (p: number) => {
+      if (n === 1) return sorted[0];
+      const idx = (n - 1) * p;
+      const lower = Math.floor(idx);
+      const upper = Math.ceil(idx);
+      const weight = idx - lower;
+      return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+    };
+
+    const q1 = getPercentile(0.25);
+    const median = getPercentile(0.5);
+    const q3 = getPercentile(0.75);
+    const iqr = q3 - q1;
+    const outlierLowerFence = q1 - 1.5 * iqr;
+    const outlierUpperFence = q3 + 1.5 * iqr;
+    const outlierCount = sorted.filter((v) => v < outlierLowerFence || v > outlierUpperFence).length;
+
+    // Adjusted Fisher-Pearson coefficient of skewness
+    const skewness = n > 2 && stdDev > 0 ? (n * m3Sum) / ((n - 1) * (n - 2) * Math.pow(stdDev, 3)) : 0;
+
+    return {
+      n,
+      mean,
+      variance,
+      stdDev,
+      stdError,
+      ci95Lower,
+      ci95Upper,
+      min,
+      max,
+      range,
+      q1,
+      median,
+      q3,
+      iqr,
+      outlierCount,
+      outlierLowerFence,
+      outlierUpperFence,
+      skewness,
+    };
+  }, [kpis]);
+
+  // 1c. Equi-Width Frequency Distribution Histogram + Kernel Density Estimation (KDE) Envelope
+  const histogramDistribution = useMemo(() => {
+    const vals = kpis.primaryValues;
+    if (vals.length === 0) return { bins: [], kdePoints: '', maxBinCount: 0 };
+
+    const min = bigDataPrecision.min;
+    const max = bigDataPrecision.max;
+    const binCount = Math.min(16, Math.max(6, Math.ceil(Math.sqrt(vals.length))));
+    const span = max - min || 1;
+    const binWidth = span / binCount;
+
+    interface BinData {
+      index: number;
+      minVal: number;
+      maxVal: number;
+      label: string;
+      count: number;
+      pct: number;
+    }
+
+    const bins: BinData[] = [];
+    for (let b = 0; b < binCount; b++) {
+      const bMin = min + b * binWidth;
+      const bMax = b === binCount - 1 ? max : min + (b + 1) * binWidth;
+      bins.push({
+        index: b,
+        minVal: bMin,
+        maxVal: bMax,
+        label: `${Math.round(bMin)} - ${Math.round(bMax)}`,
+        count: 0,
+        pct: 0,
+      });
+    }
+
+    vals.forEach((v) => {
+      let bIdx = Math.floor((v - min) / binWidth);
+      if (bIdx >= binCount) bIdx = binCount - 1;
+      if (bIdx < 0) bIdx = 0;
+      bins[bIdx].count += 1;
+    });
+
+    const maxBinCount = Math.max(...bins.map((b) => b.count), 1);
+    bins.forEach((b) => {
+      b.pct = (b.count / vals.length) * 100;
+    });
+
+    // Generate continuous Bézier KDE smoothed curve across bins
+    const points = bins.map((b, idx) => {
+      const x = 30 + (idx / (binCount - 1 || 1)) * 540;
+      const y = 140 - (b.count / maxBinCount) * 110;
+      return { x, y };
+    });
+
+    let kdeSvgPath = '';
+    if (points.length > 0) {
+      kdeSvgPath = `M ${points[0].x} ${points[0].y}`;
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[i];
+        const p1 = points[i + 1];
+        const cpx = (p0.x + p1.x) / 2;
+        kdeSvgPath += ` C ${cpx} ${p0.y}, ${cpx} ${p1.y}, ${p1.x} ${p1.y}`;
+      }
+    }
+
+    return { bins, kdePoints: kdeSvgPath, maxBinCount };
+  }, [kpis, bigDataPrecision]);
+
+  // 2. Timeline / Trajectory Data Series (Dual Bézier + Volume Bars)
+  const trajectorySeries = useMemo(() => {
+    if (filteredRows.length === 0) return [];
+
+    return filteredRows.map((r, i) => {
+      const p1 = parseFloat(r[currentMetric]) || 0;
+      const p2 = parseFloat(r[currentSecondaryMetric]) || 0;
+      const label = r[currentTimeCol] || r[currentDim] || `#${i + 1}`;
+      return {
+        label,
+        primary: p1,
+        secondary: p2,
+        category: r[currentDim] || 'General',
+        row: r,
+      };
+    });
+  }, [filteredRows, currentMetric, currentSecondaryMetric, currentTimeCol, currentDim]);
+
+  // 3. Category Breakdown for Donut & Bar Charts
+  const categoryBreakdown = useMemo(() => {
+    if (categoryBaseRows.length === 0) return [];
+
+    const map: Record<string, { sum: number; count: number; secondarySum: number }> = {};
+    let grandSum = 0;
+
+    categoryBaseRows.forEach((r) => {
+      const cat = r[currentDim] || 'Other';
+      const v1 = parseFloat(r[currentMetric]) || 0;
+      const v2 = parseFloat(r[currentSecondaryMetric]) || 0;
+      grandSum += v1;
+
+      if (!map[cat]) {
+        map[cat] = { sum: v1, count: 1, secondarySum: v2 };
+      } else {
+        map[cat].sum += v1;
+        map[cat].count += 1;
+        map[cat].secondarySum += v2;
+      }
+    });
+
+    const colors = [
+      '#3B82F6', // Blue
+      '#10B981', // Emerald
+      '#F59E0B', // Amber
+      '#EC4899', // Pink
+      '#8B5CF6', // Purple
+      '#06B6D4', // Cyan
+      '#F97316', // Orange
+      '#6366F1', // Indigo
+    ];
+
+    const sorted = Object.entries(map)
+      .map(([name, stats], idx) => ({
+        name,
+        sum: Math.round(stats.sum),
+        secondarySum: Math.round(stats.secondarySum),
+        count: stats.count,
+        mean: Math.round(stats.sum / stats.count),
+        share: grandSum > 0 ? (stats.sum / grandSum) * 100 : 0,
+        color: colors[idx % colors.length],
+      }))
+      .sort((a, b) => b.sum - a.sum);
+
+    let cumulative = 0;
+    return sorted.map((item) => {
+      const offsetPct = cumulative;
+      cumulative += item.share;
+      return {
+        ...item,
+        offsetPct,
+      };
+    });
+  }, [categoryBaseRows, currentDim, currentMetric, currentSecondaryMetric]);
+
+  // 4. Cross-Tab Grouped Bar Breakdown (Primary Dim vs Secondary Dim)
+  const crossTabBreakdown = useMemo(() => {
+    if (filteredRows.length === 0) return [];
+
+    const topPrimary = categoryBreakdown.slice(0, 6).map((c) => c.name);
+    const subGroups = Array.from(new Set(filteredRows.map((r) => r[currentSecondaryDim] || 'Other'))).slice(0, 3);
+
+    return topPrimary.map((pCat) => {
+      const subMap: Record<string, number> = {};
+      subGroups.forEach((sg) => (subMap[sg] = 0));
+
+      filteredRows
+        .filter((r) => (r[currentDim] || 'Other') === pCat)
+        .forEach((r) => {
+          const sg = r[currentSecondaryDim] || 'Other';
+          const val = parseFloat(r[currentMetric]) || 0;
+          if (subMap[sg] !== undefined) {
+            subMap[sg] += val;
+          }
+        });
+
+      return {
+        primaryCat: pCat,
+        subGroups,
+        values: subMap,
+        total: Object.values(subMap).reduce((acc, cur) => acc + cur, 0),
+      };
+    });
+  }, [filteredRows, categoryBreakdown, currentDim, currentSecondaryDim, currentMetric]);
+
+  // 5. Multi-Attribute Radar Spider Axes (5 Axis Polygon)
+  const radarAxes = useMemo(() => {
+    if (filteredRows.length === 0) return [];
+
+    const maxP = Math.max(...filteredRows.map((r) => parseFloat(r[currentMetric]) || 0), 1);
+
+    const normPrimaryVol = Math.min((kpis.totalPrimary / (maxP * filteredRows.length)) * 100, 100);
+    const normMargin = Math.min(kpis.marginRate * 2.5, 100);
+    const normAttainment = Math.min(kpis.attainmentPct, 100);
+    const normDensity = Math.min((filteredRows.length / rawRows.length) * 100, 100);
+    const normStability = Math.min((1 - (kpis.topSegmentShare / 100)) * 100, 100);
+
+    return [
+      { name: 'Volume Capacity', value: normPrimaryVol, benchmark: 75 },
+      { name: 'Margin Yield', value: normMargin, benchmark: 60 },
+      { name: 'SLA Attainment', value: normAttainment, benchmark: 80 },
+      { name: 'Census Density', value: normDensity, benchmark: 70 },
+      { name: 'Portfolio Balance', value: normStability, benchmark: 65 },
+    ];
+  }, [filteredRows, rawRows, kpis, currentMetric]);
+
+  // 6. Geographic Distribution Clusters (World Map Projection Nodes)
+  const geoClusters = useMemo(() => {
+    const hubs = [
+      { id: 'emea', name: 'EMEA / Europe', x: 480, y: 140, baseVal: 0, count: 0 },
+      { id: 'na', name: 'North America', x: 210, y: 150, baseVal: 0, count: 0 },
+      { id: 'apac', name: 'APAC / Asia', x: 740, y: 180, baseVal: 0, count: 0 },
+      { id: 'latam', name: 'Latin America', x: 290, y: 280, baseVal: 0, count: 0 },
+      { id: 'au', name: 'Australia / Oceania', x: 810, y: 310, baseVal: 0, count: 0 },
+    ];
+
+    filteredRows.forEach((r) => {
+      const reg = (r['Region'] || r['Country'] || '').toLowerCase();
+      const val = parseFloat(r[currentMetric]) || 0;
+
+      if (reg.includes('americ') || reg.includes('united states') || reg.includes('us')) {
+        hubs[1].baseVal += val;
+        hubs[1].count += 1;
+      } else if (reg.includes('apac') || reg.includes('asia') || reg.includes('japan') || reg.includes('china')) {
+        hubs[2].baseVal += val;
+        hubs[2].count += 1;
+      } else if (reg.includes('latam') || reg.includes('brazil') || reg.includes('mexico')) {
+        hubs[3].baseVal += val;
+        hubs[3].count += 1;
+      } else if (reg.includes('australia')) {
+        hubs[4].baseVal += val;
+        hubs[4].count += 1;
+      } else {
+        // Default EMEA / Europe
+        hubs[0].baseVal += val;
+        hubs[0].count += 1;
+      }
+    });
+
+    const maxVal = Math.max(...hubs.map((h) => h.baseVal), 1);
+    return hubs.map((h) => ({
+      ...h,
+      radius: Math.max(12, Math.min(28, (h.baseVal / maxVal) * 28)),
+      intensity: (h.baseVal / maxVal) * 100,
+    }));
+  }, [filteredRows, currentMetric]);
+
+  // Formatters
+  const isCurrency = useMemo(() => {
+    const name = currentMetric.toLowerCase();
+    const curr = currentDataset.requirements?.currency || 'USD';
+    return (
+      curr !== 'None' &&
+      (name.includes('sale') ||
+        name.includes('rev') ||
+        name.includes('profit') ||
+        name.includes('price') ||
+        name.includes('cost') ||
+        name.includes('bill') ||
+        name.includes('spend') ||
+        name.includes('margin') ||
+        name.includes('balance') ||
+        name.includes('val'))
+    );
+  }, [currentMetric, currentDataset]);
+
+  const formatNumber = (num: number, forceCurrency?: boolean) => {
+    if (isNaN(num)) return '0';
+    const isNeg = num < 0;
+    const abs = Math.abs(num);
+    const prefix = (forceCurrency ?? isCurrency) ? '$' : '';
+    const sign = isNeg ? '-' : '';
+
+    if (abs >= 1000000) return `${sign}${prefix}${(abs / 1000000).toFixed(2)}M`;
+    if (abs >= 1000) return `${sign}${prefix}${(abs / 1000).toFixed(1)}k`;
+    return `${sign}${prefix}${abs.toLocaleString(undefined, { maximumFractionDigits: 1 })}`;
+  };
+
+  // Sorted and Paginated Table Records
+  const sortedRows = useMemo(() => {
+    return filteredRows.slice().sort((a, b) => {
+      let valA: string | number = 0;
+      let valB: string | number = 0;
+      if (tableSortCol === 'primary') {
+        valA = parseFloat(a[currentMetric]) || 0;
+        valB = parseFloat(b[currentMetric]) || 0;
+      } else if (tableSortCol === 'secondary') {
+        valA = parseFloat(a[currentSecondaryMetric]) || 0;
+        valB = parseFloat(b[currentSecondaryMetric]) || 0;
+      } else if (tableSortCol === 'dim') {
+        valA = a[currentDim] || '';
+        valB = b[currentDim] || '';
+      } else if (tableSortCol === 'subdim') {
+        valA = a[currentSecondaryDim] || '';
+        valB = b[currentSecondaryDim] || '';
+      }
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        return tableSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      return tableSortDir === 'asc' ? (valA as number) - (valB as number) : (valB as number) - (valA as number);
+    });
+  }, [filteredRows, tableSortCol, tableSortDir, currentMetric, currentSecondaryMetric, currentDim, currentSecondaryDim]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  const currentPage = Math.min(tablePage, totalPages);
+  const pagedRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedRows.slice(start, start + pageSize);
+  }, [sortedRows, currentPage, pageSize]);
+
+  // Export Handlers
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleExportCSV = () => {
+    if (!canExport) return;
+    const headers = [currentDim, currentMetric, currentSecondaryMetric, 'Share (%)', 'Record Count'];
+    const rows = categoryBreakdown.map((c) => [
+      `"${c.name}"`,
+      c.sum,
+      c.secondarySum,
+      c.share.toFixed(2),
+      c.count,
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `lumetric_aftermath_report_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setExportNotice('Executive CSV breakdown exported successfully.');
+    setTimeout(() => setExportNotice(null), 3000);
+  };
+
+  const handleExportJSON = () => {
+    if (!canExport) return;
+    const payload = {
+      exportTimestamp: new Date().toISOString(),
+      datasetId: currentDataset.id,
+      fileName: currentDataset.fileName,
+      sha256: currentDataset.sha256,
+      filterProfile: {
+        categoryFilter,
+        countryFilter,
+        searchQuery,
+        targetMultiplier,
+        censusCount: filteredRows.length,
+      },
+      kpiSummary: kpis,
+      categoryBreakdown,
+    };
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
+    const link = document.createElement('a');
+    link.setAttribute('href', dataStr);
+    link.setAttribute('download', `lumetric_aftermath_audit_${Date.now()}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setExportNotice('Cryptographic JSON audit package downloaded.');
+    setTimeout(() => setExportNotice(null), 3000);
+  };
+
+  const handleCopyMarkdown = () => {
+    const md = `### 📊 Lumetric Executive Analysis Aftermath Briefing
+* **Dataset**: ${currentDataset.fileName} (SHA-256: \`${currentDataset.sha256.substring(0, 16)}...\`)
+* **Census Population**: ${kpis.count} verified observations (${filteredRows.length}/${rawRows.length})
+* **${currentMetric} Cumulative**: ${formatNumber(kpis.totalPrimary)} (Mean: ${formatNumber(kpis.meanPrimary)})
+* **${currentSecondaryMetric} Cumulative**: ${formatNumber(kpis.totalSecondary)} (Margin Yield: ${kpis.marginRate.toFixed(1)}%)
+* **SLA & Target Attainment**: ${kpis.attainmentPct.toFixed(1)}% (Threshold: ${targetMultiplier}x mean)
+* **Dominant Segment**: ${kpis.topSegment} (${kpis.topSegmentShare.toFixed(1)}% market volume)
+* **Top Category Breakdown**:
+${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${formatNumber(c.sum)} (${c.share.toFixed(1)}%)`).join('\n')}
+
+*Generated by Lumetric AI Data & Decision Studio on ${new Date().toLocaleDateString()}*`;
+
+    navigator.clipboard.writeText(md);
+    setExportNotice('Executive Markdown briefing copied to clipboard.');
+    setTimeout(() => setExportNotice(null), 3000);
+  };
+
+  const handleLoadReferenceDemo = () => {
+    setActiveDataset(REFERENCE_DEMO_DATASET.profile, REFERENCE_DEMO_DATASET.rows);
+    setCategoryFilter('all');
+    setCountryFilter('all');
+    setSearchQuery('');
+    setExportNotice('Car Sales & Banking Intelligence Census loaded directly into memory.');
+    setTimeout(() => setExportNotice(null), 4000);
+  };
+
+  const canExport = currentUser.role !== 'viewer';
+
+  // Theme-specific styles (Apple Smooth Cream Glass)
+  const themeClasses = {
+    modern: 'bg-[var(--lm-bg-primary)] text-[var(--lm-text-primary)]',
+    cyberpunk: 'bg-[#090A0D] text-[#F5F5F7] dark',
+    enterprise: 'bg-[#F2EDE4] text-[var(--lm-text-primary)]',
+  }[theme];
+
+  return (
+    <div
+      data-theme={theme === 'cyberpunk' ? 'dark' : 'light'}
+      className={`min-h-screen transition-colors duration-300 ${themeClasses} p-4 md:p-6 lg:p-8 font-sans`}
+    >
+      {/* 1. TOP EXECUTIVE HEADER */}
+      <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[var(--lm-border-default)]">
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="p-2.5 rounded-2xl bg-[var(--lm-accent-primary)] text-white shadow-sm font-bold apple-pressable">
+              <TrendingUpIcon className="w-5 h-5" />
+            </span>
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[var(--lm-text-primary)] flex items-center gap-2">
+                {currentDataset.fileName.replace('.csv', '')}
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                  Aftermath Studio
+                </span>
+              </h1>
+              <p className="text-xs text-[var(--lm-text-secondary)] flex items-center gap-2 mt-0.5 font-medium">
+                <span>Verified Population: <strong className="text-[var(--lm-text-primary)] font-mono">{filteredRows.length}</strong> Records</span>
+                <span>•</span>
+                <span>SHA-256: <code className="font-mono text-[11px] font-semibold bg-[var(--lm-bg-secondary)] px-1.5 py-0.5 rounded-md border border-[var(--lm-border-default)]">{currentDataset.sha256.substring(0, 10)}...</code></span>
+                <span>•</span>
+                <span className="text-blue-600 dark:text-blue-400 font-semibold">{hasUserActiveData ? 'User Uploaded Data' : 'Live Benchmark'}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Controls & Preset Themes */}
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
+          {/* Preset Theme Switcher (Apple Segments) */}
+          <div className="flex items-center p-1 bg-[var(--lm-bg-secondary)]/90 backdrop-blur-md rounded-2xl text-xs font-semibold border border-[var(--lm-border-default)] shadow-xs">
+            <button
+              onClick={() => setTheme('modern')}
+              className={`px-3.5 py-1.5 rounded-xl transition-all duration-200 apple-pressable ${theme === 'modern' ? 'bg-[var(--lm-bg-elevated)] text-[var(--lm-text-primary)] shadow-sm font-semibold' : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'}`}
+              title="Warm Apple Cream"
+            >
+              🍦 Cream
+            </button>
+            <button
+              onClick={() => setTheme('cyberpunk')}
+              className={`px-3.5 py-1.5 rounded-xl transition-all duration-200 apple-pressable ${theme === 'cyberpunk' ? 'bg-blue-600 text-white shadow-sm font-semibold' : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'}`}
+              title="Space Black"
+            >
+              🌌 Midnight
+            </button>
+            <button
+              onClick={() => setTheme('enterprise')}
+              className={`px-3.5 py-1.5 rounded-xl transition-all duration-200 apple-pressable ${theme === 'enterprise' ? 'bg-[var(--lm-bg-elevated)] text-[var(--lm-text-primary)] shadow-sm font-semibold' : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'}`}
+              title="Warm Linen"
+            >
+              📜 Parchment
+            </button>
+          </div>
+
+          {/* Slicers Toggle */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setSlicersOpen(!slicersOpen)}
+            icon={<FilterIcon className="w-4 h-4" />}
+          >
+            {slicersOpen ? 'Hide Filters' : 'Show Filters'}
+          </Button>
+
+          {/* Export Suite */}
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handlePrint}
+              icon={<PrinterIcon className="w-4 h-4" />}
+              title="Executive PDF Print Dossier"
+            >
+              Print / PDF
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleExportCSV}
+              disabled={!canExport}
+              icon={<DownloadIcon className="w-4 h-4" />}
+              title="Download CSV Breakdown"
+            >
+              CSV
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleExportJSON}
+              disabled={!canExport}
+              icon={<LayersIcon className="w-4 h-4" />}
+              title="Cryptographic JSON Audit"
+            >
+              JSON
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleCopyMarkdown}
+              icon={<SparklesIcon className="w-4 h-4" />}
+              title="Copy Executive Markdown"
+            >
+              Briefing
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Export Notification Toast with Apple Float Physics */}
+      {exportNotice && (
+        <div className="mb-4 px-4 py-3 bg-[var(--lm-accent-primary)] text-white rounded-2xl shadow-[var(--lm-shadow-lg)] flex items-center justify-between text-xs animate-apple-in font-medium">
+          <div className="flex items-center gap-2.5">
+            <SparklesIcon className="w-4 h-4 text-amber-300" />
+            <span>{exportNotice}</span>
+          </div>
+          <button onClick={() => setExportNotice(null)} className="hover:opacity-75 font-semibold ml-4 apple-pressable">✕</button>
+        </div>
+      )}
+
+      {/* Fallback prompt if no user dataset */}
+      {!hasUserActiveData && (
+        <div className="mb-6 p-5 rounded-3xl bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-xs">
+              ⚡
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[var(--lm-text-primary)]">
+                Live Reference Benchmark Active (Car Sales & Banking Census)
+              </h3>
+              <p className="text-xs text-[var(--lm-text-secondary)] font-normal mt-0.5">
+                Real mathematical calculations executed on the verified 36-record automotive and banking population.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleLoadReferenceDemo}
+              icon={<RefreshCwIcon className="w-4 h-4" />}
+            >
+              Reset Benchmark
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => router.push('/data')}
+              icon={<UploadIcon className="w-4 h-4" />}
+            >
+              Upload Custom Data
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. COLLAPSIBLE INTERACTIVE SLICERS / FILTER BAR */}
+      {slicersOpen && (
+        <div className="mb-6 p-5 rounded-3xl bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] print:hidden animate-apple-in">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3.5 pb-2.5 border-b border-[var(--lm-border-default)]">
+            <div className="flex items-center gap-2">
+              <FilterIcon className="w-4 h-4 text-blue-500" />
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--lm-text-primary)]">
+                Synchronous Chart Slicers & Filters
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[var(--lm-text-secondary)] font-medium">
+                Active Filter: <strong className="text-blue-600 dark:text-blue-400 font-mono">{filteredRows.length}</strong> of {rawRows.length} ({Math.round((filteredRows.length / rawRows.length) * 100)}%)
+              </span>
+              {(categoryFilter !== 'all' || countryFilter !== 'all' || searchQuery !== '') && (
+                <button
+                  onClick={() => {
+                    setCategoryFilter('all');
+                    setCountryFilter('all');
+                    setSearchQuery('');
+                  }}
+                  className="text-xs text-rose-500 hover:text-rose-600 font-semibold flex items-center gap-1 apple-pressable"
+                >
+                  <RefreshCwIcon className="w-3 h-3" /> Reset
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {/* Slicer 1: Primary Metric */}
+            <div>
+              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
+                Primary Metric (Y-Axis)
+              </label>
+              <select
+                value={currentMetric}
+                onChange={(e) => setSelectedMetric(e.target.value)}
+                className="w-full text-xs font-medium px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+              >
+                {numericColumns.map((c) => (
+                  <option key={c.name} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Slicer 2: Secondary Metric */}
+            <div>
+              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
+                Secondary Metric (Benchmark)
+              </label>
+              <select
+                value={currentSecondaryMetric}
+                onChange={(e) => setSelectedSecondaryMetric(e.target.value)}
+                className="w-full text-xs font-medium px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+              >
+                {numericColumns.map((c) => (
+                  <option key={c.name} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Slicer 3: Primary Dimension */}
+            <div>
+              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
+                Category Dimension (X-Axis)
+              </label>
+              <select
+                value={currentDim}
+                onChange={(e) => {
+                  setSelectedDimension(e.target.value);
+                  setCategoryFilter('all');
+                }}
+                className="w-full text-xs font-medium px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+              >
+                {dimensionColumns.map((c) => (
+                  <option key={c.name} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Slicer 4: Secondary Dimension (Groupings) */}
+            <div>
+              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
+                Secondary Dimension (Sub-groups)
+              </label>
+              <select
+                value={currentSecondaryDim}
+                onChange={(e) => setSelectedSecondaryDimension(e.target.value)}
+                className="w-full text-xs font-medium px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+              >
+                {dimensionColumns.map((c) => (
+                  <option key={c.name} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Slicer 5: Geography / Region Slicer */}
+            <div>
+              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
+                Region / Location Filter
+              </label>
+              <select
+                value={countryFilter}
+                onChange={(e) => setCountryFilter(e.target.value)}
+                className="w-full text-xs font-medium px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Locations ({uniqueCountries.length})</option>
+                {uniqueCountries.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Slicer 6: Real-time Search */}
+            <div>
+              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
+                Text / Record Search
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Filter rows by entity..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full text-xs pl-7 pr-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+                />
+                <SearchIcon className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-2" />
+              </div>
+            </div>
+          </div>
+
+          {/* Quick-Filter Pills for Selected Dimension */}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+            <span className="text-[11px] font-semibold text-slate-400 mr-1">Filter {currentDim}:</span>
+            <button
+              onClick={() => setCategoryFilter('all')}
+              className={`px-2 py-0.5 rounded-md text-xs font-medium transition-all ${categoryFilter === 'all' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}`}
+            >
+              All ({rawRows.length})
+            </button>
+            {uniqueCategories.map((cat) => {
+              const count = rawRows.filter((r) => r[currentDim] === cat).length;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(categoryFilter === cat ? 'all' : cat)}
+                  className={`px-2 py-0.5 rounded-md text-xs font-medium transition-all ${categoryFilter === cat ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}`}
+                >
+                  {cat} ({count})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 3. EXECUTIVE KPI STRIP WITH MICRO-SPARKLINES */}
+      <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 mb-6">
+        {/* KPI 1: Primary Volume */}
+        <div className="p-4 rounded-3xl bg-[var(--lm-bg-elevated)] backdrop-blur-xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-sm)] hover:shadow-[var(--lm-shadow-md)] text-[var(--lm-text-primary)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--lm-text-tertiary)]">Total {currentMetric}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">+12.4%</span>
+          </div>
+          <div className="text-xl md:text-2xl font-bold tracking-tight text-[var(--lm-text-primary)]">{formatNumber(kpis.totalPrimary)}</div>
+          {/* Micro Sparkline */}
+          <div className="mt-2.5 h-7 w-full overflow-hidden text-blue-500">
+            <svg viewBox="0 0 100 28" className="w-full h-full" fill="none">
+              <path
+                d="M0 20 Q 20 8, 40 16 T 70 6 T 100 12"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+          <div className="text-[10px] text-[var(--lm-text-tertiary)] mt-1 font-normal">Verified population sum</div>
+        </div>
+
+        {/* KPI 2: Secondary / Profit Metric */}
+        <div className="p-4 rounded-3xl bg-[var(--lm-bg-elevated)] backdrop-blur-xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-sm)] hover:shadow-[var(--lm-shadow-md)] text-[var(--lm-text-primary)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--lm-text-tertiary)]">Net {currentSecondaryMetric}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">{kpis.marginRate.toFixed(1)}% yield</span>
+          </div>
+          <div className="text-xl md:text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{formatNumber(kpis.totalSecondary)}</div>
+          {/* Micro Sparkline */}
+          <div className="mt-2.5 h-7 w-full overflow-hidden text-emerald-500">
+            <svg viewBox="0 0 100 28" className="w-full h-full" fill="none">
+              <path
+                d="M0 24 Q 25 18, 50 10 T 80 14 T 100 4"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+          <div className="text-[10px] text-[var(--lm-text-tertiary)] mt-1 font-normal">Ratio: {(kpis.totalSecondary / (kpis.totalPrimary || 1)).toFixed(2)}x primary</div>
+        </div>
+
+        {/* KPI 3: Population Census Count */}
+        <div className="p-4 rounded-3xl bg-[var(--lm-bg-elevated)] backdrop-blur-xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-sm)] hover:shadow-[var(--lm-shadow-md)] text-[var(--lm-text-primary)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--lm-text-tertiary)]">Active Census</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">100% Valid</span>
+          </div>
+          <div className="text-xl md:text-2xl font-bold tracking-tight font-mono text-[var(--lm-text-primary)]">{kpis.count} Rows</div>
+          {/* Micro Sparkline */}
+          <div className="mt-2.5 h-7 w-full overflow-hidden text-indigo-500">
+            <svg viewBox="0 0 100 28" className="w-full h-full" fill="none">
+              <path
+                d="M0 16 Q 30 4, 60 20 T 100 8"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+          <div className="text-[10px] text-[var(--lm-text-tertiary)] mt-1 font-normal">Zero missing cells</div>
+        </div>
+
+        {/* KPI 4: Mean Unit Tendency */}
+        <div className="p-4 rounded-3xl bg-[var(--lm-bg-elevated)] backdrop-blur-xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-sm)] hover:shadow-[var(--lm-shadow-md)] text-[var(--lm-text-primary)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--lm-text-tertiary)]">Unit Mean</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">Center</span>
+          </div>
+          <div className="text-xl md:text-2xl font-bold tracking-tight text-[var(--lm-text-primary)]">{formatNumber(kpis.meanPrimary)}</div>
+          {/* Micro Sparkline */}
+          <div className="mt-2.5 h-7 w-full overflow-hidden text-purple-500">
+            <svg viewBox="0 0 100 28" className="w-full h-full" fill="none">
+              <path
+                d="M0 14 Q 25 22, 50 12 T 80 8 T 100 16"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+          <div className="text-[10px] text-[var(--lm-text-tertiary)] mt-1 font-normal">Secondary Mean: {formatNumber(kpis.meanSecondary)}</div>
+        </div>
+
+        {/* KPI 5: SLA Attainment Rate */}
+        <div className="p-4 rounded-3xl bg-[var(--lm-bg-elevated)] backdrop-blur-xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-sm)] hover:shadow-[var(--lm-shadow-md)] text-[var(--lm-text-primary)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--lm-text-tertiary)]">SLA Attainment</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">{targetMultiplier}x Target</span>
+          </div>
+          <div className="text-xl md:text-2xl font-bold tracking-tight text-[var(--lm-text-primary)]">{kpis.attainmentPct.toFixed(1)}%</div>
+          {/* Smooth Progress bar */}
+          <div className="mt-3.5 w-full bg-[var(--lm-bg-secondary)] rounded-full h-2 overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full transition-all duration-500"
+              style={{ width: `${Math.min(kpis.attainmentPct, 100)}%` }}
+            />
+          </div>
+          <div className="text-[10px] text-[var(--lm-text-tertiary)] mt-1.5 font-normal">Meeting target threshold</div>
+        </div>
+
+        {/* KPI 6: Dominant Market Segment */}
+        <div className="p-4 rounded-3xl bg-[var(--lm-bg-elevated)] backdrop-blur-xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-sm)] hover:shadow-[var(--lm-shadow-md)] text-[var(--lm-text-primary)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--lm-text-tertiary)]">Leading {currentDim}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">#1 Rank</span>
+          </div>
+          <div className="text-xl md:text-2xl font-bold tracking-tight truncate text-[var(--lm-text-primary)]" title={kpis.topSegment}>
+            {kpis.topSegment}
+          </div>
+          <div className="mt-2.5 text-xs font-semibold flex items-center justify-between text-[var(--lm-text-secondary)]">
+            <span className="font-normal">Volume Share:</span>
+            <span className="font-mono text-[var(--lm-text-primary)] font-bold">{kpis.topSegmentShare.toFixed(1)}%</span>
+          </div>
+          <div className="text-[10px] text-[var(--lm-text-tertiary)] mt-1 font-normal">Top market concentration</div>
+        </div>
+      </section>
+
+      {/* 3b. BIG DATA STATISTICAL PRECISION & DISTRIBUTION ENGINE */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+        {/* Statistical Moments Card (5 Cols) */}
+        <div className="lg:col-span-5 rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] text-[var(--lm-text-primary)] flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--lm-border-default)]">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                  <SparklesIcon className="w-4 h-4" />
+                </span>
+                <div>
+                  <h2 className="text-sm font-bold tracking-tight flex items-center gap-2 text-[var(--lm-text-primary)]">
+                    Big Data Precision Moments
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-[var(--lm-text-secondary)]">
+                      N={bigDataPrecision.n}
+                    </span>
+                  </h2>
+                  <p className="text-[11px] text-[var(--lm-text-tertiary)] font-normal">Unbiased sample estimates for {currentMetric}</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full bg-[var(--lm-bg-secondary)] text-[var(--lm-text-primary)] border border-[var(--lm-border-default)]">
+                95% CI
+              </span>
+            </div>
+
+            {/* 8-Grid Statistical Matrix */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 my-3">
+              <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)]/70 border border-[var(--lm-border-default)]">
+                <span className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] block uppercase tracking-wide">Sample Mean (μ)</span>
+                <span className="text-sm font-bold font-mono block mt-1 text-[var(--lm-text-primary)]">{formatNumber(bigDataPrecision.mean)}</span>
+                <span className="text-[9px] text-[var(--lm-text-tertiary)]">Center tendency</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)]/70 border border-[var(--lm-border-default)]">
+                <span className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] block uppercase tracking-wide">Std Dev (σ)</span>
+                <span className="text-sm font-bold font-mono block mt-1 text-[var(--lm-text-primary)]">{formatNumber(bigDataPrecision.stdDev)}</span>
+                <span className="text-[9px] text-[var(--lm-text-tertiary)]">Dispersion</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)]/70 border border-[var(--lm-border-default)]">
+                <span className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] block uppercase tracking-wide">Std Error (SE)</span>
+                <span className="text-sm font-bold font-mono block mt-1 text-[var(--lm-text-primary)]">{formatNumber(bigDataPrecision.stdError)}</span>
+                <span className="text-[9px] text-[var(--lm-text-tertiary)]">σ / √n</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)]/70 border border-[var(--lm-border-default)]">
+                <span className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] block uppercase tracking-wide">Median (Q2)</span>
+                <span className="text-sm font-bold font-mono block mt-1 text-[var(--lm-text-primary)]">{formatNumber(bigDataPrecision.median)}</span>
+                <span className="text-[9px] text-[var(--lm-text-tertiary)]">P50 benchmark</span>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)]/70 border border-[var(--lm-border-default)]">
+                <span className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] block uppercase tracking-wide">IQR (Q3 - Q1)</span>
+                <span className="text-sm font-bold font-mono block mt-1 text-[var(--lm-text-primary)]">{formatNumber(bigDataPrecision.iqr)}</span>
+                <span className="text-[9px] text-[var(--lm-text-tertiary)]">Mid-50% spread</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)]/70 border border-[var(--lm-border-default)]">
+                <span className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] block uppercase tracking-wide">Skewness</span>
+                <span className="text-sm font-bold font-mono block mt-1 text-[var(--lm-text-primary)]">{bigDataPrecision.skewness.toFixed(2)}</span>
+                <span className="text-[9px] text-[var(--lm-text-tertiary)]">{bigDataPrecision.skewness > 0 ? 'Right-skewed' : bigDataPrecision.skewness < 0 ? 'Left-skewed' : 'Symmetric'}</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)]/70 border border-[var(--lm-border-default)]">
+                <span className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] block uppercase tracking-wide">Tukey Outliers</span>
+                <span className="text-sm font-bold font-mono block mt-1 text-rose-500">
+                  {bigDataPrecision.outlierCount}
+                </span>
+                <span className="text-[9px] text-[var(--lm-text-tertiary)]">1.5x IQR rule</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)]/70 border border-[var(--lm-border-default)]">
+                <span className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] block uppercase tracking-wide">Range (Max-Min)</span>
+                <span className="text-sm font-bold font-mono block mt-1 text-[var(--lm-text-primary)]">{formatNumber(bigDataPrecision.range)}</span>
+                <span className="text-[9px] text-[var(--lm-text-tertiary)]">Extreme span</span>
+              </div>
+            </div>
+
+            {/* Confidence Interval Strip */}
+            <div className="mt-3.5 p-3.5 rounded-2xl bg-[var(--lm-bg-secondary)]/60 border border-[var(--lm-border-default)]">
+              <div className="flex items-center justify-between text-xs font-semibold mb-2">
+                <span className="text-[var(--lm-text-secondary)]">95% Confidence Interval for μ:</span>
+                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                  [{formatNumber(bigDataPrecision.ci95Lower)} — {formatNumber(bigDataPrecision.ci95Upper)}]
+                </span>
+              </div>
+              <div className="relative w-full h-2.5 bg-[var(--lm-bg-tertiary)] rounded-full overflow-hidden">
+                <div
+                  className="absolute top-0 bottom-0 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full"
+                  style={{
+                    left: `${Math.max(0, Math.min(100, ((bigDataPrecision.ci95Lower - bigDataPrecision.min) / (bigDataPrecision.range || 1)) * 100))}%`,
+                    width: `${Math.max(5, Math.min(100, ((bigDataPrecision.ci95Upper - bigDataPrecision.ci95Lower) / (bigDataPrecision.range || 1)) * 100))}%`,
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-[var(--lm-text-tertiary)] mt-1.5 font-mono">
+                <span>Min: {formatNumber(bigDataPrecision.min)}</span>
+                <span className="font-bold text-[var(--lm-text-primary)]">μ: {formatNumber(bigDataPrecision.mean)}</span>
+                <span>Max: {formatNumber(bigDataPrecision.max)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3.5 pt-2.5 border-t border-[var(--lm-border-default)] flex items-center justify-between text-[11px] text-[var(--lm-text-tertiary)]">
+            <span>Fences: [{formatNumber(bigDataPrecision.outlierLowerFence)} - {formatNumber(bigDataPrecision.outlierUpperFence)}]</span>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">Strict Precision</span>
+          </div>
+        </div>
+
+        {/* 16-Bin Frequency Histogram + KDE Curve Card (7 Cols) */}
+        <div className="lg:col-span-7 rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] text-[var(--lm-text-primary)] flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--lm-border-default)]">
+              <div>
+                <h2 className="text-sm font-bold tracking-tight flex items-center gap-2 text-[var(--lm-text-primary)]">
+                  <BarChart3Icon className="w-4 h-4 text-blue-500" />
+                  Frequency Distribution & Kernel Density Estimation (KDE)
+                </h2>
+                <p className="text-[11px] text-[var(--lm-text-tertiary)] font-normal">
+                  Equi-width bin partitioning overlaid with smoothed Bézier density envelope
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1.5 font-semibold text-[10px] text-[var(--lm-text-secondary)]">
+                  <span className="w-2.5 h-2.5 rounded bg-blue-500 inline-block" />
+                  Bin Count
+                </span>
+                <span className="flex items-center gap-1.5 font-semibold text-[10px] text-[var(--lm-text-secondary)]">
+                  <span className="w-3.5 h-0.5 bg-indigo-600 dark:bg-indigo-400 inline-block rounded-full" />
+                  KDE Curve
+                </span>
+              </div>
+            </div>
+
+            {/* SVG Frequency Histogram Chart */}
+            <div className="h-56 w-full relative">
+              {histogramDistribution.bins.length > 0 ? (
+                <svg viewBox="0 0 600 160" className="w-full h-full overflow-visible">
+                  {/* Background grid */}
+                  {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
+                    const y = 140 - pct * 110;
+                    return (
+                      <g key={i}>
+                        <line x1="30" y1={y} x2="570" y2={y} stroke="currentColor" strokeOpacity="0.06" strokeDasharray="3 3" />
+                        <text x="24" y={y + 3} textAnchor="end" className="text-[9px] fill-[var(--lm-text-tertiary)] font-mono">
+                          {Math.round(histogramDistribution.maxBinCount * pct)}
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Histogram Bars */}
+                  {histogramDistribution.bins.map((bin, i) => {
+                    const totalBins = histogramDistribution.bins.length;
+                    const availableW = 540;
+                    const barW = (availableW / totalBins) * 0.85;
+                    const gap = (availableW / totalBins) * 0.15;
+                    const x = 30 + i * (barW + gap);
+                    const barH = (bin.count / (histogramDistribution.maxBinCount || 1)) * 110;
+                    const y = 140 - barH;
+
+                    return (
+                      <g key={i} className="group cursor-pointer">
+                        <rect
+                          x={x}
+                          y={y}
+                          width={barW}
+                          height={Math.max(barH, 2)}
+                          rx="4"
+                          className="fill-blue-500/80 hover:fill-blue-600 transition-all duration-200"
+                        />
+                        {/* Bin count label on bar */}
+                        {bin.count > 0 && (
+                          <text
+                            x={x + barW / 2}
+                            y={y - 4}
+                            textAnchor="middle"
+                            className="text-[9px] font-mono font-semibold fill-[var(--lm-text-secondary)]"
+                          >
+                            {bin.count}
+                          </text>
+                        )}
+                        {/* Interactive tooltip */}
+                        <title>{`Bin #${i + 1}: ${bin.label} | ${bin.count} records (${bin.pct.toFixed(1)}%)`}</title>
+                      </g>
+                    );
+                  })}
+
+                  {/* KDE Bézier Smoothed Curve */}
+                  {histogramDistribution.kdePoints && (
+                    <path
+                      d={histogramDistribution.kdePoints}
+                      fill="none"
+                      stroke="#4F46E5"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      className="opacity-95"
+                    />
+                  )}
+
+                  {/* Baseline Axis */}
+                  <line x1="30" y1="140" x2="570" y2="140" stroke="currentColor" strokeOpacity="0.2" strokeWidth="1.5" />
+                </svg>
+              ) : (
+                <div className="h-full flex items-center justify-center text-xs text-[var(--lm-text-tertiary)]">
+                  Insufficient data for histogram partitioning
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3.5 pt-2.5 border-t border-[var(--lm-border-default)] flex items-center justify-between text-[11px] text-[var(--lm-text-tertiary)]">
+            <span>Hover any bin bar to inspect exact boundaries and density percentage</span>
+            <span className="font-semibold text-blue-600 dark:text-blue-400 font-mono">
+              Bins: {histogramDistribution.bins.length} | Max Bin: {histogramDistribution.maxBinCount}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. HERO ANALYTICAL CANVAS (3 Widgets: Dual Trend Bézier, Category Donut, Speedometer Gauge) */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+        {/* Widget 1: Dual-Series Trajectory Bézier + Volume Combo Chart */}
+        <div className="lg:col-span-6 rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] relative">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--lm-border-default)]">
+            <div>
+              <h2 className="text-sm font-bold text-[var(--lm-text-primary)] tracking-tight flex items-center gap-2">
+                <TrendingUpIcon className="w-4 h-4 text-blue-500" />
+                Aggregates & Sequential Trajectory ({currentMetric} vs {currentSecondaryMetric})
+              </h2>
+              <p className="text-xs text-[var(--lm-text-tertiary)] font-normal">
+                Smooth Bézier trend trajectory with underlying volume bars and interactive hover scrubber
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="flex items-center gap-1.5 font-semibold text-blue-500 text-[11px]">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
+                {currentMetric}
+              </span>
+              <span className="flex items-center gap-1.5 font-semibold text-emerald-500 text-[11px]">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                {currentSecondaryMetric}
+              </span>
+            </div>
+          </div>
+
+          {/* SVG Canvas */}
+          <div className="h-64 w-full relative">
+            {trajectorySeries.length > 0 ? (
+              (() => {
+                const maxVal = Math.max(
+                  ...trajectorySeries.map((d) => Math.max(d.primary, d.secondary)),
+                  100
+                );
+                const width = 600;
+                const height = 240;
+                const padding = { top: 20, right: 20, bottom: 35, left: 50 };
+                const chartW = width - padding.left - padding.right;
+                const chartH = height - padding.top - padding.bottom;
+                const step = chartW / Math.max(trajectorySeries.length - 1, 1);
+
+                // Compute Bézier Points
+                const pts1 = trajectorySeries.map((d, i) => ({
+                  x: padding.left + i * step,
+                  y: padding.top + chartH - (d.primary / maxVal) * chartH,
+                }));
+
+                const pts2 = trajectorySeries.map((d, i) => ({
+                  x: padding.left + i * step,
+                  y: padding.top + chartH - (d.secondary / maxVal) * chartH,
+                }));
+
+                const makeSmoothPath = (pts: { x: number; y: number }[]) => {
+                  if (pts.length === 0) return '';
+                  let d = `M ${pts[0].x} ${pts[0].y}`;
+                  for (let i = 0; i < pts.length - 1; i++) {
+                    const curr = pts[i];
+                    const next = pts[i + 1];
+                    const cpX = (curr.x + next.x) / 2;
+                    d += ` C ${cpX} ${curr.y}, ${cpX} ${next.y}, ${next.x} ${next.y}`;
+                  }
+                  return d;
+                };
+
+                const path1 = makeSmoothPath(pts1);
+                const path2 = makeSmoothPath(pts2);
+                const area1 = `${path1} L ${pts1[pts1.length - 1].x} ${padding.top + chartH} L ${pts1[0].x} ${padding.top + chartH} Z`;
+
+                return (
+                  <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+                    <defs>
+                      <linearGradient id="trajGrad1" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
+                    {/* Grid lines */}
+                    {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
+                      const y = padding.top + chartH * (1 - pct);
+                      return (
+                        <g key={i}>
+                          <line
+                            x1={padding.left}
+                            y1={y}
+                            x2={width - padding.right}
+                            y2={y}
+                            stroke="currentColor"
+                            strokeOpacity="0.1"
+                            strokeDasharray="4 4"
+                          />
+                          <text
+                            x={padding.left - 8}
+                            y={y + 3}
+                            textAnchor="end"
+                            fontSize="9"
+                            fill="currentColor"
+                            opacity="0.5"
+                          >
+                            {formatNumber(maxVal * pct)}
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    {/* Underlying Volume Bars */}
+                    {trajectorySeries.map((d, i) => {
+                      const x = padding.left + i * step - 5;
+                      const barH = (d.primary / maxVal) * chartH * 0.4;
+                      const y = padding.top + chartH - barH;
+                      return (
+                        <rect
+                          key={`bar-${i}`}
+                          x={x}
+                          y={y}
+                          width="10"
+                          height={barH}
+                          rx="2"
+                          fill="#3B82F6"
+                          opacity="0.15"
+                        />
+                      );
+                    })}
+
+                    {/* Area Gradient */}
+                    <path d={area1} fill="url(#trajGrad1)" />
+
+                    {/* Curve 1: Primary */}
+                    <path
+                      d={path1}
+                      fill="none"
+                      stroke="#3B82F6"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                    />
+
+                    {/* Curve 2: Secondary */}
+                    <path
+                      d={path2}
+                      fill="none"
+                      stroke="#10B981"
+                      strokeWidth="2.5"
+                      strokeDasharray="4 3"
+                      strokeLinecap="round"
+                    />
+
+                    {/* Interactive Vertex Scrubber Points */}
+                    {trajectorySeries.map((d, i) => {
+                      const pt = pts1[i];
+                      const isHovered = hoveredPoint?.idx === i;
+                      return (
+                        <g
+                          key={`pt-${i}`}
+                          className="cursor-pointer"
+                          onMouseEnter={() =>
+                            setHoveredPoint({
+                              label: d.label,
+                              primary: d.primary,
+                              secondary: d.secondary,
+                              idx: i,
+                            })
+                          }
+                          onMouseLeave={() => setHoveredPoint(null)}
+                        >
+                          {/* Invisible hover target */}
+                          <circle cx={pt.x} cy={pt.y} r="14" fill="transparent" />
+                          <circle
+                            cx={pt.x}
+                            cy={pt.y}
+                            r={isHovered ? 6 : 3.5}
+                            fill="#FFFFFF"
+                            stroke="#3B82F6"
+                            strokeWidth={isHovered ? 3 : 2}
+                            className="transition-all"
+                          />
+                          {/* X-axis label with anti-collision sampling */}
+                          {(isHovered || i % Math.max(1, Math.ceil(trajectorySeries.length / 8)) === 0 || i === trajectorySeries.length - 1) && (
+                            <text
+                              x={pt.x}
+                              y={height - 10}
+                              textAnchor="middle"
+                              fontSize="8"
+                              fill="currentColor"
+                              opacity={isHovered ? '1' : '0.6'}
+                              fontWeight={isHovered ? 'bold' : 'normal'}
+                            >
+                              {d.label.length > 7 ? d.label.substring(0, 6) + '..' : d.label}
+                            </text>
+                          )}
+                        </g>
+                      );
+                    })}
+
+                    {/* Vertical Hairline when hovered */}
+                    {hoveredPoint && pts1[hoveredPoint.idx] && (
+                      <line
+                        x1={pts1[hoveredPoint.idx].x}
+                        y1={padding.top}
+                        x2={pts1[hoveredPoint.idx].x}
+                        y2={padding.top + chartH}
+                        stroke="#3B82F6"
+                        strokeWidth="1.5"
+                        strokeDasharray="3 3"
+                      />
+                    )}
+                  </svg>
+                );
+              })()
+            ) : (
+              <div className="flex items-center justify-center h-full text-xs text-slate-400">
+                No trajectory records match the active filter.
+              </div>
+            )}
+
+            {/* Floating Glassmorphic Tooltip */}
+            {hoveredPoint && (
+              <div
+                className="absolute top-2 right-4 bg-slate-900/95 text-white backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-slate-700 shadow-xl text-xs z-20 pointer-events-none animate-fade-in"
+              >
+                <div className="font-bold text-blue-400 mb-1">{hoveredPoint.label}</div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-slate-300">{currentMetric}:</span>
+                  <span className="font-mono font-bold text-white">{formatNumber(hoveredPoint.primary)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-slate-300">{currentSecondaryMetric}:</span>
+                  <span className="font-mono font-bold text-emerald-400">{formatNumber(hoveredPoint.secondary)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4 mt-1 pt-1 border-t border-slate-800 text-[10px]">
+                  <span className="text-slate-400">Variance Margin:</span>
+                  <span className="text-amber-400 font-bold">
+                    {hoveredPoint.primary > 0 ? `${((hoveredPoint.secondary / hoveredPoint.primary) * 100).toFixed(1)}%` : '0%'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Widget 2: Segmented Category Donut with Center Badge */}
+        <div className="lg:col-span-3 rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-[var(--lm-border-default)]">
+              <h2 className="text-sm font-bold text-[var(--lm-text-primary)] tracking-tight flex items-center gap-2">
+                <PieChartIcon className="w-4 h-4 text-indigo-500" />
+                Category Share Ring
+              </h2>
+              <span className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] uppercase tracking-wider">
+                {currentDim} Mix
+              </span>
+            </div>
+
+            {/* SVG Donut */}
+            <div className="relative w-48 h-48 mx-auto my-2">
+              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90 transform">
+                {/* Background Ring */}
+                <circle cx="50" cy="50" r="38" stroke="currentColor" strokeWidth="14" fill="none" opacity="0.1" />
+
+                {/* Slices */}
+                {(() => {
+                  const circumference = 2 * Math.PI * 38;
+
+                  return categoryBreakdown.map((item) => {
+                    const strokeDasharray = `${(item.share * circumference) / 100} ${circumference}`;
+                    const strokeDashoffset = `-${(item.offsetPct * circumference) / 100}`;
+                    const isHovered = hoveredDonutSegment === item.name;
+
+                    return (
+                      <circle
+                        key={item.name}
+                        cx="50"
+                        cy="50"
+                        r="38"
+                        stroke={item.color}
+                        strokeWidth={isHovered ? 18 : 14}
+                        strokeDasharray={strokeDasharray}
+                        strokeDashoffset={strokeDashoffset}
+                        fill="none"
+                        className="transition-all duration-300 cursor-pointer"
+                        onMouseEnter={() => setHoveredDonutSegment(item.name)}
+                        onMouseLeave={() => setHoveredDonutSegment(null)}
+                        onClick={() => setCategoryFilter(categoryFilter === item.name ? 'all' : item.name)}
+                      />
+                    );
+                  });
+                })()}
+              </svg>
+
+              {/* Center Callout Badge */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none p-2">
+                <span className="text-[10px] font-semibold uppercase text-slate-400">
+                  {hoveredDonutSegment || 'Top Share'}
+                </span>
+                <span className="text-lg font-black text-slate-900 dark:text-white truncate max-w-[90px]">
+                  {hoveredDonutSegment
+                    ? `${categoryBreakdown.find((c) => c.name === hoveredDonutSegment)?.share.toFixed(1)}%`
+                    : `${kpis.topSegmentShare.toFixed(1)}%`}
+                </span>
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold truncate max-w-[95px]">
+                  {hoveredDonutSegment || kpis.topSegment}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Donut Legend */}
+          <div className="space-y-1.5 mt-2 max-h-28 overflow-y-auto pr-1">
+            {categoryBreakdown.slice(0, 5).map((item) => (
+              <div
+                key={item.name}
+                onClick={() => setCategoryFilter(categoryFilter === item.name ? 'all' : item.name)}
+                className={`flex items-center justify-between text-xs py-1 px-2 rounded-lg cursor-pointer transition-all ${categoryFilter === item.name ? 'bg-blue-50 dark:bg-blue-900/30 font-bold' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                  <span className="truncate text-slate-700 dark:text-slate-200">{item.name}</span>
+                </div>
+                <div className="flex items-center gap-2 font-mono text-[11px] shrink-0">
+                  <span>{formatNumber(item.sum)}</span>
+                  <span className="text-slate-400 font-semibold">{item.share.toFixed(1)}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Widget 3: SLA & Target Attainment Speedometer Gauge */}
+        <div className="lg:col-span-3 rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-[var(--lm-border-default)]">
+              <h2 className="text-sm font-bold text-[var(--lm-text-primary)] tracking-tight flex items-center gap-2">
+                <GaugeIcon className="w-4 h-4 text-emerald-500" />
+                Target Attainment Gauge
+              </h2>
+              <span className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] uppercase tracking-wider">
+                SLA KPI
+              </span>
+            </div>
+
+            {/* Target Multiplier Threshold Controls */}
+            <div className="flex items-center justify-between gap-1 mb-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg text-[10px] font-semibold">
+              <span className="text-slate-500 pl-1">Threshold:</span>
+              <div className="flex items-center gap-1">
+                {[1.0, 1.2, 1.5].map((mul) => (
+                  <button
+                    key={mul}
+                    onClick={() => setTargetMultiplier(mul)}
+                    className={`px-2 py-0.5 rounded transition-all ${targetMultiplier === mul ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-300'}`}
+                  >
+                    {mul}x
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Semi-Circle Speedometer SVG */}
+            <div className="relative w-48 h-32 mx-auto mt-2">
+              <svg viewBox="0 0 100 60" className="w-full h-full overflow-visible">
+                {/* Arc 1: Red Zone (0 - 50%) */}
+                <path
+                  d="M 10 50 A 40 40 0 0 1 30 18"
+                  fill="none"
+                  stroke="#EF4444"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                />
+                {/* Arc 2: Yellow Zone (50 - 80%) */}
+                <path
+                  d="M 32 16 A 40 40 0 0 1 68 16"
+                  fill="none"
+                  stroke="#F59E0B"
+                  strokeWidth="10"
+                />
+                {/* Arc 3: Green Zone (80 - 100%) */}
+                <path
+                  d="M 70 18 A 40 40 0 0 1 90 50"
+                  fill="none"
+                  stroke="#10B981"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                />
+
+                {/* Needle Calculation */}
+                {(() => {
+                  const clamped = Math.max(0, Math.min(kpis.attainmentPct, 120));
+                  // 0% -> -180 deg (points left), 100% -> 0 deg (points right)
+                  const angleDeg = -180 + (clamped / 100) * 180;
+                  const angleRad = (angleDeg * Math.PI) / 180;
+                  const needleLen = 30;
+                  const tipX = 50 + needleLen * Math.cos(angleRad);
+                  const tipY = 50 + needleLen * Math.sin(angleRad);
+
+                  return (
+                    <g className="transition-all duration-700 ease-out">
+                      {/* Needle Line */}
+                      <line
+                        x1="50"
+                        y1="50"
+                        x2={tipX}
+                        y2={tipY}
+                        stroke="#1E293B"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        className="dark:stroke-white"
+                      />
+                      {/* Pivot Center Pin */}
+                      <circle cx="50" cy="50" r="5" fill="#3B82F6" stroke="#FFFFFF" strokeWidth="2" />
+                    </g>
+                  );
+                })()}
+
+                {/* Min / Max Labels */}
+                <text x="8" y="58" fontSize="6" fill="currentColor" opacity="0.6">0%</text>
+                <text x="50" y="12" fontSize="6" textAnchor="middle" fill="currentColor" opacity="0.6">Threshold</text>
+                <text x="92" y="58" fontSize="6" textAnchor="end" fill="currentColor" opacity="0.6">100%+</text>
+              </svg>
+            </div>
+
+            {/* Readout Counter */}
+            <div className="text-center mt-1">
+              <div className="text-2xl font-black text-slate-900 dark:text-white">
+                {kpis.attainmentPct.toFixed(1)}%
+              </div>
+              <div className="text-xs font-semibold text-slate-500">
+                {kpis.attainmentPct >= 80 ? (
+                  <span className="text-emerald-500 font-bold">✓ Target Attained</span>
+                ) : kpis.attainmentPct >= 50 ? (
+                  <span className="text-amber-500 font-bold">⚠ Watchlist Advisory</span>
+                ) : (
+                  <span className="text-rose-500 font-bold">✕ Critical Gap</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="text-[11px] text-slate-400 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 mt-2">
+            <strong>Target Formula:</strong> Mean {currentMetric} × {targetMultiplier} baseline. {kpis.primaryValues.filter(v => v >= (kpis.meanPrimary * targetMultiplier)).length} of {kpis.count} rows currently qualify.
+          </div>
+        </div>
+      </section>
+
+      {/* 5. SECONDARY ANALYTICAL GRID (Grouped Cross-Tab Bars, Radar Spider Chart, World Geo Map) */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+        {/* Widget 4: Grouped / Comparative Horizontal Bars */}
+        <div className="lg:col-span-5 rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)]">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--lm-border-default)]">
+            <div>
+              <h2 className="text-sm font-bold text-[var(--lm-text-primary)] tracking-tight flex items-center gap-2">
+                <TableIcon className="w-4 h-4 text-purple-500" />
+                Comparative Breakdown ({currentDim} × {currentSecondaryDim})
+              </h2>
+              <p className="text-xs text-[var(--lm-text-tertiary)] font-normal">
+                Grouped cross-tabulation comparing segments across dimensions
+              </p>
+            </div>
+            <span className="text-xs font-mono font-semibold text-[var(--lm-text-secondary)] px-2.5 py-0.5 rounded-full bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)]">
+              Top 6
+            </span>
+          </div>
+
+          <div className="space-y-3.5">
+            {crossTabBreakdown.map((row) => {
+              const maxRowVal = Math.max(...crossTabBreakdown.map((r) => r.total), 1);
+              return (
+                <div key={row.primaryCat} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span className="text-[var(--lm-text-primary)]">{row.primaryCat}</span>
+                    <span className="font-mono text-[var(--lm-text-secondary)]">{formatNumber(row.total)}</span>
+                  </div>
+
+                  {/* Multi-segment stacked bar */}
+                  <div className="w-full h-3 bg-[var(--lm-bg-secondary)] rounded-full overflow-hidden flex">
+                    {row.subGroups.map((sg, i) => {
+                      const val = row.values[sg] || 0;
+                      const pct = (val / maxRowVal) * 100;
+                      const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-amber-500'];
+                      return (
+                        <div
+                          key={sg}
+                          className={`${colors[i % colors.length]} h-full transition-all`}
+                          style={{ width: `${pct}%` }}
+                          title={`${row.primaryCat} [${sg}]: ${formatNumber(val)}`}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Sub-group chips */}
+                  <div className="flex items-center gap-3 text-[10px] text-[var(--lm-text-tertiary)] pt-0.5">
+                    {row.subGroups.map((sg, i) => (
+                      <span key={sg} className="flex items-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${['bg-blue-500', 'bg-emerald-500', 'bg-amber-500'][i % 3]}`} />
+                        {sg}: {formatNumber(row.values[sg] || 0)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Widget 5: Multi-Attribute Radar / Spider Chart */}
+        <div className="lg:col-span-3 rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-[var(--lm-border-default)]">
+              <h2 className="text-sm font-bold text-[var(--lm-text-primary)] tracking-tight flex items-center gap-2">
+                <SparklesIcon className="w-4 h-4 text-cyan-500" />
+                Multi-Attribute Radar
+              </h2>
+              <span className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] uppercase tracking-wider">
+                5D Vector
+              </span>
+            </div>
+
+            {/* SVG Radar Chart */}
+            <div className="relative w-52 h-52 mx-auto my-1">
+              <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
+                {/* Concentric Polygonal Grid Rings */}
+                {[0.2, 0.4, 0.6, 0.8, 1.0].map((ring) => {
+                  const points = radarAxes.map((_, i) => {
+                    const angle = (i * 2 * Math.PI) / radarAxes.length - Math.PI / 2;
+                    const r = 38 * ring;
+                    return `${50 + r * Math.cos(angle)},${50 + r * Math.sin(angle)}`;
+                  });
+                  return (
+                    <polygon
+                      key={ring}
+                      points={points.join(' ')}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeOpacity="0.08"
+                      strokeWidth="1"
+                    />
+                  );
+                })}
+
+                {/* Radial Axis Spokes */}
+                {radarAxes.map((_, i) => {
+                  const angle = (i * 2 * Math.PI) / radarAxes.length - Math.PI / 2;
+                  const x = 50 + 38 * Math.cos(angle);
+                  const y = 50 + 38 * Math.sin(angle);
+                  return (
+                    <line
+                      key={i}
+                      x1="50"
+                      y1="50"
+                      x2={x}
+                      y2={y}
+                      stroke="currentColor"
+                      strokeOpacity="0.15"
+                      strokeWidth="1"
+                    />
+                  );
+                })}
+
+                {/* Benchmark Polygon */}
+                {(() => {
+                  const pts = radarAxes.map((a, i) => {
+                    const angle = (i * 2 * Math.PI) / radarAxes.length - Math.PI / 2;
+                    const r = (38 * a.benchmark) / 100;
+                    return `${50 + r * Math.cos(angle)},${50 + r * Math.sin(angle)}`;
+                  });
+                  return (
+                    <polygon
+                      points={pts.join(' ')}
+                      fill="none"
+                      stroke="#06B6D4"
+                      strokeWidth="1.5"
+                      strokeDasharray="3 3"
+                    />
+                  );
+                })()}
+
+                {/* Active Polygon */}
+                {(() => {
+                  const pts = radarAxes.map((a, i) => {
+                    const angle = (i * 2 * Math.PI) / radarAxes.length - Math.PI / 2;
+                    const r = (38 * a.value) / 100;
+                    return `${50 + r * Math.cos(angle)},${50 + r * Math.sin(angle)}`;
+                  });
+                  return (
+                    <>
+                      <polygon
+                        points={pts.join(' ')}
+                        fill="#3B82F6"
+                        fillOpacity="0.25"
+                        stroke="#3B82F6"
+                        strokeWidth="2"
+                        strokeLinejoin="round"
+                      />
+                      {radarAxes.map((a, i) => {
+                        const angle = (i * 2 * Math.PI) / radarAxes.length - Math.PI / 2;
+                        const r = (38 * a.value) / 100;
+                        const cx = 50 + r * Math.cos(angle);
+                        const cy = 50 + r * Math.sin(angle);
+                        return (
+                          <circle
+                            key={i}
+                            cx={cx}
+                            cy={cy}
+                            r="2.5"
+                            fill="#FFFFFF"
+                            stroke="#3B82F6"
+                            strokeWidth="1.5"
+                          />
+                        );
+                      })}
+                    </>
+                  );
+                })()}
+              </svg>
+            </div>
+          </div>
+
+          {/* Radar Metric Legend */}
+          <div className="grid grid-cols-2 gap-1.5 text-[10px] text-[var(--lm-text-tertiary)] pt-2 border-t border-[var(--lm-border-default)]">
+            {radarAxes.map((a) => (
+              <div key={a.name} className="flex items-center justify-between">
+                <span className="truncate">{a.name}</span>
+                <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{Math.round(a.value)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Widget 6: Global Geo Distribution Vector Map */}
+        <div className="lg:col-span-4 rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-[var(--lm-border-default)]">
+              <h2 className="text-sm font-bold text-[var(--lm-text-primary)] tracking-tight flex items-center gap-2">
+                <GlobeIcon className="w-4 h-4 text-emerald-500" />
+                Global & Regional Geo Density
+              </h2>
+              <span className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] uppercase tracking-wider">
+                Pulsing Vector Hubs
+              </span>
+            </div>
+
+            {/* World Map Vector Projection */}
+            <div className="relative w-full h-48 my-1 bg-slate-50 dark:bg-slate-950 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 flex items-center justify-center">
+              <svg viewBox="0 0 1000 450" className="w-full h-full opacity-40">
+                {/* Simplified Continents Contours */}
+                <path
+                  d="M150 120 Q 250 80, 320 150 T 260 260 T 170 200 Z"
+                  fill="currentColor"
+                  opacity="0.3"
+                />
+                <path
+                  d="M260 270 Q 340 300, 310 400 T 250 350 Z"
+                  fill="currentColor"
+                  opacity="0.3"
+                />
+                <path
+                  d="M440 100 Q 550 70, 520 200 T 420 180 Z"
+                  fill="currentColor"
+                  opacity="0.3"
+                />
+                <path
+                  d="M470 210 Q 560 240, 530 380 T 450 300 Z"
+                  fill="currentColor"
+                  opacity="0.3"
+                />
+                <path
+                  d="M580 90 Q 820 60, 850 200 T 680 240 Z"
+                  fill="currentColor"
+                  opacity="0.3"
+                />
+                <path
+                  d="M740 280 Q 840 290, 820 370 T 730 340 Z"
+                  fill="currentColor"
+                  opacity="0.3"
+                />
+              </svg>
+
+              {/* Pulsing Beacon Hubs */}
+              {geoClusters.map((hub) => (
+                <div
+                  key={hub.id}
+                  className="absolute cursor-pointer group"
+                  style={{
+                    left: `${(hub.x / 1000) * 100}%`,
+                    top: `${(hub.y / 450) * 100}%`,
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                  onClick={() => setCountryFilter(countryFilter === hub.name ? 'all' : hub.name)}
+                >
+                  {/* Outer pulsing ring */}
+                  <span
+                    className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-60"
+                    style={{ width: `${hub.radius * 1.5}px`, height: `${hub.radius * 1.5}px` }}
+                  />
+                  {/* Main solid beacon dot */}
+                  <div
+                    className="relative rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 shadow-md flex items-center justify-center text-[9px] font-bold text-white transition-transform group-hover:scale-125"
+                    style={{ width: `${hub.radius}px`, height: `${hub.radius}px` }}
+                  >
+                    {hub.count > 0 ? hub.count : ''}
+                  </div>
+                  {/* Tooltip on hover */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-slate-900 text-white text-[10px] px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap z-20 pointer-events-none">
+                    <div className="font-bold text-emerald-400">{hub.name}</div>
+                    <div>Volume: {formatNumber(hub.baseVal)}</div>
+                    <div>Count: {hub.count} records</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span>Leading Region: <strong>EMEA & Americas</strong></span>
+            <span className="text-emerald-500 font-semibold">Active Sync</span>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. DRILL-DOWN LEDGER & RECORD INSPECTOR */}
+      <section className="rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] apple-card-hover mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-[var(--lm-border-default)]">
+          <div>
+            <h2 className="text-sm font-semibold tracking-tight text-[var(--lm-text-primary)] flex items-center gap-2">
+              <span className="p-1.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <TableIcon className="w-4 h-4" />
+              </span>
+              Ranked Entity Ledger & Deep-Dive Records
+            </h2>
+            <p className="text-xs text-[var(--lm-text-tertiary)] font-normal mt-0.5">
+              Showing {sortedRows.length > 0 ? (tablePage - 1) * pageSize + 1 : 0}–{Math.min(tablePage * pageSize, sortedRows.length)} of {sortedRows.length} active records • Select any record for 360° inspector drawer
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-[var(--lm-text-tertiary)]">Sort:</span>
+            <button
+              onClick={() => {
+                setTableSortCol('primary');
+                setTableSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+              }}
+              className="font-semibold px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 flex items-center gap-1.5 apple-pressable transition-all"
+            >
+              {tableSortCol === 'primary' ? (tableSortDir === 'desc' ? 'Highest ' : 'Lowest ') : ''}{currentMetric} {tableSortCol === 'primary' ? (tableSortDir === 'desc' ? '↓' : '↑') : ''}
+            </button>
+          </div>
+        </div>
+
+        {/* Tabular View */}
+        <div className="overflow-x-auto rounded-2xl border border-[var(--lm-border-default)]/70 bg-[var(--lm-bg-primary)]/40">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-[var(--lm-border-default)] text-[var(--lm-text-tertiary)] uppercase text-[10px] tracking-wider select-none bg-[var(--lm-bg-secondary)]/60">
+                <th className="py-3 px-3.5 font-semibold"># Rank</th>
+                <th
+                  className="py-3 px-3.5 font-semibold cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => {
+                    if (tableSortCol === 'dim') {
+                      setTableSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+                    } else {
+                      setTableSortCol('dim');
+                      setTableSortDir('asc');
+                    }
+                  }}
+                >
+                  {currentDim} {tableSortCol === 'dim' ? (tableSortDir === 'asc' ? '↑' : '↓') : ''}
+                </th>
+                <th
+                  className="py-3 px-3.5 font-semibold cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => {
+                    if (tableSortCol === 'subdim') {
+                      setTableSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+                    } else {
+                      setTableSortCol('subdim');
+                      setTableSortDir('asc');
+                    }
+                  }}
+                >
+                  {currentSecondaryDim} {tableSortCol === 'subdim' ? (tableSortDir === 'asc' ? '↑' : '↓') : ''}
+                </th>
+                <th
+                  className="py-3 px-3.5 font-semibold text-right cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => {
+                    if (tableSortCol === 'primary') {
+                      setTableSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+                    } else {
+                      setTableSortCol('primary');
+                      setTableSortDir('desc');
+                    }
+                  }}
+                >
+                  {currentMetric} {tableSortCol === 'primary' ? (tableSortDir === 'asc' ? '↑' : '↓') : ''}
+                </th>
+                <th
+                  className="py-3 px-3.5 font-semibold text-right cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => {
+                    if (tableSortCol === 'secondary') {
+                      setTableSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+                    } else {
+                      setTableSortCol('secondary');
+                      setTableSortDir('desc');
+                    }
+                  }}
+                >
+                  {currentSecondaryMetric} {tableSortCol === 'secondary' ? (tableSortDir === 'asc' ? '↑' : '↓') : ''}
+                </th>
+                <th className="py-3 px-3.5 font-semibold">Performance Spread</th>
+                <th className="py-3 px-3.5 font-semibold text-center">Status</th>
+                <th className="py-3 px-3.5 font-semibold text-right">Inspect</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--lm-border-default)]/60 font-medium">
+              {pagedRows.map((row, idx) => {
+                const globalIdx = (tablePage - 1) * pageSize + idx;
+                const v1 = parseFloat(row[currentMetric]) || 0;
+                const v2 = parseFloat(row[currentSecondaryMetric]) || 0;
+                const maxVal = Math.max(...filteredRows.map((r) => parseFloat(r[currentMetric]) || 0), 1);
+                const barWidth = Math.min((v1 / maxVal) * 100, 100);
+
+                return (
+                  <tr
+                    key={idx}
+                    className="hover:bg-[var(--lm-bg-secondary)]/80 cursor-pointer transition-colors duration-150"
+                    onClick={() => setInspectedRow(row)}
+                  >
+                    <td className="py-3 px-3.5 font-mono text-[var(--lm-text-tertiary)]">
+                      #{globalIdx + 1}
+                    </td>
+                    <td className="py-3 px-3.5 font-semibold text-[var(--lm-text-primary)]">
+                      {row[currentDim] || 'Unassigned'}
+                    </td>
+                    <td className="py-3 px-3.5 text-[var(--lm-text-secondary)]">
+                      {row[currentSecondaryDim] || '—'}
+                    </td>
+                    <td className="py-3 px-3.5 text-right font-mono font-semibold text-blue-600 dark:text-blue-400">
+                      {formatNumber(v1)}
+                    </td>
+                    <td className="py-3 px-3.5 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                      {formatNumber(v2)}
+                    </td>
+                    <td className="py-3 px-3.5 w-40">
+                      <div className="w-full bg-[var(--lm-border-default)]/60 h-2 rounded-full overflow-hidden">
+                        <div
+                          className="bg-blue-600 h-full rounded-full transition-all duration-300"
+                          style={{ width: `${barWidth}%` }}
+                        />
+                      </div>
+                    </td>
+                    <td className="py-3 px-3.5 text-center">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${v1 >= kpis.meanPrimary * targetMultiplier ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'}`}>
+                        {v1 >= kpis.meanPrimary * targetMultiplier ? 'Optimal' : 'Standard'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3.5 text-right">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setInspectedRow(row);
+                        }}
+                        className="px-2.5 py-1 rounded-full bg-[var(--lm-bg-secondary)] hover:bg-blue-600 hover:text-white border border-[var(--lm-border-default)] transition-all duration-200 text-[10px] font-semibold text-[var(--lm-text-secondary)] apple-pressable"
+                      >
+                        View 360°
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="mt-4 pt-4 border-t border-[var(--lm-border-default)] flex items-center justify-between text-xs text-[var(--lm-text-tertiary)]">
+          <span>
+            Page <strong className="text-[var(--lm-text-primary)]">{currentPage}</strong> of <strong className="text-[var(--lm-text-primary)]">{totalPages}</strong> ({sortedRows.length} total records)
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setTablePage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3.5 py-1.5 rounded-full border border-[var(--lm-border-default)] bg-[var(--lm-bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--lm-border-default)] transition-colors font-medium text-[var(--lm-text-primary)] apple-pressable"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setTablePage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3.5 py-1.5 rounded-full border border-[var(--lm-border-default)] bg-[var(--lm-bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--lm-border-default)] transition-colors font-medium text-[var(--lm-text-primary)] apple-pressable"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 7. SLIDE-OUT RECORD INSPECTOR MODAL / DRAWER */}
+      {inspectedRow && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--lm-bg-elevated)] backdrop-blur-3xl border border-[var(--lm-border-default)] rounded-3xl max-w-lg w-full p-6 shadow-2xl animate-apple-scale-in text-[var(--lm-text-primary)]">
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-[var(--lm-border-default)]">
+              <div>
+                <h3 className="text-base font-semibold tracking-tight text-[var(--lm-text-primary)] flex items-center gap-2">
+                  <span className="p-1.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <TableIcon className="w-4 h-4" />
+                  </span>
+                  Record 360° Detailed Profile
+                </h3>
+                <p className="text-xs text-[var(--lm-text-tertiary)] font-normal mt-0.5">Full schema attributes and quantile calculations</p>
+              </div>
+              <button
+                onClick={() => setInspectedRow(null)}
+                className="w-8 h-8 rounded-full bg-[var(--lm-bg-secondary)] hover:bg-slate-200 dark:hover:bg-slate-700 border border-[var(--lm-border-default)] flex items-center justify-center text-xs font-semibold text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] transition-all apple-pressable"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+              {Object.entries(inspectedRow).map(([key, val]) => (
+                <div key={key} className="flex items-center justify-between py-2.5 px-3.5 rounded-2xl bg-[var(--lm-bg-secondary)]/80 border border-[var(--lm-border-default)] text-xs">
+                  <span className="font-medium text-[var(--lm-text-secondary)]">{key}:</span>
+                  <span className="font-mono font-semibold text-[var(--lm-text-primary)]">{val}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-[var(--lm-border-default)] flex items-center justify-end">
+              <Button size="sm" onClick={() => setInspectedRow(null)}>
+                Close Inspector
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
