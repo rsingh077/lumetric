@@ -830,26 +830,26 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
         </div>
 
         {/* Action Controls & Preset Themes */}
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 print:hidden overflow-x-auto pb-1 max-w-full">
           {/* Preset Theme Switcher (Apple Segments) */}
-          <div className="flex items-center p-1 bg-[var(--lm-bg-secondary)]/90 backdrop-blur-md rounded-2xl text-xs font-semibold border border-[var(--lm-border-default)] shadow-xs">
+          <div className="flex items-center p-1 bg-[var(--lm-bg-secondary)]/90 backdrop-blur-md rounded-2xl text-xs font-semibold border border-[var(--lm-border-default)] shadow-xs shrink-0">
             <button
               onClick={() => setTheme('modern')}
-              className={`px-3.5 py-1.5 rounded-xl transition-all duration-200 apple-pressable ${theme === 'modern' ? 'bg-[var(--lm-bg-elevated)] text-[var(--lm-text-primary)] shadow-sm font-semibold' : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'}`}
+              className={`px-3 py-1 rounded-xl transition-all duration-200 apple-pressable text-xs ${theme === 'modern' ? 'bg-[var(--lm-bg-elevated)] text-[var(--lm-text-primary)] shadow-sm font-semibold' : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'}`}
               title="Warm Apple Cream"
             >
               🍦 Cream
             </button>
             <button
               onClick={() => setTheme('cyberpunk')}
-              className={`px-3.5 py-1.5 rounded-xl transition-all duration-200 apple-pressable ${theme === 'cyberpunk' ? 'bg-blue-600 text-white shadow-sm font-semibold' : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'}`}
+              className={`px-3 py-1 rounded-xl transition-all duration-200 apple-pressable text-xs ${theme === 'cyberpunk' ? 'bg-blue-600 text-white shadow-sm font-semibold' : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'}`}
               title="Space Black"
             >
               🌌 Midnight
             </button>
             <button
               onClick={() => setTheme('enterprise')}
-              className={`px-3.5 py-1.5 rounded-xl transition-all duration-200 apple-pressable ${theme === 'enterprise' ? 'bg-[var(--lm-bg-elevated)] text-[var(--lm-text-primary)] shadow-sm font-semibold' : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'}`}
+              className={`px-3 py-1 rounded-xl transition-all duration-200 apple-pressable text-xs ${theme === 'enterprise' ? 'bg-[var(--lm-bg-elevated)] text-[var(--lm-text-primary)] shadow-sm font-semibold' : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'}`}
               title="Warm Linen"
             >
               📜 Parchment
@@ -857,32 +857,34 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
           </div>
 
           {/* Slicers Toggle */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setSlicersOpen(!slicersOpen)}
-            icon={<FilterIcon className="w-4 h-4" />}
-          >
-            {slicersOpen ? 'Hide Filters' : 'Show Filters'}
-          </Button>
+          <div className="shrink-0">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setSlicersOpen(!slicersOpen)}
+              icon={<FilterIcon className="w-4 h-4" />}
+            >
+              {slicersOpen ? 'Hide' : 'Filters'}
+            </Button>
+          </div>
 
           {/* Export Suite */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             <Button
               variant="secondary"
               size="sm"
               onClick={handlePrint}
-              icon={<PrinterIcon className="w-4 h-4" />}
+              icon={<PrinterIcon className="w-3.5 h-3.5" />}
               title="Executive PDF Print Dossier"
             >
-              Print / PDF
+              PDF
             </Button>
             <Button
               variant="secondary"
               size="sm"
               onClick={handleExportCSV}
               disabled={!canExport}
-              icon={<DownloadIcon className="w-4 h-4" />}
+              icon={<DownloadIcon className="w-3.5 h-3.5" />}
               title="Download CSV Breakdown"
             >
               CSV
@@ -892,7 +894,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
               size="sm"
               onClick={handleExportJSON}
               disabled={!canExport}
-              icon={<LayersIcon className="w-4 h-4" />}
+              icon={<LayersIcon className="w-3.5 h-3.5" />}
               title="Cryptographic JSON Audit"
             >
               JSON
@@ -901,7 +903,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
               variant="primary"
               size="sm"
               onClick={handleCopyMarkdown}
-              icon={<SparklesIcon className="w-4 h-4" />}
+              icon={<SparklesIcon className="w-3.5 h-3.5" />}
               title="Copy Executive Markdown"
             >
               Briefing

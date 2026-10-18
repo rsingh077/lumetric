@@ -175,12 +175,12 @@ export function Header() {
               <button
                 type="button"
                 onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[var(--lm-bg-secondary)]/80 hover:bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] hover:border-[var(--lm-border-strong)] text-[var(--lm-text-primary)] font-medium max-w-[220px] transition-all apple-pressable"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-[var(--lm-bg-secondary)]/80 hover:bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] hover:border-[var(--lm-border-strong)] text-[var(--lm-text-primary)] font-medium max-w-[140px] sm:max-w-[220px] transition-all apple-pressable text-xs"
                 aria-expanded={projectDropdownOpen}
               >
                 <FolderIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 <span className="truncate">
-                  {currentProject ? currentProject.name : 'Select Project'}
+                  {currentProject ? currentProject.name : 'All Data'}
                 </span>
                 <ChevronDownIcon className="w-3 h-3 text-[var(--lm-text-tertiary)] shrink-0" />
               </button>
@@ -253,11 +253,11 @@ export function Header() {
         </div>
 
         {/* Right Section: Command Palette, Notifications, Profile */}
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
           {/* Global Search Pill (Apple ⌘K Style) */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-[var(--lm-bg-secondary)]/80 hover:bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] hover:border-[var(--lm-border-strong)] text-xs text-[var(--lm-text-secondary)] transition-all apple-pressable"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-[var(--lm-bg-secondary)]/80 hover:bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] hover:border-[var(--lm-border-strong)] text-xs text-[var(--lm-text-secondary)] transition-all apple-pressable"
             title="Search anything (⌘K or Ctrl+K)"
           >
             <SearchIcon className="w-3.5 h-3.5 text-[var(--lm-text-tertiary)]" />
@@ -266,6 +266,7 @@ export function Header() {
               ⌘K
             </kbd>
           </button>
+
 
           {/* Notifications Dropdown */}
           <div className="relative">

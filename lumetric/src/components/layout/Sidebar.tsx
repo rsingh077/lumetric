@@ -152,8 +152,8 @@ export function Sidebar() {
 
       {/* Apple Floating Glass Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col bg-[var(--lm-bg-secondary)]/90 backdrop-blur-2xl border-r border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none ${
-          sidebarCollapsed ? 'w-[72px]' : 'w-[260px]'
+        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col bg-[var(--lm-bg-secondary)]/95 backdrop-blur-2xl border-r border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none pt-safe pb-safe ${
+          sidebarCollapsed ? 'w-[72px]' : 'w-[280px] max-w-[85vw]'
         } ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
@@ -184,6 +184,7 @@ export function Sidebar() {
               )}
             </Link>
 
+            {/* Desktop collapse button */}
             <button
               onClick={toggleSidebar}
               className="hidden lg:flex p-1.5 rounded-xl text-[var(--lm-text-tertiary)] hover:text-[var(--lm-text-primary)] hover:bg-[var(--lm-bg-tertiary)] transition-colors duration-200 apple-pressable"
@@ -196,7 +197,17 @@ export function Sidebar() {
                 <ChevronLeftIcon className="w-4 h-4" />
               )}
             </button>
+
+            {/* Mobile iOS-style dismiss button */}
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="lg:hidden p-2 rounded-full bg-[var(--lm-bg-tertiary)] text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] apple-pressable"
+              aria-label="Close navigation sheet"
+            >
+              ✕
+            </button>
           </div>
+
 
           {/* Workspace Switcher */}
           {!sidebarCollapsed && (
