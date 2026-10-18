@@ -8,7 +8,7 @@ import { FolderIcon, PlusIcon } from '@/components/icons';
 import { Project } from '@/types';
 
 export default function ProjectsPage() {
-  const { currentWorkspace, projects, selectProject, createProject, currentProject } = useApp();
+  const { currentWorkspace, projects, selectProject, createProject, currentProject, setActiveView } = useApp();
 
   const [filter, setFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -101,11 +101,9 @@ export default function ProjectsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/dashboards">
-              <Button size="sm" variant="primary">
-                View Dashboards →
-              </Button>
-            </Link>
+            <Button size="sm" variant="primary" onClick={() => setActiveView('dashboards')}>
+              View Dashboards →
+            </Button>
             <Button
               size="sm"
               variant="secondary"

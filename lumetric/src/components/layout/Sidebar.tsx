@@ -22,7 +22,7 @@ import {
   PlusIcon,
   SparklesIcon,
 } from '@/components/icons';
-import { UserRole } from '@/types';
+import { UserRole, ActiveView } from '@/types';
 
 interface NavEntry {
   id: string;
@@ -109,6 +109,8 @@ const navItems: NavEntry[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const {
+    activeView,
+    setActiveView,
     sidebarCollapsed,
     toggleSidebar,
     workspaces,
@@ -162,7 +164,14 @@ export function Sidebar() {
         {/* Brand & Workspace Header */}
         <div className="flex flex-col border-b border-[var(--lm-border-default)] p-3.5 bg-[var(--lm-bg-primary)]/50 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-2 h-11 px-1">
-            <Link href="/" className="flex items-center gap-2.5 overflow-hidden group">
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveView('home');
+              }}
+              className="flex items-center gap-2.5 overflow-hidden group cursor-pointer"
+            >
               <div className="transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-108 shrink-0">
                 <BrandMascotIcon className="w-8 h-8 drop-shadow-sm" />
               </div>
@@ -182,7 +191,7 @@ export function Sidebar() {
                   </span>
                 </div>
               )}
-            </Link>
+            </a>
 
             {/* Desktop collapse button */}
             <button
@@ -269,18 +278,18 @@ export function Sidebar() {
         {/* Navigation Items (Apple Smooth Pill Navigation) */}
         <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-1" aria-label="Sections">
           {navItems.map((item) => {
-            const isActive =
-              item.href === '/'
-                ? pathname === '/'
-                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const isActive = activeView === item.id;
             const IconComponent = item.icon;
 
             return (
-              <Link
+              <a
                 key={item.id}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`group relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 apple-pressable ${
+                href={`#${item.id === 'home' ? '' : item.id}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveView(item.id as ActiveView);
+                }}
+                className={`group relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 apple-pressable cursor-pointer ${
                   isActive
                     ? 'bg-[var(--lm-bg-primary)] text-[var(--lm-text-primary)] shadow-sm font-semibold border border-[var(--lm-border-default)]'
                     : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] hover:bg-[var(--lm-bg-tertiary)]/70'
@@ -306,7 +315,7 @@ export function Sidebar() {
                 {!sidebarCollapsed && isActive && (
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-xs" />
                 )}
-              </Link>
+              </a>
             );
           })}
         </nav>

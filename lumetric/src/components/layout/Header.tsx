@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/contexts/AppContext';
+import { ActiveView } from '@/types';
 import { UserAuthProfileModal } from '@/components/auth/UserAuthProfileModal';
 import {
   MenuIcon,
@@ -28,6 +29,8 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const {
+    activeView,
+    setActiveView,
     currentWorkspace,
     currentProject,
     projects,
@@ -71,9 +74,19 @@ export function Header() {
 
   // Compute clean breadcrumb title
   const getSectionTitle = () => {
-    if (pathname === '/') return 'Studio Overview';
-    const segment = pathname.split('/')[1] || '';
-    return segment.charAt(0).toUpperCase() + segment.slice(1);
+    const titles: Record<ActiveView, string> = {
+      home: 'Studio Overview',
+      projects: 'Projects',
+      data: 'Data Workspace',
+      pipelines: 'Pipelines',
+      analysis: 'Statistical Analysis',
+      models: 'Models Registry',
+      dashboards: 'Executive Dashboards',
+      stories: 'Story Studio',
+      operations: 'Operations',
+      settings: 'Workspace Settings',
+    };
+    return titles[activeView] || 'Studio Overview';
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -149,7 +162,21 @@ export function Header() {
     }
     setSearchOpen(false);
     setSearchQuery('');
-    router.push(item.href);
+    const viewMap: Record<string, ActiveView> = {
+      '/': 'home',
+      '/projects': 'projects',
+      '/data': 'data',
+      '/pipelines': 'pipelines',
+      '/analysis': 'analysis',
+      '/models': 'models',
+      '/dashboards': 'dashboards',
+      '/stories': 'stories',
+      '/operations': 'operations',
+      '/settings': 'settings',
+    };
+    if (viewMap[item.href]) {
+      setActiveView(viewMap[item.href]);
+    }
   };
 
   return (

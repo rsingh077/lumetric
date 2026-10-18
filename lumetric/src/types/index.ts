@@ -137,3 +137,16 @@ export interface AsyncState<T> {
   error?: string;
   lastUpdated?: string;
 }
+
+// ========== Active View Router Type ==========
+export type ActiveView =
+  | 'home'
+  | 'projects'
+  | 'data'
+  | 'pipelines'
+  | 'analysis'
+  | 'models'
+  | 'dashboards'
+  | 'stories'
+  | 'operations'
+  | 'settings';

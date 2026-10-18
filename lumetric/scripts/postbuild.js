@@ -34,9 +34,15 @@ function processDir(currentDir) {
 // Generate client-package.json for Catalyst
 fs.writeFileSync(
   path.join(outDir, 'client-package.json'),
-  JSON.stringify({ name: 'lumetric', version: '1.3.0', homepage: 'index.html' }, null, 2)
+  JSON.stringify({
+    name: 'lumetric',
+    version: '1.3.0',
+    homepage: 'index.html',
+    login_redirect: 'index.html',
+    '404': '404.html'
+  }, null, 2)
 );
-console.log('✓ Generated client-package.json');
+console.log('✓ Generated client-package.json with 404.html error page');
 
 processDir(outDir);
 console.log('All static HTML files verified with valid /app/_next/ URLs.');

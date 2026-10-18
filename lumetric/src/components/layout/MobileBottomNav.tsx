@@ -10,25 +10,25 @@ import {
   LayoutDashboardIcon,
   MenuIcon,
 } from '@/components/icons';
+import { ActiveView } from '@/types';
 import { triggerHapticFeedback } from '@/utils/mobile';
 
 interface NavTab {
   name: string;
-  href: string;
+  view?: ActiveView;
   icon: React.ComponentType<{ className?: string }>;
   isMenuToggle?: boolean;
 }
 
 export function MobileBottomNav() {
-  const pathname = usePathname();
-  const { setMobileMenuOpen } = useApp();
+  const { activeView, setActiveView, setMobileMenuOpen } = useApp();
 
   const tabs: NavTab[] = [
-    { name: 'Home', href: '/', icon: HomeIcon },
-    { name: 'Projects', href: '/projects', icon: FolderIcon },
-    { name: 'Data', href: '/data', icon: DatabaseIcon },
-    { name: 'Dashboard', href: '/dashboards', icon: LayoutDashboardIcon },
-    { name: 'Studio', href: '#menu', icon: MenuIcon, isMenuToggle: true },
+    { name: 'Home', view: 'home', icon: HomeIcon },
+    { name: 'Projects', view: 'projects', icon: FolderIcon },
+    { name: 'Data', view: 'data', icon: DatabaseIcon },
+    { name: 'Dashboard', view: 'dashboards', icon: LayoutDashboardIcon },
+    { name: 'Studio', icon: MenuIcon, isMenuToggle: true },
   ];
 
   const handleTabClick = (tab: NavTab, e: React.MouseEvent) => {
@@ -36,6 +36,9 @@ export function MobileBottomNav() {
     if (tab.isMenuToggle) {
       e.preventDefault();
       setMobileMenuOpen(true);
+    } else if (tab.view) {
+      e.preventDefault();
+      setActiveView(tab.view);
     }
   };
 
@@ -48,7 +51,7 @@ export function MobileBottomNav() {
         {/* iOS Frosted Glass Capsule Bar */}
         <div className="flex items-center justify-between px-3 py-1.5 rounded-full bg-[var(--lm-bg-primary)]/85 dark:bg-[#121319]/85 backdrop-blur-3xl border border-[var(--lm-border-default)] shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
           {tabs.map((tab) => {
-            const isActive = !tab.isMenuToggle && (pathname === tab.href || (tab.href !== '/' && pathname.startsWith(tab.href)));
+            const isActive = !tab.isMenuToggle && activeView === tab.view;
             const Icon = tab.icon;
 
             if (tab.isMenuToggle) {
@@ -73,7 +76,7 @@ export function MobileBottomNav() {
             return (
               <a
                 key={tab.name}
-                href={tab.href}
+                href={`#${tab.view === 'home' ? '' : tab.view}`}
                 onClick={(e) => handleTabClick(tab, e)}
                 className={`relative flex flex-col items-center justify-center py-1 px-3 rounded-full active:scale-90 transition-all duration-150 ${
                   isActive

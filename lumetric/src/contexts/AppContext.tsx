@@ -1,7 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
-import { Workspace, Project, User, UserRole, DatasetProfile } from '@/types';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Workspace, Project, User, UserRole, DatasetProfile, ActiveView } from '@/types';
 
 interface NotificationItem {
   id: string;
@@ -38,6 +38,8 @@ interface AppContextType {
   deleteDataset: (id: string) => void;
   
   // Navigation / Shell State
+  activeView: ActiveView;
+  setActiveView: (view: ActiveView) => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
@@ -186,9 +188,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return [];
   });
 
+  const [activeView, setActiveViewState] = useState<ActiveView>('home');
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
+
+  useEffect(() => {
+    const getViewFromLocation = (): ActiveView => {
+      if (typeof window === 'undefined') return 'home';
+      const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+      const validViews: ActiveView[] = [
+        'home', 'projects', 'data', 'pipelines', 'analysis',
+        'models', 'dashboards', 'stories', 'operations', 'settings'
+      ];
+      if (validViews.includes(hash as ActiveView)) {
+        return hash as ActiveView;
+      }
+      const path = window.location.pathname.toLowerCase();
+      for (const v of validViews) {
+        if (v !== 'home' && (path.includes(`/${v}.html`) || path.includes(`/${v}`))) {
+          return v;
+        }
+      }
+      return 'home';
+    };
+
+    setActiveViewState(getViewFromLocation());
+
+    const handleLocationChange = () => {
+      setActiveViewState(getViewFromLocation());
+    };
+
+    window.addEventListener('hashchange', handleLocationChange);
+    window.addEventListener('popstate', handleLocationChange);
+    return () => {
+      window.removeEventListener('hashchange', handleLocationChange);
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, []);
+
+  const setActiveView = (view: ActiveView) => {
+    setActiveViewState(view);
+    setMobileMenuOpen(false);
+    if (typeof window !== 'undefined') {
+      const newHash = view === 'home' ? '' : `#${view}`;
+      if (window.location.hash !== newHash) {
+        window.history.pushState(null, '', newHash || window.location.pathname);
+      }
+    }
+  };
 
   const setRole = (role: UserRole) => {
     setCurrentUser(prev => ({ ...prev, role }));
@@ -335,6 +383,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setActiveDataset,
         addDataset,
         deleteDataset,
+        activeView,
+        setActiveView,
         sidebarCollapsed,
         setSidebarCollapsed,
         toggleSidebar,

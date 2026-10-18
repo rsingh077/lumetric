@@ -39,7 +39,7 @@ function computeHash(str: string): string {
 }
 
 export default function DataWorkspacePage() {
-  const { currentUser, datasets, addDataset, activeDataset, setActiveDataset, deleteDataset } = useApp();
+  const { currentUser, datasets, addDataset, activeDataset, setActiveDataset, deleteDataset, setActiveView } = useApp();
 
   const [activeTab, setActiveTab] = useState<'intake' | 'wizard' | 'catalog' | 'inspect'>('intake');
   const [selectedDataset, setSelectedDataset] = useState<DatasetProfile | null>(null);
@@ -394,11 +394,12 @@ export default function DataWorkspacePage() {
       {publishedNotice && (
         <div className="p-4 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between animate-apple-scale-in shadow-[var(--lm-shadow-sm)]">
           <span>✓ {publishedNotice}</span>
-          <Link href="/analysis">
-            <span className="text-blue-600 dark:text-blue-400 hover:underline font-semibold text-xs apple-pressable">
-              Proceed to Analysis Chooser →
-            </span>
-          </Link>
+          <button
+            onClick={() => setActiveView('analysis')}
+            className="text-blue-600 dark:text-blue-400 hover:underline font-semibold text-xs apple-pressable cursor-pointer"
+          >
+            Proceed to Analysis Chooser →
+          </button>
         </div>
       )}
 
@@ -1049,11 +1050,14 @@ export default function DataWorkspacePage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <Link href="/analysis">
-                  <Button size="sm" variant="primary" className="bg-blue-600 hover:bg-blue-700">
-                    Launch Analysis Chooser →
-                  </Button>
-                </Link>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => setActiveView('analysis')}
+                >
+                  Launch Analysis Chooser →
+                </Button>
                 {canExport && (
                   <Button size="sm" variant="secondary">
                     Export JSON Contract

@@ -15,6 +15,15 @@ import {
   SparklesIcon,
 } from '@/components/icons';
 import { ColumnProfile, DatasetProfile, ColumnSemanticRole, DatasetRequirements, QualityCheckResult } from '@/types';
+import ProjectsPage from './projects/page';
+import DataWorkspacePage from './data/page';
+import PipelinesPage from './pipelines/page';
+import AnalysisStudioPage from './analysis/page';
+import ModelsPage from './models/page';
+import DashboardsPage from './dashboards/page';
+import StoriesPage from './stories/page';
+import OperationsPage from './operations/page';
+import SettingsPage from './settings/page';
 
 // Helper: Deterministic hash calculation in browser
 function computeHash(str: string): string {
@@ -34,7 +43,7 @@ function computeHash(str: string): string {
   return `${part1}${part2}${part3}${part4}`;
 }
 
-export default function HomePage() {
+function HomeView() {
   const {
     currentUser,
     currentWorkspace,
@@ -43,6 +52,7 @@ export default function HomePage() {
     datasets,
     setActiveDataset,
     addDataset,
+    setActiveView,
   } = useApp();
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -334,15 +344,14 @@ export default function HomePage() {
                   {pasteMode ? 'Hide Direct Paste' : 'Direct Text / CSV Paste'}
                 </Button>
 
-                <Link href="/data">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="rounded-2xl text-xs font-medium text-[var(--lm-text-secondary)] apple-pressable"
-                  >
-                    Open Governed Requirements Wizard →
-                  </Button>
-                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveView('data')}
+                  className="rounded-2xl text-xs font-medium text-[var(--lm-text-secondary)] apple-pressable"
+                >
+                  Open Governed Requirements Wizard →
+                </Button>
               </div>
 
               {pasteMode && (
@@ -461,16 +470,22 @@ export default function HomePage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Link href="/data">
-                  <Button variant="secondary" size="sm" className="rounded-2xl text-xs font-semibold apple-pressable">
-                    Inspect Requirements & Schema →
-                  </Button>
-                </Link>
-                <Link href="/data">
-                  <Button variant="ghost" size="sm" className="rounded-2xl text-xs text-[var(--lm-text-secondary)] apple-pressable">
-                    Upload Another File
-                  </Button>
-                </Link>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setActiveView('data')}
+                  className="rounded-2xl text-xs font-semibold apple-pressable"
+                >
+                  Inspect Requirements & Schema →
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveView('data')}
+                  className="rounded-2xl text-xs text-[var(--lm-text-secondary)] apple-pressable"
+                >
+                  Upload Another File
+                </Button>
               </div>
             </div>
 
@@ -566,7 +581,7 @@ export default function HomePage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Link href="/analysis" className="group">
+              <div onClick={() => setActiveView('analysis')} className="group cursor-pointer">
                 <Card hover className="h-full rounded-3xl apple-card-hover p-5 border border-[var(--lm-border-default)] bg-[var(--lm-bg-elevated)] backdrop-blur-xl">
                   <div className="w-10 h-10 rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200">
                     <BarChart3Icon className="w-5 h-5" />
@@ -581,9 +596,9 @@ export default function HomePage() {
                     <span>Configure Analysis →</span>
                   </div>
                 </Card>
-              </Link>
+              </div>
 
-              <Link href="/dashboards" className="group">
+              <div onClick={() => setActiveView('dashboards')} className="group cursor-pointer">
                 <Card hover className="h-full rounded-3xl apple-card-hover p-5 border border-[var(--lm-border-default)] bg-[var(--lm-bg-elevated)] backdrop-blur-xl">
                   <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200">
                     <LayoutDashboardIcon className="w-5 h-5" />
@@ -598,9 +613,9 @@ export default function HomePage() {
                     <span>View Live KPIs →</span>
                   </div>
                 </Card>
-              </Link>
+              </div>
 
-              <Link href="/pipelines" className="group">
+              <div onClick={() => setActiveView('pipelines')} className="group cursor-pointer">
                 <Card hover className="h-full rounded-3xl apple-card-hover p-5 border border-[var(--lm-border-default)] bg-[var(--lm-bg-elevated)] backdrop-blur-xl">
                   <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200">
                     <GitBranchIcon className="w-5 h-5" />
@@ -615,9 +630,9 @@ export default function HomePage() {
                     <span>Design Pipeline →</span>
                   </div>
                 </Card>
-              </Link>
+              </div>
 
-              <Link href="/models" className="group">
+              <div onClick={() => setActiveView('models')} className="group cursor-pointer">
                 <Card hover className="h-full rounded-3xl apple-card-hover p-5 border border-[var(--lm-border-default)] bg-[var(--lm-bg-elevated)] backdrop-blur-xl">
                   <div className="w-10 h-10 rounded-2xl bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border border-fuchsia-500/20 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200">
                     <BrainIcon className="w-5 h-5" />
@@ -632,9 +647,9 @@ export default function HomePage() {
                     <span>Open Model Studio →</span>
                   </div>
                 </Card>
-              </Link>
+              </div>
 
-              <Link href="/stories" className="group">
+              <div onClick={() => setActiveView('stories')} className="group cursor-pointer">
                 <Card hover className="h-full rounded-3xl apple-card-hover p-5 border border-[var(--lm-border-default)] bg-[var(--lm-bg-elevated)] backdrop-blur-xl">
                   <div className="w-10 h-10 rounded-2xl bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/20 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200">
                     <BookOpenIcon className="w-5 h-5" />
@@ -649,9 +664,9 @@ export default function HomePage() {
                     <span>Compose Briefing →</span>
                   </div>
                 </Card>
-              </Link>
+              </div>
 
-              <Link href="/data" className="group">
+              <div onClick={() => setActiveView('data')} className="group cursor-pointer">
                 <Card hover className="h-full rounded-3xl apple-card-hover p-5 border border-[var(--lm-border-default)] bg-[var(--lm-bg-elevated)] backdrop-blur-xl">
                   <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200">
                     <DatabaseIcon className="w-5 h-5" />
@@ -663,10 +678,10 @@ export default function HomePage() {
                     Inspect column profiles, quantile moments, null assertions, and cryptographic lineage hashes.
                   </p>
                   <div className="mt-3.5 flex items-center gap-1.5 text-xs text-cyan-600 dark:text-cyan-400 font-semibold">
-                    <span>Manage Catalog ({datasets.length}) →</span>
+                    <span>View Schemas →</span>
                   </div>
                 </Card>
-              </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -722,6 +737,25 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+export default function MainAppPage() {
+  const { activeView } = useApp();
+
+  return (
+    <div className="w-full">
+      {activeView === 'home' && <HomeView />}
+      {activeView === 'projects' && <ProjectsPage />}
+      {activeView === 'data' && <DataWorkspacePage />}
+      {activeView === 'pipelines' && <PipelinesPage />}
+      {activeView === 'analysis' && <AnalysisStudioPage />}
+      {activeView === 'models' && <ModelsPage />}
+      {activeView === 'dashboards' && <DashboardsPage />}
+      {activeView === 'stories' && <StoriesPage />}
+      {activeView === 'operations' && <OperationsPage />}
+      {activeView === 'settings' && <SettingsPage />}
     </div>
   );
 }

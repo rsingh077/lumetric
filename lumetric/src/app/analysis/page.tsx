@@ -49,7 +49,7 @@ type AnalysisMode =
   | 'spec_plan';
 
 export default function AnalysisStudioPage() {
-  const { activeDataset, activeRows, addDataset, setActiveDataset } = useApp();
+  const { activeDataset, activeRows, addDataset, setActiveDataset, setActiveView } = useApp();
 
   // Mode Selection: complete freedom for the user
   const [activeMode, setActiveMode] = useState<AnalysisMode>('auto');
@@ -368,11 +368,15 @@ export default function AnalysisStudioPage() {
             Lumetric operates directly on real business records. Upload your document through the Data Ingestion Studio or click &quot;Load / Paste Data&quot; above to explore all analytical methods.
           </p>
           <div className="flex justify-center gap-3">
-            <Link href="/data">
-              <Button variant="primary" size="sm" icon={<UploadIcon className="w-4 h-4" />} className="rounded-2xl font-semibold apple-pressable">
-                Go to Ingestion Studio →
-              </Button>
-            </Link>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<UploadIcon className="w-4 h-4" />}
+              onClick={() => setActiveView('data')}
+              className="rounded-2xl font-semibold apple-pressable"
+            >
+              Go to Ingestion Studio →
+            </Button>
           </div>
         </Card>
       ) : (
