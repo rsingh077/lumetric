@@ -40,7 +40,10 @@ jobs:
 
       - name: Build Debug APK with Gradle
         working-directory: ./lumetric/android
-        run: ./gradlew assembleDebug
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
