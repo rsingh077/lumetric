@@ -22,12 +22,13 @@ jobs:
           cache-dependency-path: lumetric/package-lock.json
 
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: 17
+          java-version: 21
           cache: 'gradle'
+
 
       - name: Install Dependencies
         working-directory: ./lumetric
