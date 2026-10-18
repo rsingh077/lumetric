@@ -1,5 +1,12 @@
 {
   "client": {
     "source": "lumetric/out"
+  },
+  "functions": {
+    "targets": [
+      "lumetric_server"
+    ],
+    "ignore": [],
+    "source": "functions"
   }
 }

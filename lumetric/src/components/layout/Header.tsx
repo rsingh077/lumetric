@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/contexts/AppContext';
+import { UserAuthProfileModal } from '@/components/auth/UserAuthProfileModal';
 import {
   MenuIcon,
   SearchIcon,
@@ -41,6 +42,7 @@ export function Header() {
 
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [newProjectModalOpen, setNewProjectModalOpen] = useState(false);
   const [newPrjName, setNewPrjName] = useState('');
   const [newPrjObjective, setNewPrjObjective] = useState('');
@@ -327,8 +329,12 @@ export function Header() {
             )}
           </div>
 
-          {/* User Profile Avatar */}
-          <div className="flex items-center gap-2 pl-2 border-l border-[var(--lm-border-default)]">
+          {/* User Profile Avatar with Live Auth Modal */}
+          <button
+            onClick={() => setAuthModalOpen(true)}
+            className="flex items-center gap-2 pl-2 border-l border-[var(--lm-border-default)] hover:opacity-85 transition-opacity apple-pressable text-left"
+            title="Manage Catalyst Cloud Profile & Authentication"
+          >
             <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
               {currentUser.name.charAt(0)}
             </div>
@@ -336,11 +342,12 @@ export function Header() {
               <span className="text-xs font-semibold leading-tight text-[var(--lm-text-primary)] tracking-tight">
                 {currentUser.name}
               </span>
-              <span className="text-[10px] text-[var(--lm-text-tertiary)] uppercase font-mono font-medium">
+              <span className="text-[10px] text-[var(--lm-text-tertiary)] uppercase font-mono font-medium flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 {currentUser.role}
               </span>
             </div>
-          </div>
+          </button>
         </div>
       </header>
 
@@ -482,6 +489,12 @@ export function Header() {
           </div>
         </div>
       )}
+
+      {/* Live Catalyst Cloud Auth & User Profile Modal */}
+      <UserAuthProfileModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+      />
     </>
   );
 }

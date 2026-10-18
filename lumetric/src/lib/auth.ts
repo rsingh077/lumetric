@@ -1,0 +1,178 @@
+/**
+ * Lumetric Server Authentication & Profile Client SDK
+ * Direct connection to Zoho Catalyst Serverless Function (lumetric_server)
+ */
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'owner' | 'administrator' | 'builder' | 'reviewer' | 'viewer';
+  organization?: string;
+  avatarUrl?: string;
+  createdAt: string;
+  lastLoginAt?: string;
+  settings?: {
+    theme?: string;
+    currency?: string;
+    emailNotifications?: boolean;
+    hapticsEnabled?: boolean;
+  };
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message?: string;
+  token?: string;
+  user?: AuthUser;
+  error?: string;
+  retryAfterSeconds?: number;
+}
+
+const CATALYST_SERVER_URL = 'https://project-rainfall-60092395179.development.catalystserverless.in/server/lumetric_server';
+
+const TOKEN_STORAGE_KEY = 'lumetric_auth_token';
+const USER_STORAGE_KEY = 'lumetric_auth_user';
+
+export class LumetricAuthService {
+  private static getStoredToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(TOKEN_STORAGE_KEY);
+  }
+
+  public static getStoredUser(): AuthUser | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const data = localStorage.getItem(USER_STORAGE_KEY);
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  public static setSession(token: string, user: AuthUser) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  }
+
+  public static clearSession() {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(USER_STORAGE_KEY);
+  }
+
+  public static async register(payload: {
+    email: string;
+    password: string;
+    name: string;
+    organization?: string;
+    role?: string;
+  }): Promise<AuthResponse> {
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data: AuthResponse = await res.json();
+      if (data.success && data.token && data.user) {
+        this.setSession(data.token, data.user);
+      }
+      return data;
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.message || 'Network error connecting to Catalyst Server'
+      };
+    }
+  }
+
+  public static async login(payload: { email: string; password: string }): Promise<AuthResponse> {
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data: AuthResponse = await res.json();
+      if (data.success && data.token && data.user) {
+        this.setSession(data.token, data.user);
+      }
+      return data;
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.message || 'Network error connecting to Catalyst Server'
+      };
+    }
+  }
+
+  public static async logout(): Promise<void> {
+    const token = this.getStoredToken();
+    if (token) {
+      try {
+        await fetch(`${CATALYST_SERVER_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          }
+        });
+      } catch (e) {
+        console.warn('Logout notification error:', e);
+      }
+    }
+    this.clearSession();
+  }
+
+  public static async fetchProfile(): Promise<AuthResponse> {
+    const token = this.getStoredToken();
+    if (!token) {
+      return { success: false, error: 'No active session' };
+    }
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/user/profile`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data: AuthResponse = await res.json();
+      if (data.success && data.user) {
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
+      }
+      return data;
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to fetch profile' };
+    }
+  }
+
+  public static async updateProfile(payload: {
+    name?: string;
+    organization?: string;
+    avatarUrl?: string;
+    settings?: Record<string, any>;
+  }): Promise<AuthResponse> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/user/profile`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data: AuthResponse = await res.json();
+      if (data.success && data.user) {
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
+      }
+      return data;
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to update profile' };
+    }
+  }
+}
