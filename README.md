@@ -1,10 +1,14 @@
 # Lumetric — AI Data & Decision Studio
 
-> **Status**: Slice 1 Complete & Verified (Working Vertical Slice)  
-> **Framework**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4  
-> **Server**: Live at `http://localhost:3000`
+[![Download Android APK](https://img.shields.io/badge/Download-Android%20APK%20(5.0%20MB)-success?style=for-the-badge&logo=android)](https://github.com/rsingh077/lumetric/releases/download/v1.0.0/Lumetric.apk)
+
+### 📱 Android APK Ready to Download:
+- 📲 **[Direct Download APK (Tap here on phone)](https://github.com/rsingh077/lumetric/releases/download/v1.0.0/Lumetric.apk)**
+- 📁 **Repository File:** [Lumetric.apk](./Lumetric.apk)
+- 🚀 **Release Page:** [v1.0.0 Releases](https://github.com/rsingh077/lumetric/releases/tag/v1.0.0)
 
 ---
+
 
 ## 1. Executive Summary & Product Promise
 
