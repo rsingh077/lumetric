@@ -1,0 +1,52 @@
+name: Build Lumetric Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: lumetric/package-lock.json
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Dependencies
+        working-directory: ./lumetric
+        run: npm ci
+
+      - name: Build Next.js Static Export & Sync Capacitor
+        working-directory: ./lumetric
+        run: npm run build:mobile
+
+      - name: Build Debug APK with Gradle
+        working-directory: ./lumetric/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumetric-debug-apk
+          path: lumetric/android/app/build/outputs/apk/debug/app-debug.apk
