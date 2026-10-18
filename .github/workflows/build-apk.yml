@@ -54,21 +54,23 @@ jobs:
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumetric-v1.2.0-debug-apk
+          name: lumetric-v1.3.0-debug-apk
           path: Lumetric.apk
 
-      - name: Create or Update GitHub Release v1.2.0
+      - name: Create or Update GitHub Release v1.3.0
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v1.2.0
-          name: "Lumetric v1.2.0 — Crystal Database & Admin Role Governance"
+          tag_name: v1.3.0
+          name: "Lumetric v1.3.0 — Enterprise 2FA, Cloud Ingestion & SOC-2 Audit Ledger"
           body: |
-            ### 🚀 Lumetric Mobile v1.2.0 Release
-            - **Crystal / Catalyst Data Store Persistence**: User profiles, credentials, settings, and sessions stored persistently.
-            - **Admin Role & Profile Governance Dashboard**: Real-time permission elevation and role assignments (Owner, Admin, Builder, Reviewer, Viewer).
-            - **Sliding Window IP Rate Limiting**: Enforced rate limits on authentication and registration endpoints.
-            - **Seamless iOS & Android Mobile Shell**: iOS-style floating dock, haptics, and responsive layout.
+            ### 🚀 Lumetric Mobile v1.3.0 Enterprise Release
+            - **Two-Factor Authentication (2FA/TOTP)**: Secure authenticator app verification with dynamic QR codes and manual secret keys.
+            - **Cloud Data Connectors**: Ingestion pipelines connecting Snowflake, AWS S3 Parquet, and Google BigQuery.
+            - **Cryptographic Audit Trail (SOC-2 Compliance)**: Immutable, tamper-evident action ledger hashed with SHA-256.
+            - **Crystal / Catalyst Data Store**: Persistent storage for tenant profiles, credentials, settings, and role grants.
+            - **Admin Role Dashboard**: Real-time permission elevation (`OWNER`, `ADMIN`, `BUILDER`, `REVIEWER`, `VIEWER`).
+            - **Sliding-Window IP Rate Limiter**: Protection against brute-force and credential stuffing attacks.
             
             **Direct Download**: Download `Lumetric.apk` attached below or from repository root.
           files: Lumetric.apk

@@ -192,6 +192,80 @@ export class LumetricAuthService {
     }
   }
 
+  public static async setup2FA(): Promise<{ success: boolean; secret?: string; qrCodeDataUrl?: string; error?: string }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/2fa/setup`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to setup 2FA' };
+    }
+  }
+
+  public static async verify2FA(totpToken: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/2fa/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ token: totpToken })
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to verify 2FA' };
+    }
+  }
+
+  public static async fetchAuditLogs(): Promise<{ success: boolean; logs?: any[]; error?: string }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/audit/logs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to fetch audit logs' };
+    }
+  }
+
+  public static async fetchConnectors(): Promise<{ success: boolean; connectors?: any[]; error?: string }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/connectors`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to fetch connectors' };
+    }
+  }
+
+  public static async syncConnector(id: string): Promise<{ success: boolean; message?: string; connector?: any; error?: string }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/connectors/sync/${id}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to sync connector' };
+    }
+  }
+
   public static async updateUserRole(targetEmail: string, newRole: string): Promise<AuthResponse> {
     const token = this.getStoredToken();
     if (!token) return { success: false, error: 'Not authenticated' };
