@@ -45,8 +45,30 @@ jobs:
           ./gradlew assembleDebug
 
 
+      - name: Copy APK to Root for Direct Repo Download
+        run: |
+          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric.apk
+
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumetric-debug-apk
-          path: lumetric/android/app/build/outputs/apk/debug/app-debug.apk
+          name: lumetric-v1.1.0-debug-apk
+          path: Lumetric.apk
+
+      - name: Create or Update GitHub Release v1.1.0
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/heads/main')
+        with:
+          tag_name: v1.1.0
+          name: "Lumetric v1.1.0 — Catalyst Cloud Server & Auth Update"
+          body: |
+            ### 🚀 Lumetric Mobile v1.1.0 Release
+            - **Live Server Integration**: Connected directly to Zoho Catalyst Serverless (`.in` India Cloud).
+            - **Authentication & User Profiles**: Full signup, login, profile editor, and JWT session handling.
+            - **Security & Rate Limiting**: Built-in sliding window IP rate limiter and salted bcrypt password hashing.
+            - **iOS Floating Dock Navigation**: Portrait ergonomics and native haptics.
+            
+            **Direct Download**: Download `Lumetric.apk` attached below or from repository root.
+          files: Lumetric.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
