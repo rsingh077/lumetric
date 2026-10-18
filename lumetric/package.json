@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "build:mobile": "next build && npx cap sync",
+    "build": "next build && node -e \"fs.writeFileSync('out/client-package.json', JSON.stringify({name:'lumetric',version:'1.0.0',homepage:'index.html'},null,2))\"",
+    "build:mobile": "next build && node -e \"fs.writeFileSync('out/client-package.json', JSON.stringify({name:'lumetric',version:'1.0.0',homepage:'index.html'},null,2))\" && npx cap sync",
     "cap:sync": "npx cap sync",
     "cap:android": "npx cap open android",
     "cap:ios": "npx cap open ios",
