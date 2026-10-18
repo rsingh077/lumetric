@@ -6,19 +6,30 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { authenticator } = require('otplib');
 const qrcode = require('qrcode');
-
-let catalyst = null;
-try {
-  catalyst = require('zcatalyst-sdk-node');
-} catch (e) {
-  console.log('Catalyst SDK load note:', e.message);
-}
+const catalyst = require('zcatalyst-sdk-node');
 
 const app = express();
 
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// Handle Zoho Catalyst gateway path prefix if present
+app.use((req, res, next) => {
+  if (req.url.startsWith('/server/lumetric_server')) {
+    req.url = req.url.slice('/server/lumetric_server'.length) || '/';
+  }
+  next();
+});
+
+// Initialize Catalyst SDK per request
+app.use((req, res, next) => {
+  try {
+    res.locals.catalyst = catalyst.initialize(req);
+  } catch (e) {
+    res.locals.catalyst = null;
+  }
+  next();
+});
 
 const JWT_SECRET = process.env.LUMETRIC_JWT_SECRET || 'lumetric-production-hyper-secure-secret-key-2026';
 const JWT_EXPIRES_IN = '7d';
@@ -697,6 +708,20 @@ app.patch('/api/user/profile', authenticateToken, async (req, res) => {
       error: 'Failed to update user profile.'
     });
   }
+});
+
+// Catch-all route for unmatched paths
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: `Endpoint not found: ${req.method} ${req.url}`
+  });
+});
+
+// Global error catcher
+app.use((err, req, res, next) => {
+  console.error('Lumetric Server Unhandled Error:', err);
+  res.status(500).json({ success: false, error: err.message || 'Internal server error' });
 });
 
 // Catalyst Entry Export

@@ -283,15 +283,21 @@ export function Header() {
 
         {/* Right Section: Command Palette, Notifications, Profile */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
+          {/* Catalyst Live Backend Connection Indicator */}
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-[11px] font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Catalyst Cloud Live</span>
+          </div>
+
           {/* Global Search Pill (Apple ⌘K Style) */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-[var(--lm-bg-secondary)]/80 hover:bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] hover:border-[var(--lm-border-strong)] text-xs text-[var(--lm-text-secondary)] transition-all apple-pressable"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[var(--lm-bg-secondary)]/80 hover:bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] hover:border-[var(--lm-border-strong)] text-xs text-[var(--lm-text-secondary)] transition-all apple-pressable shadow-2xs"
             title="Search anything (⌘K or Ctrl+K)"
           >
             <SearchIcon className="w-3.5 h-3.5 text-[var(--lm-text-tertiary)]" />
             <span className="hidden sm:inline">Search studio...</span>
-            <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-[var(--lm-bg-tertiary)] text-[var(--lm-text-tertiary)] rounded-md border border-[var(--lm-border-default)]">
+            <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-[var(--lm-bg-primary)] text-[var(--lm-text-tertiary)] rounded-md border border-[var(--lm-border-default)]">
               ⌘K
             </kbd>
           </button>

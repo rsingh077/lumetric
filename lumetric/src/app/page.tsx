@@ -338,8 +338,32 @@ function HomeView() {
                 <Button
                   variant="secondary"
                   size="sm"
+                  onClick={() => {
+                    const sampleCSV = `Account_ID,Customer_Name,Region,Plan_Tier,ARR_USD,NPS_Score,Churn_Probability,Active_Users,Contract_Months,Last_Audit_Status
+ACC-1001,Acme Corp,North America,Enterprise,145000,72,0.04,142,36,Verified
+ACC-1002,Global Logistics,Europe,Enterprise,98000,68,0.12,89,24,Verified
+ACC-1003,Apex Health,Asia Pacific,Growth,45000,81,0.02,45,12,Verified
+ACC-1004,Zenith Media,North America,Standard,18500,54,0.38,19,12,Flagged
+ACC-1005,Starlight Retail,Latin America,Growth,52000,61,0.18,52,24,Verified
+ACC-1006,Nova Robotics,Europe,Enterprise,210000,89,0.01,215,36,Verified
+ACC-1007,Pinnacle FinTech,North America,Enterprise,320000,92,0.02,340,36,Verified
+ACC-1008,Crestview Analytics,Asia Pacific,Standard,12000,42,0.45,11,12,Quarantine
+ACC-1009,Horizon Telecom,Europe,Growth,64000,75,0.08,68,24,Verified
+ACC-1010,Vanguard Logistics,North America,Enterprise,175000,84,0.03,165,36,Verified
+ACC-1011,BioGen Discovery,North America,Growth,78000,79,0.06,80,24,Verified
+ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
+                    handleIntakeContent(sampleCSV, 'enterprise_arr_churn_dataset.csv', sampleCSV.length);
+                  }}
+                  className="rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 apple-pressable"
+                >
+                  ⚡ Load Enterprise Sample Data
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => setPasteMode(!pasteMode)}
-                  className="rounded-2xl text-xs font-semibold apple-pressable"
+                  className="rounded-xl text-xs font-semibold apple-pressable"
                 >
                   {pasteMode ? 'Hide Direct Paste' : 'Direct Text / CSV Paste'}
                 </Button>
@@ -348,9 +372,9 @@ function HomeView() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setActiveView('data')}
-                  className="rounded-2xl text-xs font-medium text-[var(--lm-text-secondary)] apple-pressable"
+                  className="rounded-xl text-xs font-medium text-[var(--lm-text-secondary)] apple-pressable"
                 >
-                  Open Governed Requirements Wizard →
+                  Governed Wizard →
                 </Button>
               </div>
 

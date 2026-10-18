@@ -289,18 +289,18 @@ export function Sidebar() {
                   e.preventDefault();
                   setActiveView(item.id as ActiveView);
                 }}
-                className={`group relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 apple-pressable cursor-pointer ${
+                className={`group relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 apple-pressable cursor-pointer ${
                   isActive
-                    ? 'bg-[var(--lm-bg-primary)] text-[var(--lm-text-primary)] shadow-sm font-semibold border border-[var(--lm-border-default)]'
-                    : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] hover:bg-[var(--lm-bg-tertiary)]/70'
+                    ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                    : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] hover:bg-[var(--lm-bg-tertiary)]/60'
                 } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                 title={sidebarCollapsed ? item.label : undefined}
               >
-                {/* Apple-styled Icon Container */}
+                {/* Icon Container */}
                 <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-108 ${
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-150 ${
                     isActive
-                      ? 'bg-[var(--lm-accent-primary)] text-white shadow-xs'
+                      ? 'bg-white/20 text-white'
                       : `${item.appleColor}`
                   } ${sidebarCollapsed ? 'mx-auto' : ''}`}
                 >
@@ -313,7 +313,7 @@ export function Sidebar() {
 
                 {/* Subtle active indicator dot */}
                 {!sidebarCollapsed && isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-xs" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
                 )}
               </a>
             );
