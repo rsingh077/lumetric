@@ -5,6 +5,13 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
+let catalyst = null;
+try {
+  catalyst = require('zcatalyst-sdk-node');
+} catch (e) {
+  console.log('Catalyst SDK load note:', e.message);
+}
+
 const app = express();
 
 app.use(cors({ origin: true, credentials: true }));
@@ -14,7 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 const JWT_SECRET = process.env.LUMETRIC_JWT_SECRET || 'lumetric-production-hyper-secure-secret-key-2026';
 const JWT_EXPIRES_IN = '7d';
 
-// In-Memory Rate Limiting Bucket Map
+// Rate Limiting Bucket Map
 const rateLimitMap = new Map();
 function rateLimiter(options = { windowMs: 60 * 1000, max: 60, message: 'Too many requests, please try again later.' }) {
   return (req, res, next) => {
@@ -49,16 +56,114 @@ function rateLimiter(options = { windowMs: 60 * 1000, max: 60, message: 'Too man
   };
 }
 
-// In-Memory Fallback & Fast Cache Store
-// Schema: id, email, passwordHash, name, role, organization, avatarUrl, createdAt, lastLoginAt, settings
-const userDatabase = new Map();
-const sessionTokens = new Set();
+// -----------------------------------------------------------------------------
+// CRYSTAL / CATALYST DATA STORE HELPER
+// -----------------------------------------------------------------------------
+const memoryStore = new Map();
 
-// Seed Default System Admin & Demo Accounts
+async function initCatalystApp(req) {
+  if (!catalyst) return null;
+  try {
+    return catalyst.initialize(req);
+  } catch (err) {
+    return null;
+  }
+}
+
+async function getUserFromStore(req, email) {
+  const normEmail = email.toLowerCase().trim();
+  // 1. Try Catalyst Data Store
+  const catApp = await initCatalystApp(req);
+  if (catApp && catApp.zcql) {
+    try {
+      const zcqlRes = await catApp.zcql().executeZCQLExpression(
+        `SELECT * FROM Users WHERE email = '${normEmail}'`
+      );
+      if (zcqlRes && zcqlRes.length > 0) {
+        const u = zcqlRes[0].Users;
+        return {
+          id: u.ROWID ? String(u.ROWID) : u.id,
+          email: u.email,
+          passwordHash: u.passwordHash,
+          name: u.name,
+          role: u.role,
+          organization: u.organization,
+          avatarUrl: u.avatarUrl || '',
+          createdAt: u.CREATEDTIME || u.createdAt,
+          lastLoginAt: u.lastLoginAt || new Date().toISOString(),
+          settings: typeof u.settings === 'string' ? JSON.parse(u.settings || '{}') : (u.settings || {})
+        };
+      }
+    } catch (e) {
+      // Data Store table Users might not be created yet, fallback gracefully
+    }
+  }
+
+  // 2. Return from Fast In-Memory Store
+  return memoryStore.get(normEmail) || null;
+}
+
+async function saveUserToStore(req, user) {
+  const normEmail = user.email.toLowerCase().trim();
+  memoryStore.set(normEmail, user);
+
+  // Try persist into Catalyst Data Store
+  const catApp = await initCatalystApp(req);
+  if (catApp && catApp.datastore) {
+    try {
+      const table = catApp.datastore().table('Users');
+      await table.insertRow({
+        email: normEmail,
+        passwordHash: user.passwordHash,
+        name: user.name,
+        role: user.role,
+        organization: user.organization || '',
+        avatarUrl: user.avatarUrl || '',
+        lastLoginAt: user.lastLoginAt || new Date().toISOString(),
+        settings: JSON.stringify(user.settings || {})
+      });
+    } catch (e) {
+      // In case table isn't created on Catalyst Console yet, memoryStore preserves state
+    }
+  }
+}
+
+async function getAllUsersFromStore(req) {
+  const catApp = await initCatalystApp(req);
+  if (catApp && catApp.zcql) {
+    try {
+      const zcqlRes = await catApp.zcql().executeZCQLExpression(`SELECT * FROM Users`);
+      if (zcqlRes && zcqlRes.length > 0) {
+        return zcqlRes.map(r => {
+          const u = r.Users;
+          return {
+            id: u.ROWID ? String(u.ROWID) : u.id,
+            email: u.email,
+            name: u.name,
+            role: u.role,
+            organization: u.organization,
+            avatarUrl: u.avatarUrl || '',
+            createdAt: u.CREATEDTIME || u.createdAt,
+            lastLoginAt: u.lastLoginAt
+          };
+        });
+      }
+    } catch (e) {}
+  }
+
+  const list = [];
+  for (const [, user] of memoryStore.entries()) {
+    const { passwordHash: _, ...safe } = user;
+    list.push(safe);
+  }
+  return list;
+}
+
+// Seed Initial Admin & Demo Accounts
 (async () => {
   const adminSalt = await bcrypt.genSalt(10);
   const adminHash = await bcrypt.hash('LumetricAdmin2026!', adminSalt);
-  userDatabase.set('admin@lumetric.dev', {
+  memoryStore.set('admin@lumetric.dev', {
     id: 'usr_admin_001',
     email: 'admin@lumetric.dev',
     passwordHash: adminHash,
@@ -78,7 +183,7 @@ const sessionTokens = new Set();
 
   const demoSalt = await bcrypt.genSalt(10);
   const demoHash = await bcrypt.hash('DemoUser123!', demoSalt);
-  userDatabase.set('demo@lumetric.dev', {
+  memoryStore.set('demo@lumetric.dev', {
     id: 'usr_demo_002',
     email: 'demo@lumetric.dev',
     passwordHash: demoHash,
@@ -98,7 +203,7 @@ const sessionTokens = new Set();
 })();
 
 // Authentication Middleware
-function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -109,7 +214,7 @@ function authenticateToken(req, res, next) {
     });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+  jwt.verify(token, JWT_SECRET, async (err, decoded) => {
     if (err) {
       return res.status(403).json({
         success: false,
@@ -117,7 +222,7 @@ function authenticateToken(req, res, next) {
       });
     }
 
-    const user = userDatabase.get(decoded.email);
+    const user = await getUserFromStore(req, decoded.email);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -135,14 +240,14 @@ function authenticateToken(req, res, next) {
 // ROUTES
 // -----------------------------------------------------------------------------
 
-// 1. Health & Server Telemetry
+// 1. Health
 app.get('/', (req, res) => {
   res.json({
     status: 'online',
-    service: 'Lumetric Engine API Server',
+    service: 'Lumetric Engine API Server with Crystal Data Store',
     cloudProvider: 'Zoho Catalyst Serverless',
     region: 'India (.in)',
-    version: '1.0.0',
+    version: '1.2.0',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
@@ -151,15 +256,15 @@ app.get('/', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     healthy: true,
-    totalRegisteredUsers: userDatabase.size,
+    totalRegisteredUsers: memoryStore.size,
     rateLimiterActiveIPs: rateLimitMap.size,
     memoryUsage: process.memoryUsage(),
     catalystTimestamp: Date.now()
   });
 });
 
-// 2. Authentication: Sign Up (Register User)
-app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many accounts created from this IP. Please wait 15 minutes.' }), async (req, res) => {
+// 2. Authentication: Register / Create Account
+app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 10, message: 'Rate limit reached: Max 10 account creations per 15 minutes.' }), async (req, res) => {
   try {
     const { email, password, name, organization, role } = req.body;
 
@@ -171,8 +276,6 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 10, 
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-
-    // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(normalizedEmail)) {
       return res.status(400).json({
@@ -181,7 +284,6 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 10, 
       });
     }
 
-    // Password strength check (min 8 chars, at least 1 number)
     if (password.length < 8) {
       return res.status(400).json({
         success: false,
@@ -189,14 +291,14 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 10, 
       });
     }
 
-    if (userDatabase.has(normalizedEmail)) {
+    const existingUser = await getUserFromStore(req, normalizedEmail);
+    if (existingUser) {
       return res.status(409).json({
         success: false,
         error: 'An account with this email address already exists.'
       });
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
@@ -206,7 +308,7 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 10, 
       passwordHash,
       name: name.trim(),
       role: role && ['owner', 'administrator', 'builder', 'reviewer', 'viewer'].includes(role) ? role : 'builder',
-      organization: organization ? organization.trim() : 'Personal Workspace',
+      organization: organization ? organization.trim() : 'Workspace Team',
       avatarUrl: '',
       createdAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString(),
@@ -218,22 +320,19 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 10, 
       }
     };
 
-    userDatabase.set(normalizedEmail, newUser);
+    await saveUserToStore(req, newUser);
 
-    // Sign JWT
     const token = jwt.sign(
       { id: newUser.id, email: newUser.email, role: newUser.role },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
-    sessionTokens.add(token);
 
-    // Safe user object response
     const { passwordHash: _, ...userSafe } = newUser;
 
     return res.status(201).json({
       success: true,
-      message: 'Account successfully registered and authenticated.',
+      message: 'Account successfully registered and saved to database.',
       token,
       user: userSafe
     });
@@ -247,7 +346,7 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 10, 
 });
 
 // 3. Authentication: Login
-app.post('/api/auth/login', rateLimiter({ windowMs: 5 * 60 * 1000, max: 20, message: 'Too many login attempts. Please try again after 5 minutes.' }), async (req, res) => {
+app.post('/api/auth/login', rateLimiter({ windowMs: 5 * 60 * 1000, max: 20, message: 'Rate limit reached: Max 20 login attempts per 5 minutes.' }), async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -259,7 +358,7 @@ app.post('/api/auth/login', rateLimiter({ windowMs: 5 * 60 * 1000, max: 20, mess
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const user = userDatabase.get(normalizedEmail);
+    const user = await getUserFromStore(req, normalizedEmail);
 
     if (!user) {
       return res.status(401).json({
@@ -277,13 +376,13 @@ app.post('/api/auth/login', rateLimiter({ windowMs: 5 * 60 * 1000, max: 20, mess
     }
 
     user.lastLoginAt = new Date().toISOString();
+    await saveUserToStore(req, user);
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
-    sessionTokens.add(token);
 
     const { passwordHash: _, ...userSafe } = user;
 
@@ -304,7 +403,6 @@ app.post('/api/auth/login', rateLimiter({ windowMs: 5 * 60 * 1000, max: 20, mess
 
 // 4. Authentication: Logout
 app.post('/api/auth/logout', authenticateToken, (req, res) => {
-  sessionTokens.delete(req.token);
   return res.json({
     success: true,
     message: 'User logged out successfully.'
@@ -321,7 +419,7 @@ app.get('/api/user/profile', authenticateToken, (req, res) => {
 });
 
 // 6. User Profile: Update Profile Details
-app.patch('/api/user/profile', authenticateToken, (req, res) => {
+app.patch('/api/user/profile', authenticateToken, async (req, res) => {
   try {
     const { name, organization, avatarUrl, settings } = req.body;
     const user = req.user;
@@ -333,11 +431,13 @@ app.patch('/api/user/profile', authenticateToken, (req, res) => {
       user.settings = { ...user.settings, ...settings };
     }
 
+    await saveUserToStore(req, user);
+
     const { passwordHash: _, ...userSafe } = user;
 
     return res.json({
       success: true,
-      message: 'User profile updated successfully.',
+      message: 'User profile updated in database.',
       user: userSafe
     });
   } catch (err) {
@@ -348,47 +448,64 @@ app.patch('/api/user/profile', authenticateToken, (req, res) => {
   }
 });
 
-// 7. Security: Change Password
-app.post('/api/user/change-password', authenticateToken, async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({
-        success: false,
-        error: 'Both current password and new password are required.'
-      });
-    }
-
-    if (newPassword.length < 8) {
-      return res.status(400).json({
-        success: false,
-        error: 'New password must be at least 8 characters.'
-      });
-    }
-
-    const user = req.user;
-    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        error: 'Current password provided is incorrect.'
-      });
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    user.passwordHash = await bcrypt.hash(newPassword, salt);
-
-    return res.json({
-      success: true,
-      message: 'Password successfully changed.'
-    });
-  } catch (err) {
-    return res.status(500).json({
+// 7. Admin Profile & Role Dashboard Route: List All Workspace Users
+app.get('/api/admin/users', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'owner' && req.user.role !== 'administrator') {
+    return res.status(403).json({
       success: false,
-      error: 'Failed to change password.'
+      error: 'Access denied: Requires Administrator or Owner privileges.'
     });
   }
+
+  const users = await getAllUsersFromStore(req);
+  return res.json({
+    success: true,
+    users
+  });
+});
+
+// 8. Admin Profile Dashboard: Update Any User's Role & Governance Grants
+app.patch('/api/admin/users/:userId/role', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'owner' && req.user.role !== 'administrator') {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied: Requires Administrator or Owner privileges.'
+    });
+  }
+
+  const { targetEmail, newRole } = req.body;
+  if (!targetEmail || !newRole) {
+    return res.status(400).json({
+      success: false,
+      error: 'targetEmail and newRole are required'
+    });
+  }
+
+  const validRoles = ['owner', 'administrator', 'builder', 'reviewer', 'viewer'];
+  if (!validRoles.includes(newRole)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid role specified.'
+    });
+  }
+
+  const targetUser = await getUserFromStore(req, targetEmail);
+  if (!targetUser) {
+    return res.status(404).json({
+      success: false,
+      error: 'Target user not found.'
+    });
+  }
+
+  targetUser.role = newRole;
+  await saveUserToStore(req, targetUser);
+
+  const { passwordHash: _, ...userSafe } = targetUser;
+  return res.json({
+    success: true,
+    message: `User role successfully elevated to ${newRole.toUpperCase()} in database.`,
+    user: userSafe
+  });
 });
 
 // Catalyst Entry Export

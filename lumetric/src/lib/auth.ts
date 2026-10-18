@@ -175,4 +175,39 @@ export class LumetricAuthService {
       return { success: false, error: err.message || 'Failed to update profile' };
     }
   }
+
+  public static async fetchWorkspaceUsers(): Promise<{ success: boolean; users?: AuthUser[]; error?: string }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/admin/users`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to fetch users list' };
+    }
+  }
+
+  public static async updateUserRole(targetEmail: string, newRole: string): Promise<AuthResponse> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/admin/users/role-grant/role`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ targetEmail, newRole })
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to update role' };
+    }
+  }
 }
