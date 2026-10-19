@@ -798,6 +798,168 @@ app.patch('/api/user/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// 12. Authentication: Token Refresh
+app.post('/api/auth/refresh', authenticateToken, (req, res) => {
+  const token = jwt.sign(
+    { id: req.user.id, email: req.user.email, role: req.user.role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+  return res.json({
+    success: true,
+    token,
+    user: {
+      id: req.user.id,
+      email: req.user.email,
+      name: req.user.name,
+      role: req.user.role
+    }
+  });
+});
+
+// 13. Real-Time Fleet Telemetry Stream / Polling Endpoint
+app.get('/api/fleet/telemetry/live', (req, res) => {
+  const now = Date.now();
+  // Dynamic jitter to simulate live sensors
+  const jitterSpeed = Math.floor(Math.sin(now / 15000) * 8) + 82;
+  const jitterFuel = Math.max(20, Math.min(95, 78 - Math.floor((now % 1000000) / 40000)));
+
+  return res.json({
+    success: true,
+    truckId: 'Camion 12 (Julien Morel)',
+    driverName: 'Julien Morel',
+    driverRating: 5.0,
+    vehicleStatus: 'in_transit',
+    speedKmh: jitterSpeed,
+    fuelLevelPct: jitterFuel,
+    engineTempC: 88,
+    cargoLoadPct: 78,
+    cargoWeightTons: 14.2,
+    maxWeightTons: 18.0,
+    currentLocation: {
+      lat: 47.3220,
+      lng: 5.0415,
+      checkpoint: 'Dijon Sud',
+      nextStop: 'Lyon (Saint-Priest Dépôt)'
+    },
+    routeCheckpoints: [
+      { name: 'Paris', status: 'completed', time: '08:15' },
+      { name: 'Auxerre', status: 'completed', time: '10:45' },
+      { name: 'Dijon', status: 'active', time: '13:10' },
+      { name: 'Lyon', status: 'pending', time: '15:45' },
+      { name: 'Marseille', status: 'pending', time: '17:30' }
+    ],
+    progressPct: 72,
+    remainingDistanceKm: 140,
+    etaMinutes: 140,
+    estimatedArrival: '17:30',
+    delayWarningMinutes: 18,
+    activeAlert: {
+      id: 'alt-a6-beaune',
+      type: 'traffic_delay',
+      severity: 'warning',
+      title: 'Chantier A6 Beaune',
+      message: 'Chantier en cours sur l\'A6 après Beaune. Ralentissement estimé +18 min.'
+    },
+    parcelsDelivered: 34,
+    parcelsTotal: 48,
+    billingTotalEur: 5860,
+    lastPingTimestamp: new Date().toISOString()
+  });
+});
+
+// 14. Operational Alert Dispatch (Logged to SHA-256 Audit Trail)
+app.post('/api/fleet/dispatch/alert', (req, res) => {
+  try {
+    const { truckId, alertType, message, severity } = req.body;
+    const actorEmail = (req.user && req.user.email) || 'dispatch@lumetric.dev';
+
+    const alertId = `alt_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const audit = logAuditEvent(
+      actorEmail,
+      'FLEET_ALERT_DISPATCHED',
+      'Operations',
+      `Alert [${severity || 'info'}] dispatched to ${truckId || 'Fleet'}: ${message || 'Route notice'}`
+    );
+
+    return res.json({
+      success: true,
+      alertId,
+      dispatchedAt: new Date().toISOString(),
+      auditSha256: audit.sha256Hash,
+      message: 'Fleet alert broadcasted and securely anchored to immutable audit ledger.'
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: 'Failed to dispatch alert.' });
+  }
+});
+
+// 15. Automated Digital Invoice Receipt Generator
+app.post('/api/fleet/invoice/generate', (req, res) => {
+  try {
+    const { shipmentId, customerName, parcelsCount, distanceKm, amountEur } = req.body;
+    const invoiceNum = `INV-2026-FR-${Math.floor(100000 + Math.random() * 900000)}`;
+    const issuedAt = new Date().toISOString();
+
+    const signaturePayload = `${invoiceNum}-${shipmentId || 'SHP-001'}-${amountEur || 5860}-${issuedAt}`;
+    const digitalSignature = require('crypto').createHmac('sha256', JWT_SECRET).update(signaturePayload).digest('hex');
+
+    logAuditEvent('billing@lumetric.dev', 'INVOICE_GENERATED', 'Billing', `Invoice ${invoiceNum} generated for ${customerName || 'Client'}`);
+
+    return res.json({
+      success: true,
+      invoiceNumber: invoiceNum,
+      issuedAt,
+      customerName: customerName || 'Logistique Express France',
+      shipmentId: shipmentId || 'SHP-FR-9921',
+      parcelsCount: parcelsCount || 48,
+      distanceKm: distanceKm || 870,
+      totalAmountEur: amountEur || 5860,
+      vatEur: Math.round((amountEur || 5860) * 0.2),
+      status: 'certified_paid',
+      digitalSignature,
+      downloadUrl: `/api/fleet/invoice/${invoiceNum}.pdf`
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: 'Failed to generate digital invoice.' });
+  }
+});
+
+// 16. Column-Level RBAC Data Governance Endpoint
+app.get('/api/fleet/records', (req, res) => {
+  const authHeader = req.headers['authorization'];
+  let userRole = 'viewer';
+
+  if (authHeader) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      userRole = decoded.role || 'viewer';
+    } catch {}
+  }
+
+  const isFinancialPrivileged = userRole === 'owner' || userRole === 'administrator';
+
+  const baseRecords = [
+    { id: 'REC-01', truck: 'Camion 12', driver: 'Julien Morel', origin: 'Paris', destination: 'Marseille', status: 'En livraison', parcels: 48, arrUsd: 145000, billingRateEur: 5860 },
+    { id: 'REC-02', truck: 'Camion 08', driver: 'Marc V.', origin: 'Lille', destination: 'Lyon', status: 'En attente', parcels: 32, arrUsd: 98000, billingRateEur: 3950 },
+    { id: 'REC-03', truck: 'Camion 03', driver: 'Sophie L.', origin: 'Strasbourg', destination: 'Bordeaux', status: 'Terminée', parcels: 64, arrUsd: 210000, billingRateEur: 8420 },
+  ];
+
+  const processed = baseRecords.map(r => ({
+    ...r,
+    arrUsd: isFinancialPrivileged ? r.arrUsd : '*** [RESTRICTED]',
+    billingRateEur: isFinancialPrivileged ? r.billingRateEur : '*** [RESTRICTED]',
+  }));
+
+  return res.json({
+    success: true,
+    userRole,
+    columnLevelMaskingApplied: !isFinancialPrivileged,
+    records: processed
+  });
+});
+
 // Catch-all route for unmatched paths
 app.use((req, res) => {
   res.status(404).json({

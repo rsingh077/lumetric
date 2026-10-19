@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/contexts/AppContext';
 import { ActiveView } from '@/types';
 import { UserAuthProfileModal } from '@/components/auth/UserAuthProfileModal';
+import { OfflineSyncManager } from '@/lib/offlineSync';
 import {
   MenuIcon,
   SearchIcon,
@@ -60,6 +61,16 @@ export function Header() {
   const [newPrjDesc, setNewPrjDesc] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [networkSync, setNetworkSync] = useState<{ isOnline: boolean; pendingCount: number }>({
+    isOnline: true,
+    pendingCount: 0,
+  });
+
+  useEffect(() => {
+    OfflineSyncManager.init();
+    const unsub = OfflineSyncManager.subscribe((st) => setNetworkSync(st));
+    return () => unsub();
+  }, []);
 
   const handleManualReconnect = async () => {
     setIsReconnecting(true);
@@ -297,6 +308,21 @@ export function Header() {
 
         {/* Right Section: Command Palette, Notifications, Profile */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
+          {/* Offline Outbox & Network Status Pill */}
+          {!networkSync.isOnline || networkSync.pendingCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => OfflineSyncManager.flush()}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-all apple-pressable cursor-pointer"
+              title="Cliquer pour forcer la synchronisation de l'outbox"
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              <span>
+                {!networkSync.isOnline ? 'Hors ligne' : 'En attente'} ({networkSync.pendingCount})
+              </span>
+            </button>
+          ) : null}
+
           {/* Interactive Catalyst Server Status & Reconnect Pill */}
           <div className="relative">
             <button

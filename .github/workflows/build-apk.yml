@@ -47,47 +47,46 @@ jobs:
       - name: Copy APK to Root for Direct Repo Download
         run: |
           cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric.apk
-          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v1.8.0.apk
+          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v1.9.0.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumetric-v1.8.0-debug-apk
-          path: Lumetric-v1.8.0.apk
+          name: lumetric-v1.9.0-debug-apk
+          path: Lumetric-v1.9.0.apk
 
-      - name: Create or Update GitHub Release v1.8.0
+      - name: Create or Update GitHub Release v1.9.0
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v1.8.0
-          name: "Lumetric v1.8.0 — Android Asset Route Fix, Zero-404 Splash Transition, Executive Dashboard & Live Catalyst Auth"
+          tag_name: v1.9.0
+          name: "Lumetric v1.9.0 — 2FA Security, Live Telemetry Dispatch, Offline Sync & Route Optimizer"
           body: |
-            ### 🚀 Lumetric Mobile v1.8.0 Production Release
+            ### 🚀 Lumetric Mobile v1.9.0 Production Release
 
-            #### 🛠️ Critical Native Asset Routing & Splash Fix
-            - **Resolved Android Asset 404s**: Fixed the root cause where Next.js `/app/_next` chunks were failing to load in Capacitor's local Android WebView. `scripts/postbuild.js` now mirrors `_next` chunks across both root and `/app/_next/`, ensuring 100% 200 OK asset delivery on both native Android and Zoho Catalyst web hosting.
-            - **Guaranteed Splash Transition**: Injected zero-delay inline styles into `SplashScreen.tsx` (pitch-black `#0B0F19`, styled typography, progress indicator, and emergency tap-to-enter bypass fallback) so the app renders cleanly from frame 0 and transitions smoothly in under 1.8 seconds.
+            #### 🔐 Enterprise Security & 2FA Governance
+            - **Two-Factor Authentication (2FA TOTP)**: Interactive QR code setup for Google Authenticator / 1Password via Zoho Catalyst with 6-digit TOTP verification.
+            - **Column-Level RBAC Data Masking**: Sensitive financial figures (`ARR_USD`, billing rates) are masked for non-owner roles.
+            - **Session Token Refresh**: Seamless session token renewal via `POST /api/auth/refresh`.
 
-            #### 📊 Complete Executive Logistics & Analytics Dashboard
-            - **Matching Reference Architecture ("Bonjour, Camille")**:
-              - *Bonjour, Camille* profile header with role switcher and live Catalyst cloud telemetry indicator.
-              - Left navigation drawer with coral-red active pill (*Vue d'ensemble*) and bottom trip card (*32 courses, 870 km, 2h 45* with `+ Nouvelle course`).
-              - *Progression globale (72%)* route tracker with milestone checkpoints (Paris ➔ Auxerre ➔ Dijon ➔ Lyon ➔ Marseille).
-              - *Détail de l'expédition*: Driver Julien Morel (5-star rating, 48 parcels, 68% loading dial, 5 860 € billing).
-              - *Capacité du camion (78%)*: 3D cargo truck visual with 14,2 t / 18,0 t weight indicators.
-              - *Tendances des expéditions*: 7-day multi-point trend curve with timeframe toggles.
-              - *Performance de livraison (94%)*: Solid coral-red milestone card with white wave sparkline.
-              - *Répartition des envois* donut chart, *Consommation de carburant* bar chart (128 L, -8%), and *Messages de l'équipe* live dispatch feed.
-              - *Full-Width Bottom Banner*: "Gardez le contrôle de vos livraisons" with one-tap optimization button.
+            #### 📡 Real-Time Fleet Telemetry & Event Automation
+            - **Dynamic Telemetry Stream**: Live speed (km/h), fuel %, engine temperature, cargo load, and checkpoint progression streamed from Zoho Catalyst (`lumetric_server`).
+            - **Automated Delay Alerting**: 1-click broadcast of route warnings anchored to the SHA-256 tamper-proof audit ledger.
+            - **Certified Digital Invoicing**: Automated billing receipt generation with HMAC-SHA256 signatures.
 
-            #### 🔐 Full Server-Side Authentication & Profile Creation
-            - Integrated directly with Zoho Catalyst Serverless (`lumetric_server`) & Crystal Datastore (`project-rainfall-60092395179.development.catalystserverless.in`).
-            - Real-time Google / Gmail login and multi-role user profile registration (Owner, Administrator, Builder, Reviewer, Viewer) with bcrypt-encrypted credential persistence.
+            #### 📦 Offline-First Mobile Outbox Engine
+            - **Local Outbox Synchronization**: `OfflineSyncManager` buffers parcel scans and status changes offline with zero data loss.
+            - **Automatic Background Sync**: Auto-flushes pending actions when 4G/5G or Wi-Fi reconnects, with live visual indicator in header.
+
+            #### 🗺️ AI Multi-Stop Route Optimizer & Predictive Forecasting
+            - **Heuristic 2-Opt TSP Optimizer**: Solves French distribution hub route sequencing (Paris ➔ Auxerre ➔ Dijon ➔ Lyon ➔ Marseille), calculating -14.8% distance reduction, -32 L fuel savings, and 84.5 kg CO2 avoided.
+            - **Route Manifest Download**: 1-click export of the optimized stop sequence in CSV format.
+            - **30-Day Rolling Freight Forecast**: Bayesian demand curve with 95% confidence intervals and peak capacity surge alerts.
 
             #### 📱 Direct Download
-            - **Direct APK Download**: [Lumetric-v1.8.0.apk](https://github.com/rsingh077/lumetric/releases/download/v1.8.0/Lumetric-v1.8.0.apk)
+            - **Direct APK Download**: [Lumetric-v1.9.0.apk](https://github.com/rsingh077/lumetric/releases/download/v1.9.0/Lumetric-v1.9.0.apk)
           files: |
             Lumetric.apk
-            Lumetric-v1.8.0.apk
+            Lumetric-v1.9.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -93,13 +93,13 @@ fs.writeFileSync(
   path.join(outDir, 'client-package.json'),
   JSON.stringify({
     name: 'lumetric',
-    version: '1.8.0',
+    version: '1.9.0',
     homepage: 'index.html',
     login_redirect: 'index.html',
     '404': '404.html'
   }, null, 2)
 );
-console.log('✓ Generated client-package.json (v1.8.0) with 404.html error page');
+console.log('✓ Generated client-package.json (v1.9.0) with 404.html error page');
 
 // 4. If Android assets directory exists, ensure it also has the mirrored app directory
 if (fs.existsSync(androidPublicDir)) {

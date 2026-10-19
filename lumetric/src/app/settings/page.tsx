@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardHeader, CardTitle, StatusBadge, Button, Input } from '@/components/ui';
 import { UserRole } from '@/types';
+import { TwoFactorSetupModal } from '@/components/auth/TwoFactorSetupModal';
 
 interface PermissionEntry {
   capability: string;
@@ -95,6 +96,8 @@ export default function SettingsPage() {
   const [newSecName, setNewSecName] = useState('');
   const [newSecPath, setNewSecPath] = useState('');
   const [cacheFlushNotice, setCacheFlushNotice] = useState<string | null>(null);
+  const [twoFactorModalOpen, setTwoFactorModalOpen] = useState(false);
+  const [twoFactorActive, setTwoFactorActive] = useState(false);
 
   const allRoles: UserRole[] = ['owner', 'administrator', 'builder', 'reviewer', 'viewer'];
 
@@ -329,6 +332,41 @@ export default function SettingsPage() {
       {/* TAB 3: SECURITY */}
       {activeTab === 'security' && (
         <div className="space-y-4">
+          {/* 2FA TOTP Card */}
+          <Card padding="md" className="border-[var(--lm-border-default)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-500 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-[var(--lm-text-primary)]">
+                      Authentification à Deux Facteurs (2FA TOTP)
+                    </h3>
+                    <StatusBadge variant={twoFactorActive ? 'success' : 'neutral'} dot>
+                      {twoFactorActive ? 'Activé' : 'Non configuré'}
+                    </StatusBadge>
+                  </div>
+                  <p className="text-xs text-[var(--lm-text-secondary)] mt-1 max-w-xl">
+                    Sécurisez l&apos;accès à votre flotte et à vos modèles avec Google Authenticator ou 1Password. Un code à 6 chiffres sera requis lors de chaque ouverture de session.
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                variant={twoFactorActive ? 'secondary' : 'primary'}
+                size="sm"
+                className={!twoFactorActive ? 'bg-rose-500 hover:bg-rose-600 text-white' : ''}
+                onClick={() => setTwoFactorModalOpen(true)}
+              >
+                {twoFactorActive ? 'Reconfigurer 2FA' : 'Activer 2FA →'}
+              </Button>
+            </div>
+          </Card>
+
           <Card padding="md" className="border-[var(--lm-border-default)] space-y-4">
             <CardHeader>
               <div>
@@ -427,6 +465,17 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Two-Factor Authentication Setup Modal */}
+      <TwoFactorSetupModal
+        isOpen={twoFactorModalOpen}
+        onClose={() => setTwoFactorModalOpen(false)}
+        onSuccess={() => {
+          setTwoFactorActive(true);
+          setRoleNotice('✓ Authentification à deux facteurs (2FA) configurée et active.');
+          setTimeout(() => setRoleNotice(null), 5000);
+        }}
+      />
     </div>
   );
 }

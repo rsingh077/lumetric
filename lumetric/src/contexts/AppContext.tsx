@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Workspace, Project, User, UserRole, DatasetProfile, ActiveView } from '@/types';
+import { Workspace, Project, User, UserRole, DatasetProfile, ActiveView, FleetTelemetryData } from '@/types';
 import { LumetricAuthService } from '@/lib/auth';
 
 interface NotificationItem {
@@ -71,6 +71,11 @@ interface AppContextType {
   closeAuthModal: () => void;
   logout: () => Promise<void>;
   loginAsDemoRole: (role: UserRole) => void;
+
+  // Fleet Telemetry & Dispatch Automation
+  fleetTelemetry: FleetTelemetryData;
+  dispatchAlert: (message: string, severity?: string) => Promise<boolean>;
+  generateInvoice: (shipmentId?: string, amountEur?: number) => Promise<any>;
 }
 
 const defaultUser: User = {
@@ -213,6 +218,48 @@ const initialNotifications: NotificationItem[] = [
   }
 ];
 
+const DEFAULT_INITIAL_TELEMETRY: FleetTelemetryData = {
+  truckId: 'Camion 12 (Julien Morel)',
+  driverName: 'Julien Morel',
+  driverRating: 5.0,
+  vehicleStatus: 'in_transit',
+  speedKmh: 82,
+  fuelLevelPct: 78,
+  engineTempC: 88,
+  cargoLoadPct: 78,
+  cargoWeightTons: 14.2,
+  maxWeightTons: 18.0,
+  currentLocation: {
+    lat: 47.3220,
+    lng: 5.0415,
+    checkpoint: 'Dijon Sud',
+    nextStop: 'Lyon (Saint-Priest Dépôt)'
+  },
+  routeCheckpoints: [
+    { name: 'Paris', status: 'completed', time: '08:15' },
+    { name: 'Auxerre', status: 'completed', time: '10:45' },
+    { name: 'Dijon', status: 'active', time: '13:10' },
+    { name: 'Lyon', status: 'pending', time: '15:45' },
+    { name: 'Marseille', status: 'pending', time: '17:30' }
+  ],
+  progressPct: 72,
+  remainingDistanceKm: 140,
+  etaMinutes: 140,
+  estimatedArrival: '17:30',
+  delayWarningMinutes: 18,
+  activeAlert: {
+    id: 'alt-a6-beaune',
+    type: 'traffic_delay',
+    severity: 'warning',
+    title: 'Chantier A6 Beaune',
+    message: "Chantier en cours sur l'A6 après Beaune. Ralentissement estimé +18 min."
+  },
+  parcelsDelivered: 34,
+  parcelsTotal: 48,
+  billingTotalEur: 5860,
+  lastPingTimestamp: new Date().toISOString()
+};
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -301,6 +348,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [authModalMode, setAuthModalMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard'>('profile');
+  const [fleetTelemetry, setFleetTelemetry] = useState<FleetTelemetryData>(DEFAULT_INITIAL_TELEMETRY);
+
+  const dispatchAlert = async (message: string, severity: string = 'warning'): Promise<boolean> => {
+    try {
+      const res = await LumetricAuthService.dispatchFleetAlert({
+        truckId: fleetTelemetry.truckId,
+        message,
+        severity
+      });
+      if (res && res.success) {
+        setNotifications(prev => [
+          {
+            id: res.alertId || `alt-${Date.now()}`,
+            title: 'Alerte Flotte Émise',
+            message: `${message} (Ancré au registre SHA-256)`,
+            timestamp: new Date().toLocaleTimeString(),
+            read: false,
+            type: severity === 'error' ? 'error' : 'warning'
+          },
+          ...prev.slice(0, 19)
+        ]);
+        return true;
+      }
+    } catch {}
+    return false;
+  };
+
+  const generateInvoice = async (shipmentId?: string, amountEur?: number): Promise<any> => {
+    try {
+      const res = await LumetricAuthService.generateDigitalInvoice({
+        shipmentId: shipmentId || 'SHP-FR-9921',
+        amountEur: amountEur || fleetTelemetry.billingTotalEur || 5860,
+        customerName: 'Logistique Express France'
+      });
+      if (res && res.success) {
+        setNotifications(prev => [
+          {
+            id: `inv-${Date.now()}`,
+            title: 'Facture Numérique Certifiée',
+            message: `Facture ${res.invoiceNumber} générée avec signature HMAC-SHA256 (${res.totalAmountEur} €).`,
+            timestamp: new Date().toLocaleTimeString(),
+            read: false,
+            type: 'success'
+          },
+          ...prev.slice(0, 19)
+        ]);
+      }
+      return res;
+    } catch {
+      return null;
+    }
+  };
 
   const openAuthModal = (mode: 'profile' | 'login' | 'register' | 'admin-dashboard' = 'login') => {
     setAuthModalMode(mode);
@@ -438,6 +537,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('online', handleRecheck);
       window.removeEventListener('focus', handleRecheck);
     };
+  }, []);
+
+  useEffect(() => {
+    // Poll live fleet telemetry from Catalyst every 12 seconds
+    const pollTelemetry = async () => {
+      try {
+        const res = await LumetricAuthService.fetchFleetTelemetry();
+        if (res && res.success) {
+          setFleetTelemetry(res);
+        }
+      } catch {}
+    };
+
+    pollTelemetry();
+    const interval = setInterval(pollTelemetry, 12000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -656,6 +771,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         closeAuthModal,
         logout,
         loginAsDemoRole,
+        fleetTelemetry,
+        dispatchAlert,
+        generateInvoice,
       }}
     >
       {children}

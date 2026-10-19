@@ -34,12 +34,18 @@ function HomeView() {
     serverStatus,
     serverLatency,
     openAuthModal,
+    fleetTelemetry,
+    dispatchAlert,
+    generateInvoice,
   } = useApp();
 
   const [selectedTruck, setSelectedTruck] = useState('Camion 12 (Julien Morel)');
   const [deliveryStatusTab, setDeliveryStatusTab] = useState<'delivering' | 'waiting' | 'completed'>('delivering');
   const [trendTimeframe, setTrendTimeframe] = useState('7 derniers jours');
   const [perfTimeframe, setPerfTimeframe] = useState('Mois en cours');
+  const [isDispatching, setIsDispatching] = useState(false);
+  const [isGeneratingInv, setIsGeneratingInv] = useState(false);
+  const [alertNotice, setAlertNotice] = useState<string | null>(null);
 
   // Compute real metrics from ingested rows if available
   const computedMetrics = useMemo(() => {
@@ -147,9 +153,12 @@ function HomeView() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
+          <div className="flex items-center gap-2 text-xs font-mono">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Zoho Catalyst Live ({serverLatency ?? 24}ms)</span>
+            <span className="text-slate-500">Catalyst Live ({serverLatency ?? 24}ms)</span>
+            <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/20">
+              ⚡ {fleetTelemetry?.speedKmh || 82} km/h
+            </span>
           </div>
         </div>
 
@@ -252,13 +261,35 @@ function HomeView() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setActiveView('operations')}
-              className="w-full mt-4 py-2 px-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs transition-colors shadow-xs"
-            >
-              Voir les détails
-            </button>
+            {alertNotice && (
+              <p className="text-[10px] text-emerald-500 font-bold mb-1">
+                {alertNotice}
+              </p>
+            )}
+
+            <div className="flex gap-2 mt-4">
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsDispatching(true);
+                  await dispatchAlert("Chantier A6 Beaune : Retard estimé 18 min notifié aux clients.", "warning");
+                  setIsDispatching(false);
+                  setAlertNotice("✓ Alerte diffusée et scellée dans l'audit ledger SHA-256");
+                  setTimeout(() => setAlertNotice(null), 4000);
+                }}
+                disabled={isDispatching}
+                className="flex-1 py-2 px-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+              >
+                {isDispatching ? "Diffusion..." : "Diffuser Alerte Retard"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView('operations')}
+                className="py-2 px-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs transition-colors shadow-xs cursor-pointer"
+              >
+                Détails
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -354,16 +385,29 @@ function HomeView() {
           </div>
 
           {/* Bottom Billing Row */}
-          <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <span className="text-[10px] text-slate-400 block font-medium">Total à encaisser</span>
-              <span className="text-lg font-bold text-slate-900 dark:text-white">5 860 €</span>
+              <span className="text-lg font-bold text-slate-900 dark:text-white">
+                {fleetTelemetry?.billingTotalEur?.toLocaleString('fr-FR') || '5 860'} €
+              </span>
             </div>
-            <div className="text-right">
-              <span className="text-[10px] text-slate-400 block font-medium">Paiement</span>
+            <div className="flex items-center gap-2">
               <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 text-xs font-bold border border-emerald-200">
                 Réglé
               </span>
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsGeneratingInv(true);
+                  await generateInvoice('SHP-FR-9921', fleetTelemetry?.billingTotalEur || 5860);
+                  setIsGeneratingInv(false);
+                }}
+                disabled={isGeneratingInv}
+                className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+              >
+                {isGeneratingInv ? "Émission..." : "Facture Numérique 📄"}
+              </button>
             </div>
           </div>
         </div>
@@ -793,7 +837,7 @@ function HomeView() {
         </div>
 
         <button
-          onClick={() => setActiveView('pipelines')}
+          onClick={() => setActiveView('analysis')}
           className="shrink-0 px-6 py-3 rounded-full bg-white text-rose-600 text-xs font-bold shadow-md hover:bg-rose-50 transition-all apple-pressable cursor-pointer"
         >
           Optimiser mes livraisons →

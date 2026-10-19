@@ -351,4 +351,60 @@ export class LumetricAuthService {
       return { success: false, error: err.message || 'Failed to update role' };
     }
   }
+
+  public static async fetchFleetTelemetry(): Promise<any> {
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/fleet/telemetry/live`, { cache: 'no-store' });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to fetch telemetry' };
+    }
+  }
+
+  public static async dispatchFleetAlert(payload: { truckId?: string; alertType?: string; message: string; severity?: string }): Promise<any> {
+    const token = this.getStoredToken();
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/fleet/dispatch/alert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to dispatch alert' };
+    }
+  }
+
+  public static async generateDigitalInvoice(payload: { shipmentId?: string; customerName?: string; parcelsCount?: number; distanceKm?: number; amountEur?: number }): Promise<any> {
+    const token = this.getStoredToken();
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/fleet/invoice/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to generate digital invoice' };
+    }
+  }
+
+  public static async fetchFleetRecords(): Promise<any> {
+    const token = this.getStoredToken();
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/fleet/records`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to fetch fleet records' };
+    }
+  }
 }
+

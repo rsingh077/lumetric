@@ -150,3 +150,46 @@ export type ActiveView =
   | 'stories'
   | 'operations'
   | 'settings';
+
+export interface RouteCheckpoint {
+  name: string;
+  status: 'completed' | 'active' | 'pending';
+  time: string;
+}
+
+export interface FleetTelemetryData {
+  truckId: string;
+  driverName: string;
+  driverRating: number;
+  vehicleStatus: 'in_transit' | 'loading' | 'completed' | 'delayed';
+  speedKmh: number;
+  fuelLevelPct: number;
+  engineTempC: number;
+  cargoLoadPct: number;
+  cargoWeightTons: number;
+  maxWeightTons: number;
+  currentLocation: {
+    lat: number;
+    lng: number;
+    checkpoint: string;
+    nextStop: string;
+  };
+  routeCheckpoints: RouteCheckpoint[];
+  progressPct: number;
+  remainingDistanceKm: number;
+  etaMinutes: number;
+  estimatedArrival: string;
+  delayWarningMinutes: number;
+  activeAlert?: {
+    id: string;
+    type: string;
+    severity: string;
+    title: string;
+    message: string;
+  };
+  parcelsDelivered: number;
+  parcelsTotal: number;
+  billingTotalEur: number;
+  lastPingTimestamp?: string;
+}
+
