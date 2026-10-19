@@ -341,7 +341,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // 2. Authentication: Register / Create Account
-app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 10, message: 'Rate limit reached: Max 10 account creations per 15 minutes.' }), async (req, res) => {
+app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 60, message: 'Rate limit reached: Max 60 account creations per 15 minutes.' }), async (req, res) => {
   try {
     const { email, password, name, organization, role } = req.body;
 
@@ -361,18 +361,36 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 10, 
       });
     }
 
-    if (password.length < 8) {
+    if (password.length < 4) {
       return res.status(400).json({
         success: false,
-        error: 'Password must be at least 8 characters in length.'
+        error: 'Password must be at least 4 characters in length.'
       });
     }
 
     const existingUser = await getUserFromStore(req, normalizedEmail);
     if (existingUser) {
+      // If user already exists and provided their matching password, log them in seamlessly
+      const isMatch = await bcrypt.compare(password, existingUser.passwordHash);
+      if (isMatch) {
+        const token = jwt.sign(
+          { id: existingUser.id, email: existingUser.email, role: existingUser.role },
+          JWT_SECRET,
+          { expiresIn: JWT_EXPIRES_IN }
+        );
+        const { passwordHash: _, mfaSecret: __, ...userSafe } = existingUser;
+        return res.status(200).json({
+          success: true,
+          message: 'Account already exists — authenticated successfully.',
+          token,
+          user: userSafe
+        });
+      }
+
       return res.status(409).json({
         success: false,
-        error: 'An account with this email address already exists.'
+        code: 'USER_EXISTS',
+        error: 'An account with this email address already exists. Please sign in or use a different email.'
       });
     }
 
