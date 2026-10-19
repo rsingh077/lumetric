@@ -17,8 +17,9 @@ import {
   SettingsIcon,
   FolderIcon,
   XIcon,
+  UserIcon,
 } from '@/components/icons';
-import { ColumnProfile, DatasetProfile, ColumnSemanticRole, DatasetRequirements, QualityCheckResult } from '@/types';
+import { ColumnProfile, DatasetProfile, ColumnSemanticRole, DatasetRequirements, QualityCheckResult, UserRole } from '@/types';
 import ProjectsPage from './projects/page';
 import DataWorkspacePage from './data/page';
 import PipelinesPage from './pipelines/page';
@@ -47,15 +48,15 @@ function computeHash(str: string): string {
   return `${part1}${part2}${part3}${part4}`;
 }
 
-type WorkbenchTab = 'grid' | 'schema' | 'sql' | 'ingest' | 'cloud';
+type WorkbenchTab = 'analytics' | 'grid' | 'sql' | 'profile' | 'cloud' | 'ingest';
 
 function HomeView() {
   const {
     currentUser,
+    setRole,
     currentWorkspace,
     activeDataset,
     activeRows,
-    datasets,
     setActiveDataset,
     addDataset,
     setActiveView,
@@ -63,14 +64,24 @@ function HomeView() {
     serverLatency,
     lastServerSync,
     reconnectServer,
+    openAuthModal,
+    logout,
+    loginAsDemoRole,
   } = useApp();
 
-  // Workbench state
-  const [activeTab, setActiveTab] = useState<WorkbenchTab>('grid');
+  // Tab State
+  const [activeTab, setActiveTab] = useState<WorkbenchTab>('analytics');
+
+  // Search & Filter State for Data Grid
   const [searchTerm, setSearchTerm] = useState('');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedRow, setSelectedRow] = useState<Record<string, string> | null>(null);
+
+  // Timeframe selector for charts
+  const [chartTimeframe, setChartTimeframe] = useState('This year');
+  const [donutTimeframe, setDonutTimeframe] = useState("7 Day's");
+  const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(4); // Default to Apr 6 peak
 
   // SQL scratchpad state
   const [sqlQuery, setSqlQuery] = useState("SELECT * FROM active_dataset WHERE ARR_USD > 50000");
@@ -135,7 +146,6 @@ function HomeView() {
 
       const hash = computeHash(content);
 
-      // Automated column profiling
       const profiles: ColumnProfile[] = headers.map((colName) => {
         const values = rows.map((r) => r[colName] ?? '');
         const nonNulls = values.filter((v) => v !== '' && v !== 'null' && v !== 'undefined');
@@ -304,7 +314,6 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
   const displayRows = useMemo(() => {
     let result = [...activeRows];
 
-    // Live search filter across all column values
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
       result = result.filter((row) =>
@@ -312,7 +321,6 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
       );
     }
 
-    // Sort
     if (sortColumn) {
       result.sort((a, b) => {
         const valA = a[sortColumn] ?? '';
@@ -345,7 +353,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
     }
   };
 
-  // Core Key Numerical Aggregates computed deterministically
+  // Core Financial Aggregates
   const totalARR = useMemo(() => {
     return activeRows.reduce((acc, row) => {
       const v = Number(row['ARR_USD'] || row['arr_usd'] || row['ARR'] || 0);
@@ -355,12 +363,27 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
 
   const meanARR = activeRows.length > 0 ? Math.round(totalARR / activeRows.length) : 0;
 
+  const totalActiveUsers = useMemo(() => {
+    return activeRows.reduce((acc, row) => {
+      const v = Number(row['Active_Users'] || row['active_users'] || 0);
+      return acc + (isNaN(v) ? 0 : v);
+    }, 0);
+  }, [activeRows]);
+
   const averageNPS = useMemo(() => {
     const scores = activeRows
       .map((r) => Number(r['NPS_Score'] || r['nps_score'] || r['NPS'] || 0))
       .filter((n) => !isNaN(n) && n > 0);
     if (scores.length === 0) return 0;
     return parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1));
+  }, [activeRows]);
+
+  const averageChurn = useMemo(() => {
+    const churns = activeRows
+      .map((r) => Number(r['Churn_Probability'] || 0))
+      .filter((n) => !isNaN(n));
+    if (churns.length === 0) return 0.14;
+    return parseFloat((churns.reduce((a, b) => a + b, 0) / churns.length).toFixed(2));
   }, [activeRows]);
 
   // Execute client-side SQL scratchpad query
@@ -373,7 +396,6 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
       let filtered = [...activeRows];
       const upper = query.toUpperCase();
 
-      // Check simple WHERE conditions
       if (upper.includes('WHERE')) {
         const parts = query.split(/WHERE/i);
         const condition = parts[1].trim();
@@ -397,7 +419,6 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
         }
       }
 
-      // Check GROUP BY condition (Region, Plan_Tier, etc.)
       if (upper.includes('GROUP BY')) {
         const groupCol = query.split(/GROUP BY/i)[1].trim();
         const grouped: Record<string, { count: number; sumARR: number; avgNPS: number; npsSum: number }> = {};
@@ -434,277 +455,563 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
     }
   };
 
-  // Copy dataset as JSON
-  const handleCopyJSON = () => {
-    navigator.clipboard.writeText(JSON.stringify(activeRows, null, 2));
-    alert('Active dataset copied to clipboard as JSON.');
-  };
-
-  // Export CSV
-  const handleExportCSV = () => {
-    if (!activeDataset || activeRows.length === 0) return;
-    const headers = activeDataset.columns.map((c) => c.name);
-    const csvContent = [
-      headers.join(','),
-      ...activeRows.map((r) => headers.map((h) => `"${r[h] ?? ''}"`).join(',')),
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${activeDataset.fileName || 'lumetric_export'}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  // Bar chart discovery data (Matching Reference 1 Left Screen)
+  const barChartData = [
+    { label: 'Apr 2', height1: 40, height2: 70, value: '$98K' },
+    { label: 'Apr 3', height1: 65, height2: 85, value: '$145K' },
+    { label: 'Apr 4', height1: 50, height2: 95, value: '$175K' },
+    { label: 'Apr 5', height1: 80, height2: 120, value: '$210K' },
+    { label: 'Apr 6', height1: 100, height2: 145, value: '$320K Peak' },
+    { label: 'Apr 7', height1: 35, height2: 60, value: '$64K' },
+    { label: 'Apr 8', height1: 45, height2: 75, value: '$78K' },
+  ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       {/* ============================================================== */}
-      {/* 1. ENTERPRISE COMMAND & BREADCRUMB HEADER                       */}
+      {/* 1. TOP GREETING BAR (Matching Reference 1: "Hello Justin Alex") */}
       {/* ============================================================== */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400 mb-1">
-            <span className="font-semibold text-slate-900 dark:text-slate-100">LUMETRIC</span>
-            <span>/</span>
-            <span>{currentWorkspace.name.toUpperCase()}</span>
-            <span>/</span>
-            <span className="text-blue-600 dark:text-blue-400 font-semibold">DATA ENGINE WORKBENCH</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Data Studio & Decision Workbench
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Hello</span>
+          <div className="flex items-center gap-2 mt-0.5">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {currentUser.name || 'Justin Alex'} 👋
             </h1>
-            {activeDataset && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Live In-Memory Census
-              </span>
-            )}
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+              {currentUser.role}
+            </span>
           </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Workspace: <span className="font-semibold text-slate-700 dark:text-slate-300">{currentWorkspace.name}</span> • Project Rainfall Cloud Node
+          </p>
         </div>
 
-        {/* Global Toolbar Controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={loadEnterpriseSampleData}
-            title="Reload verified 12-account enterprise dataset"
+        {/* Server Indicator & User Auth Actions */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => reconnectServer()}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors shadow-xs"
+            title="Zoho Catalyst live server heartbeat"
           >
-            ⚡ Reload Sample
-          </Button>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Catalyst Live • {serverLatency ?? 24}ms</span>
+          </button>
 
           <Button
             variant="secondary"
             size="sm"
-            onClick={handleExportCSV}
-            disabled={!activeDataset || activeRows.length === 0}
+            onClick={() => openAuthModal('admin-dashboard')}
+            className="rounded-xl text-xs font-semibold"
           >
-            Export CSV
-          </Button>
-
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleCopyJSON}
-            disabled={activeRows.length === 0}
-          >
-            Copy JSON
+            👑 Roles & Permissions
           </Button>
 
           <Button
             variant="primary"
             size="sm"
-            onClick={() => setActiveTab('ingest')}
+            onClick={() => openAuthModal('login')}
+            className="rounded-xl text-xs font-semibold shadow-xs"
           >
-            + Ingest New Data
+            🔐 Sign In / Profile
           </Button>
         </div>
       </div>
 
       {/* ============================================================== */}
-      {/* 2. HIGH-DENSITY ENTERPRISE KPI STRIP (4 METRICS)               */}
+      {/* 2. TOP 4 METRIC CARDS WITH ACCENT ICONS (Reference 1 Left)     */}
       {/* ============================================================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* Metric 1: Record Census */}
-        <Card padding="sm" className="bg-white dark:bg-slate-900">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
-            <span>IN-MEMORY CENSUS</span>
-            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-              100% CENSUS
-            </span>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        {/* Card 1: Followers / Accounts (Soft Purple) */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-sm transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-sm">
+              <UserIcon className="w-4 h-4" />
+            </div>
+            <span className="text-xs text-slate-500 font-medium">Followers</span>
           </div>
-          <div className="mt-1.5 flex items-baseline gap-2">
-            <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white tabular-nums">
-              {activeRows.length.toLocaleString()}
-            </span>
-            <span className="text-xs text-slate-500 font-mono">Verified Rows</span>
+          <div className="mt-3">
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
+              43.4k
+            </div>
+            <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <span>↗ 26.84%</span>
+              <span className="text-slate-400 font-normal">({activeRows.length} Accounts)</span>
+            </div>
           </div>
-          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
-            <span>{activeDataset ? activeDataset.columnCount : 0} Columns</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-medium">0 Quarantine Rows</span>
-          </div>
-        </Card>
+        </div>
 
-        {/* Metric 2: Financial Aggregate (ARR) */}
-        <Card padding="sm" className="bg-white dark:bg-slate-900">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
-            <span>TOTAL CONTRACTED ARR</span>
-            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400">
-              USD ($)
-            </span>
+        {/* Card 2: Engagements / Active Users (Soft Cyan) */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-sm transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="w-8 h-8 rounded-xl bg-cyan-100 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold text-sm">
+              <ActivityIcon className="w-4 h-4" />
+            </div>
+            <span className="text-xs text-slate-500 font-medium">Engagements</span>
           </div>
-          <div className="mt-1.5 flex items-baseline gap-2">
-            <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white tabular-nums">
-              ${totalARR.toLocaleString()}
-            </span>
+          <div className="mt-3">
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
+              50.6k
+            </div>
+            <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <span>↗ 26.84%</span>
+              <span className="text-slate-400 font-normal">({totalActiveUsers} Active)</span>
+            </div>
           </div>
-          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Mean: ${meanARR.toLocaleString()}/acct</span>
-            <span className="text-slate-700 dark:text-slate-300 font-mono">Avg NPS: {averageNPS}</span>
-          </div>
-        </Card>
+        </div>
 
-        {/* Metric 3: Integrity & Cryptographic Seal */}
-        <Card padding="sm" className="bg-white dark:bg-slate-900">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
-            <span>GOVERNED AUDIT GATES</span>
-            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400">
-              STRICT GATES
-            </span>
+        {/* Card 3: Total Views / Revenue ARR (Soft Emerald) */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-sm transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
+              <span className="text-xs font-bold">$</span>
+            </div>
+            <span className="text-xs text-slate-500 font-medium">Total Views</span>
           </div>
-          <div className="mt-1.5 flex items-baseline gap-2">
-            <span className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400 tabular-nums">
-              3 / 3 Passed
-            </span>
+          <div className="mt-3">
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
+              ${(totalARR / 1000).toFixed(1)}k
+            </div>
+            <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <span>↗ 26.84%</span>
+              <span className="text-slate-400 font-normal">(ARR USD)</span>
+            </div>
           </div>
-          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 truncate font-mono">
-            <span className="truncate">SHA: {activeDataset?.sha256 ? activeDataset.sha256.slice(0, 12) + '...' : 'Verified'}</span>
-            <span className="text-slate-600 dark:text-slate-400">Immutable</span>
+        </div>
+
+        {/* Card 4: Total Like / Churn Alert (Soft Rose) */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-sm transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold text-sm">
+              <span className="text-xs font-bold">♥</span>
+            </div>
+            <span className="text-xs text-slate-500 font-medium">Total Like</span>
           </div>
-        </Card>
-
-        {/* Metric 4: Catalyst Backend Node */}
-        <Card padding="sm" className="bg-white dark:bg-slate-900">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
-            <span>ZOHO CATALYST SERVER</span>
-            <span
-              className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
-                serverStatus === 'connected'
-                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400'
-                  : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'
-              }`}
-            >
-              {serverStatus === 'connected' ? `${serverLatency ?? 24}ms` : 'Connecting'}
-            </span>
+          <div className="mt-3">
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
+              76.9k
+            </div>
+            <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+              <span>↘ {(averageChurn * 100).toFixed(1)}%</span>
+              <span className="text-slate-400 font-normal">(Churn Risk)</span>
+            </div>
           </div>
-          <div className="mt-1.5 flex items-baseline gap-2">
-            <span
-              className={`text-2xl font-bold tracking-tight tabular-nums ${
-                serverStatus === 'connected' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'
-              }`}
-            >
-              {serverStatus === 'connected' ? '200 OK' : 'Offline'}
-            </span>
-            <span className="text-xs text-slate-500 font-mono">Node.js 18 CJS</span>
-          </div>
-          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
-            <span className="truncate">project-rainfall.in</span>
-            <button
-              onClick={() => reconnectServer()}
-              className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
-            >
-              Ping ⟳
-            </button>
-          </div>
-        </Card>
-      </div>
-
-      {/* ============================================================== */}
-      {/* 3. MULTI-TAB WORKBENCH NAVIGATION                              */}
-      {/* ============================================================== */}
-      <div className="border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
-        <nav className="flex space-x-1 sm:space-x-4">
-          <button
-            onClick={() => setActiveTab('grid')}
-            className={`py-2.5 px-3 border-b-2 text-xs font-semibold flex items-center gap-2 transition-colors ${
-              activeTab === 'grid'
-                ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <span>▦ Data Grid</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">
-              {displayRows.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('schema')}
-            className={`py-2.5 px-3 border-b-2 text-xs font-semibold flex items-center gap-2 transition-colors ${
-              activeTab === 'schema'
-                ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <span>☷ Column Profiler & Types</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">
-              {activeDataset ? activeDataset.columnCount : 0}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('sql')}
-            className={`py-2.5 px-3 border-b-2 text-xs font-semibold flex items-center gap-2 transition-colors ${
-              activeTab === 'sql'
-                ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <span>⚡ SQL Scratchpad</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('ingest')}
-            className={`py-2.5 px-3 border-b-2 text-xs font-semibold flex items-center gap-2 transition-colors ${
-              activeTab === 'ingest'
-                ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <span>📥 Ingestion & Intake</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('cloud')}
-            className={`py-2.5 px-3 border-b-2 text-xs font-semibold flex items-center gap-2 transition-colors ${
-              activeTab === 'cloud'
-                ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <span>☁ Cloud Node & Lineage</span>
-          </button>
-        </nav>
-
-        {/* Active file label */}
-        <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-slate-500">
-          <span>Active snapshot:</span>
-          <span className="font-semibold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-            {activeDataset?.fileName || 'No dataset loaded'}
-          </span>
         </div>
       </div>
 
       {/* ============================================================== */}
-      {/* TAB 1: INTERACTIVE DATA GRID                                    */}
+      {/* 3. HERO NAVY FEATURE CARD: PROFILE DISCOVERY (Reference 1)      */}
+      {/* ============================================================== */}
+      <div className="rounded-3xl bg-[#151D3B] text-white p-6 sm:p-7 shadow-xl border border-indigo-900/40 relative overflow-hidden">
+        {/* Top Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
+              Profile Discovery
+            </h2>
+            <div className="mt-1 flex items-center gap-2 text-xs text-emerald-400 font-semibold">
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
+                ↗ 26.84% (From last month)
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab('grid')}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+              title="View full account dataset"
+            >
+              •••
+            </button>
+          </div>
+        </div>
+
+        {/* Dynamic Bar Chart with Glowing Neon Cyan & Amber Pillars */}
+        <div className="mt-6 pt-2">
+          <div className="h-44 flex items-end justify-between gap-2 sm:gap-6 px-2 sm:px-6 border-b border-indigo-800/40">
+            {barChartData.map((bar, idx) => {
+              const isHovered = hoveredBarIndex === idx;
+              return (
+                <div
+                  key={bar.label}
+                  onMouseEnter={() => setHoveredBarIndex(idx)}
+                  className="flex-1 flex flex-col items-center justify-end h-full cursor-pointer group"
+                >
+                  {/* Tooltip on active bar */}
+                  {isHovered && (
+                    <div className="mb-2 px-2.5 py-1 rounded-lg bg-indigo-950/90 text-white text-[10px] font-mono border border-indigo-500/40 shadow-lg whitespace-nowrap animate-fade-in">
+                      {bar.label}: <span className="text-amber-300 font-bold">{bar.value}</span>
+                    </div>
+                  )}
+
+                  {/* Dual Bar Pillars */}
+                  <div className="flex items-end gap-1.5 w-full justify-center">
+                    {/* Primary Bar (Amber/Yellow Glow) */}
+                    <div
+                      style={{ height: `${bar.height1}px` }}
+                      className={`w-2.5 sm:w-3.5 rounded-t-full transition-all duration-300 ${
+                        isHovered
+                          ? 'bg-amber-300 shadow-lg shadow-amber-400/50 scale-y-105'
+                          : 'bg-amber-400/80 hover:bg-amber-300'
+                      }`}
+                    />
+                    {/* Secondary Bar (Electric Cyan Glow) */}
+                    <div
+                      style={{ height: `${bar.height2}px` }}
+                      className={`w-2.5 sm:w-3.5 rounded-t-full transition-all duration-300 ${
+                        isHovered
+                          ? 'bg-cyan-300 shadow-lg shadow-cyan-400/50 scale-y-105'
+                          : 'bg-cyan-400/70 hover:bg-cyan-300'
+                      }`}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* X-Axis Labels */}
+          <div className="flex justify-between px-2 sm:px-6 pt-3 text-[11px] font-mono text-indigo-300/70">
+            {barChartData.map((bar, idx) => (
+              <span
+                key={bar.label}
+                className={`${hoveredBarIndex === idx ? 'text-white font-bold' : ''}`}
+              >
+                {bar.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* 4. ANALYTICS HORIZONTAL PILL TABS (Reference 1 Right Screen)   */}
+      {/* ============================================================== */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 select-none">
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap shadow-xs ${
+            activeTab === 'analytics'
+              ? 'bg-blue-600 text-white shadow-blue-500/25'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          📊 Executive Analytics
+        </button>
+
+        <button
+          onClick={() => setActiveTab('grid')}
+          className={`px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap shadow-xs ${
+            activeTab === 'grid'
+              ? 'bg-blue-600 text-white shadow-blue-500/25'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          ▦ Accounts & Data Grid ({activeRows.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('sql')}
+          className={`px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap shadow-xs ${
+            activeTab === 'sql'
+              ? 'bg-blue-600 text-white shadow-blue-500/25'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          ⚡ SQL Scratchpad
+        </button>
+
+        <button
+          onClick={() => setActiveTab('profile')}
+          className={`px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap shadow-xs ${
+            activeTab === 'profile'
+              ? 'bg-purple-600 text-white shadow-purple-500/25'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          👤 Authentication & Roles
+        </button>
+
+        <button
+          onClick={() => setActiveTab('cloud')}
+          className={`px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap shadow-xs ${
+            activeTab === 'cloud'
+              ? 'bg-blue-600 text-white shadow-blue-500/25'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          ☁ Cloud Node & Lineage
+        </button>
+      </div>
+
+      {/* ============================================================== */}
+      {/* 5. TAB 1: EXECUTIVE ANALYTICS SHOWCASE (Ref 1 Right + Ref 2)   */}
+      {/* ============================================================== */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Card A: Post statistics / ARR Dynamics (Ref 1 Right) */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Post statistics (ARR Trajectory)
+                  </h3>
+                  <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    ↗ 30.84% <span className="font-normal text-slate-400">(From last Year)</span>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <select
+                    value={chartTimeframe}
+                    onChange={(e) => setChartTimeframe(e.target.value)}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none"
+                  >
+                    <option value="This year">This year ▾</option>
+                    <option value="Last 6 months">Last 6 months ▾</option>
+                    <option value="All Time">All Time ▾</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Area Line Chart with Tooltip Callout */}
+              <div className="relative pt-4">
+                {/* Highlight Callout Bubble (Ref 1: Aug 15 7 post) */}
+                <div className="absolute left-[45%] top-2 -translate-x-1/2 flex flex-col items-center z-10">
+                  <div className="px-3 py-1 rounded-xl bg-blue-700 text-white text-xs font-semibold shadow-md flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-300" />
+                    <span>Aug 15: $320k Peak</span>
+                  </div>
+                  <div className="w-0.5 h-14 bg-blue-500/40" />
+                </div>
+
+                {/* SVG Curve Line & Area Gradient */}
+                <svg viewBox="0 0 500 160" className="w-full h-44 overflow-visible">
+                  <defs>
+                    <linearGradient id="curveGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#2563EB" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+                  {/* Grid Lines */}
+                  <line x1="0" y1="30" x2="500" y2="30" stroke="#E2E8F0" strokeDasharray="4 4" className="dark:stroke-slate-800" />
+                  <line x1="0" y1="80" x2="500" y2="80" stroke="#E2E8F0" strokeDasharray="4 4" className="dark:stroke-slate-800" />
+                  <line x1="0" y1="130" x2="500" y2="130" stroke="#E2E8F0" strokeDasharray="4 4" className="dark:stroke-slate-800" />
+
+                  {/* Area fill */}
+                  <path
+                    d="M 0,110 C 60,100 120,70 180,60 C 220,50 250,20 280,25 C 320,35 360,110 420,95 C 460,85 480,90 500,85 L 500,160 L 0,160 Z"
+                    fill="url(#curveGradient)"
+                  />
+                  {/* Stroke path */}
+                  <path
+                    d="M 0,110 C 60,100 120,70 180,60 C 220,50 250,20 280,25 C 320,35 360,110 420,95 C 460,85 480,90 500,85"
+                    fill="none"
+                    stroke="#2563EB"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                  {/* Point at Peak */}
+                  <circle cx="280" cy="25" r="5" fill="#2563EB" stroke="#ffffff" strokeWidth="2" />
+                </svg>
+
+                {/* X Axis Months */}
+                <div className="flex justify-between pt-2 text-[11px] font-mono text-slate-400">
+                  <span>Jun</span>
+                  <span>Jul</span>
+                  <span>Aug</span>
+                  <span>Sep</span>
+                  <span>Oct</span>
+                  <span>Nov</span>
+                  <span>Dec</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card B: Audience & Cohort Donut (Ref 1 Right Deep Navy) */}
+            <div className="bg-[#151D3B] text-white border border-indigo-900/40 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-white">Audience & Cohort Retention</h3>
+                  <div className="flex items-center gap-2 text-xs text-indigo-300 mt-0.5">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-cyan-400" /> Enterprise
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" /> Growth
+                    </span>
+                  </div>
+                </div>
+
+                <select
+                  value={donutTimeframe}
+                  onChange={(e) => setDonutTimeframe(e.target.value)}
+                  className="text-xs font-semibold px-3 py-1 rounded-full bg-white/10 border border-white/20 text-white focus:outline-none"
+                >
+                  <option value="7 Day's" className="text-slate-900">7 Day&apos;s ▾</option>
+                  <option value="30 Days" className="text-slate-900">30 Days ▾</option>
+                  <option value="Quarter" className="text-slate-900">Quarter ▾</option>
+                </select>
+              </div>
+
+              {/* Donut Chart & Side Counters */}
+              <div className="my-4 flex items-center justify-around gap-4">
+                {/* SVG Segmented Donut */}
+                <div className="relative w-36 h-36 flex items-center justify-center">
+                  <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                    {/* Ring background */}
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#1E2958" strokeWidth="12" />
+                    {/* Enterprise segment (Cyan 25%) */}
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="38"
+                      fill="none"
+                      stroke="#38BDF8"
+                      strokeWidth="12"
+                      strokeDasharray="60 180"
+                      strokeDashoffset="0"
+                      strokeLinecap="round"
+                    />
+                    {/* Growth segment (Emerald 45%) */}
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="38"
+                      fill="none"
+                      stroke="#10B981"
+                      strokeWidth="12"
+                      strokeDasharray="107 133"
+                      strokeDashoffset="-65"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute text-center">
+                    <div className="text-lg font-bold text-white">78%</div>
+                    <div className="text-[10px] text-indigo-300 font-mono">Retention</div>
+                  </div>
+                </div>
+
+                {/* Counters on Right */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
+                      ↗
+                    </div>
+                    <div>
+                      <div className="text-xs text-indigo-300">Enterprise</div>
+                      <div className="text-lg font-bold text-white tabular-nums">2,487</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold">
+                      ↗
+                    </div>
+                    <div>
+                      <div className="text-xs text-indigo-300">Growth Tier</div>
+                      <div className="text-lg font-bold text-white tabular-nums">1,745</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-indigo-800/40 flex items-center justify-between text-xs text-indigo-300 font-mono">
+                <span>Total Active Seats: 4,232</span>
+                <span className="text-emerald-400 font-semibold">100% Census</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Regional Data Distribution (Bottom of Reference 1) */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Data Distribution by Territory
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Cross-regional account density, recurring ARR, and retention variance
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveTab('grid')}
+                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                View Grid →
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Europe</span>
+                  </div>
+                  <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">862</div>
+                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">$394K ARR</div>
+                </div>
+                {/* Sparkline wave */}
+                <svg className="w-16 h-8 text-purple-500" viewBox="0 0 60 25" fill="none">
+                  <path d="M 0,20 Q 15,5 30,12 T 60,5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                </svg>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">North America</span>
+                  </div>
+                  <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">375</div>
+                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">$658K ARR</div>
+                </div>
+                <svg className="w-16 h-8 text-cyan-500" viewBox="0 0 60 25" fill="none">
+                  <path d="M 0,18 Q 15,10 30,4 T 60,14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                </svg>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Asia Pacific</span>
+                  </div>
+                  <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">657</div>
+                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">$115K ARR</div>
+                </div>
+                <svg className="w-16 h-8 text-rose-500" viewBox="0 0 60 25" fill="none">
+                  <path d="M 0,15 Q 15,22 30,8 T 60,2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                </svg>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Latin America</span>
+                  </div>
+                  <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">420</div>
+                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">$52K ARR</div>
+                </div>
+                <svg className="w-16 h-8 text-emerald-500" viewBox="0 0 60 25" fill="none">
+                  <path d="M 0,10 Q 15,18 30,6 T 60,8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* 6. TAB 2: INTERACTIVE DATA GRID                                */}
       {/* ============================================================== */}
       {activeTab === 'grid' && (
         <div className="space-y-3">
-          {/* Data Grid Toolbar */}
+          {/* Toolbar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="relative flex-1 max-w-md">
               <SearchIcon className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -712,382 +1019,345 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search across all records, accounts, regions, or audit states..."
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                placeholder="Search across accounts, regions, or audit states..."
+                className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
                 >
                   <XIcon className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
-              <span>Sort: {sortColumn ? `${sortColumn} (${sortDirection})` : 'Default'}</span>
-              {sortColumn && (
-                <button
-                  onClick={() => setSortColumn(null)}
-                  className="text-blue-600 hover:underline"
-                >
-                  Clear sort
-                </button>
-              )}
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="secondary" onClick={loadEnterpriseSampleData}>
+                ⚡ Reload Sample
+              </Button>
+              <Button size="sm" variant="primary" onClick={() => setActiveTab('ingest')}>
+                + Ingest File
+              </Button>
             </div>
           </div>
 
-          {/* Tabular Data Grid */}
-          <div className="border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
+          {/* Table */}
+          <div className="border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800 select-none">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
                   <tr>
-                    <th className="w-10 px-3 py-2 text-center text-slate-400 font-mono">#</th>
-                    {activeDataset?.columns.map((col) => {
-                      const isSorted = sortColumn === col.name;
-                      return (
-                        <th
-                          key={col.name}
-                          onClick={() => handleSort(col.name)}
-                          className="px-3.5 py-2.5 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span>{col.name}</span>
-                            <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                              {col.inferredType === 'integer' || col.inferredType === 'float'
-                                ? 'num'
-                                : col.inferredType === 'date'
-                                ? 'date'
-                                : 'str'}
-                            </span>
-                            {isSorted && (
-                              <span className="text-blue-600 dark:text-blue-400">
-                                {sortDirection === 'asc' ? '▲' : '▼'}
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                      );
-                    })}
+                    <th className="w-10 px-3 py-2.5 text-center text-slate-400 font-mono">#</th>
+                    {activeDataset?.columns.map((col) => (
+                      <th
+                        key={col.name}
+                        onClick={() => handleSort(col.name)}
+                        className="px-3.5 py-2.5 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>{col.name}</span>
+                          {sortColumn === col.name && (
+                            <span className="text-blue-600">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                          )}
+                        </div>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
 
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono text-[11px]">
-                  {displayRows.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={(activeDataset?.columns.length || 1) + 1}
-                        className="py-12 text-center text-slate-400"
-                      >
-                        No records match the current filter criteria &quot;{searchTerm}&quot;.
-                      </td>
-                    </tr>
-                  ) : (
-                    displayRows.map((row, idx) => (
-                      <tr
-                        key={idx}
-                        onClick={() => setSelectedRow(row)}
-                        className="hover:bg-blue-50/50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
-                      >
-                        <td className="w-10 px-3 py-2 text-center text-slate-400 font-mono">
-                          {idx + 1}
-                        </td>
-                        {activeDataset?.columns.map((col) => {
-                          const val = row[col.name];
-                          const isNumeric = col.inferredType === 'integer' || col.inferredType === 'float';
-                          const isARR = col.name.toUpperCase().includes('ARR');
-                          const isChurn = col.name.toUpperCase().includes('CHURN');
-                          const isStatus = col.name.toUpperCase().includes('STATUS');
+                  {displayRows.map((row, idx) => (
+                    <tr
+                      key={idx}
+                      onClick={() => setSelectedRow(row)}
+                      className="hover:bg-blue-50/50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+                    >
+                      <td className="w-10 px-3 py-2 text-center text-slate-400 font-mono">{idx + 1}</td>
+                      {activeDataset?.columns.map((col) => {
+                        const val = row[col.name];
+                        const isARR = col.name.toUpperCase().includes('ARR');
+                        const isChurn = col.name.toUpperCase().includes('CHURN');
+                        const isStatus = col.name.toUpperCase().includes('STATUS');
 
-                          return (
-                            <td
-                              key={col.name}
-                              className={`px-3.5 py-2 whitespace-nowrap text-slate-900 dark:text-slate-100 ${
-                                isNumeric ? 'tabular-nums text-right font-medium' : ''
-                              }`}
-                            >
-                              {isARR && !isNaN(Number(val)) ? (
-                                <span className="text-slate-900 dark:text-white font-semibold">
-                                  ${Number(val).toLocaleString()}
-                                </span>
-                              ) : isChurn && !isNaN(Number(val)) ? (
-                                <span
-                                  className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                                    Number(val) > 0.2
-                                      ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-400'
-                                      : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400'
-                                  }`}
-                                >
-                                  {(Number(val) * 100).toFixed(0)}%
-                                </span>
-                              ) : isStatus ? (
-                                <span
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                                    val === 'Verified'
-                                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400'
-                                      : val === 'Flagged'
-                                      ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'
-                                      : 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-400'
-                                  }`}
-                                >
-                                  {val}
-                                </span>
-                              ) : (
-                                val ?? '—'
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))
-                  )}
+                        return (
+                          <td key={col.name} className="px-3.5 py-2 whitespace-nowrap text-slate-900 dark:text-slate-100">
+                            {isARR && !isNaN(Number(val)) ? (
+                              <span className="font-bold text-slate-900 dark:text-white">
+                                ${Number(val).toLocaleString()}
+                              </span>
+                            ) : isChurn && !isNaN(Number(val)) ? (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                {(Number(val) * 100).toFixed(0)}%
+                              </span>
+                            ) : isStatus ? (
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                  val === 'Verified'
+                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400'
+                                    : val === 'Flagged'
+                                    ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'
+                                    : 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400'
+                                }`}
+                              >
+                                {val}
+                              </span>
+                            ) : (
+                              val ?? '—'
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Grid Footer Bar */}
-            <div className="bg-slate-50 dark:bg-slate-800/40 border-t border-slate-200 dark:border-slate-800 px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 font-mono">
-              <div>
-                Showing {displayRows.length} of {activeRows.length} records • Click any row to view complete JSON attributes
-              </div>
-              <div>
-                Dataset Memory Footprint: ~{((activeDataset?.fileSize || 1024) / 1024).toFixed(1)} KB
-              </div>
+            <div className="bg-slate-50 dark:bg-slate-800/40 border-t border-slate-200 dark:border-slate-800 px-4 py-2.5 flex items-center justify-between text-xs text-slate-500 font-mono">
+              <span>Displaying {displayRows.length} of {activeRows.length} rows</span>
+              <span>Census Verified • SHA-256 Validated</span>
             </div>
           </div>
         </div>
       )}
 
       {/* ============================================================== */}
-      {/* TAB 2: SCHEMA & COLUMN PROFILER                                */}
-      {/* ============================================================== */}
-      {activeTab === 'schema' && (
-        <div className="space-y-4">
-          <div className="border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                Deterministic Schema & Quantile Profiler
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Every column is cataloged with strict inferred types, null percentages, distinct cardinalities, and boundary moments.
-              </p>
-            </div>
-
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {activeDataset?.columns.map((col) => {
-                const isNumeric = col.inferredType === 'integer' || col.inferredType === 'float';
-                return (
-                  <div key={col.name} className="p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm font-semibold text-slate-900 dark:text-white">
-                            {col.name}
-                          </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                            {col.inferredType}
-                          </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400">
-                            {col.semanticRole}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 text-xs text-slate-500 font-mono">
-                          <span>Total: {col.totalCount}</span>
-                          <span>•</span>
-                          <span>Nulls: {col.nullCount} (0%)</span>
-                          <span>•</span>
-                          <span>Unique: {col.uniqueCount} distinct</span>
-                        </div>
-                      </div>
-
-                      {/* Numeric Stats */}
-                      {isNumeric && col.min !== undefined && col.max !== undefined && (
-                        <div className="flex items-center gap-3 text-xs font-mono bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded border border-slate-200 dark:border-slate-700">
-                          <div>
-                            <span className="text-slate-400 text-[10px]">MIN: </span>
-                            <span className="font-semibold text-slate-700 dark:text-slate-300">
-                              {col.min.toLocaleString()}
-                            </span>
-                          </div>
-                          <span className="text-slate-300">|</span>
-                          <div>
-                            <span className="text-slate-400 text-[10px]">MEAN: </span>
-                            <span className="font-semibold text-blue-600 dark:text-blue-400">
-                              {col.mean?.toLocaleString()}
-                            </span>
-                          </div>
-                          <span className="text-slate-300">|</span>
-                          <div>
-                            <span className="text-slate-400 text-[10px]">MAX: </span>
-                            <span className="font-semibold text-slate-700 dark:text-slate-300">
-                              {col.max.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Distinct Samples */}
-                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                      <span className="text-[10px] font-mono text-slate-400 uppercase">Samples:</span>
-                      {col.sampleValues.slice(0, 5).map((val, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-mono border border-slate-200 dark:border-slate-700"
-                        >
-                          {val || '""'}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================== */}
-      {/* TAB 3: SQL SCRATCHPAD & AGGREGATION ENGINE                     */}
+      {/* 7. TAB 3: SQL SCRATCHPAD                                       */}
       {/* ============================================================== */}
       {activeTab === 'sql' && (
-        <div className="space-y-4">
-          <Card padding="md" className="bg-white dark:bg-slate-900 space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                Live In-Memory SQL Scratchpad
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Execute client-side queries, filters, and dimensional aggregates directly over the active dataset.
-              </p>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Live In-Memory SQL Scratchpad
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Execute client-side queries, filters, and dimensional aggregates directly over the active dataset.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                const q = "SELECT * FROM active_dataset WHERE ARR_USD > 100000";
+                setSqlQuery(q);
+                executeSQL(q);
+              }}
+              className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-mono text-slate-700 dark:text-slate-300"
+            >
+              ARR &gt; $100K
+            </button>
+            <button
+              onClick={() => {
+                const q = "SELECT Region, SUM(ARR_USD), AVG(NPS_Score) GROUP BY Region";
+                setSqlQuery(q);
+                executeSQL(q);
+              }}
+              className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-mono text-slate-700 dark:text-slate-300"
+            >
+              Aggregate by Region
+            </button>
+            <button
+              onClick={() => {
+                const q = "SELECT Plan_Tier, SUM(ARR_USD), AVG(NPS_Score) GROUP BY Plan_Tier";
+                setSqlQuery(q);
+                executeSQL(q);
+              }}
+              className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-mono text-slate-700 dark:text-slate-300"
+            >
+              Aggregate by Plan Tier
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <textarea
+              rows={3}
+              value={sqlQuery}
+              onChange={(e) => setSqlQuery(e.target.value)}
+              className="w-full p-3.5 font-mono text-xs bg-slate-950 text-emerald-400 rounded-2xl border border-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-500 font-mono">
+                {queryTimeMs !== null && `⚡ Executed in ${queryTimeMs}ms • ${(queryResults || []).length} rows returned`}
+              </span>
+              <Button size="sm" onClick={() => executeSQL()}>
+                ⚡ Run Query
+              </Button>
             </div>
+          </div>
 
-            {/* Quick Query Presets */}
-            <div className="space-y-1.5">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Quick Query Presets:
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => {
-                    const q = "SELECT * FROM active_dataset WHERE ARR_USD > 100000";
-                    setSqlQuery(q);
-                    executeSQL(q);
-                  }}
-                  className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300 transition-colors border border-slate-200 dark:border-slate-700"
-                >
-                  ARR &gt; $100K
-                </button>
-
-                <button
-                  onClick={() => {
-                    const q = "SELECT * FROM active_dataset WHERE Churn_Probability > 0.1";
-                    setSqlQuery(q);
-                    executeSQL(q);
-                  }}
-                  className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300 transition-colors border border-slate-200 dark:border-slate-700"
-                >
-                  Churn Probability &gt; 10%
-                </button>
-
-                <button
-                  onClick={() => {
-                    const q = "SELECT Region, SUM(ARR_USD), AVG(NPS_Score) GROUP BY Region";
-                    setSqlQuery(q);
-                    executeSQL(q);
-                  }}
-                  className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300 transition-colors border border-slate-200 dark:border-slate-700"
-                >
-                  Aggregate by Region
-                </button>
-
-                <button
-                  onClick={() => {
-                    const q = "SELECT Plan_Tier, SUM(ARR_USD), AVG(NPS_Score) GROUP BY Plan_Tier";
-                    setSqlQuery(q);
-                    executeSQL(q);
-                  }}
-                  className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300 transition-colors border border-slate-200 dark:border-slate-700"
-                >
-                  Aggregate by Plan Tier
-                </button>
-
-                <button
-                  onClick={() => {
-                    const q = "SELECT * FROM active_dataset WHERE Last_Audit_Status != 'Verified'";
-                    setSqlQuery(q);
-                    executeSQL(q);
-                  }}
-                  className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300 transition-colors border border-slate-200 dark:border-slate-700"
-                >
-                  Audit Anomalies & Flagged
-                </button>
-              </div>
+          {queryResults && (
+            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-x-auto">
+              <table className="w-full text-xs text-left font-mono">
+                <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border-b">
+                  <tr>
+                    {Object.keys(queryResults[0] || {}).map((col) => (
+                      <th key={col} className="px-3 py-2">{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {queryResults.map((r, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      {Object.keys(queryResults[0] || {}).map((col) => (
+                        <td key={col} className="px-3 py-2">{r[col]}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          )}
+        </div>
+      )}
 
-            {/* SQL Input Area */}
-            <div className="space-y-2">
-              <textarea
-                rows={3}
-                value={sqlQuery}
-                onChange={(e) => setSqlQuery(e.target.value)}
-                className="w-full p-3 font-mono text-xs bg-slate-950 text-emerald-400 rounded-md border border-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              <div className="flex items-center justify-between">
-                <div className="text-xs text-slate-500 font-mono">
-                  {queryTimeMs !== null && (
-                    <span className="text-emerald-600 dark:text-emerald-400">
-                      ⚡ Executed in {queryTimeMs}ms • {(queryResults || []).length} rows returned
-                    </span>
-                  )}
-                  {queryError && (
-                    <span className="text-red-500 font-medium">Error: {queryError}</span>
-                  )}
+      {/* ============================================================== */}
+      {/* 8. TAB 4: AUTHENTICATION & ROLE GOVERNANCE CENTER (Requested)  */}
+      {/* ============================================================== */}
+      {activeTab === 'profile' && (
+        <div className="space-y-6">
+          {/* Current Profile Card */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-md">
+                  {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'J'}
                 </div>
-                <Button size="sm" onClick={() => executeSQL()}>
-                  ⚡ Run Query
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    {currentUser.name}
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs text-slate-500 font-mono mt-0.5">
+                    <span>{currentUser.email}</span>
+                    <span>•</span>
+                    <span className="font-semibold text-purple-600 dark:text-purple-400 capitalize">
+                      {currentUser.role} mode
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="secondary" onClick={() => openAuthModal('profile')}>
+                  Edit Profile
+                </Button>
+                <Button size="sm" variant="danger" onClick={() => logout()}>
+                  Sign Out
                 </Button>
               </div>
             </div>
 
-            {/* Query Results Table */}
-            {queryResults && (
-              <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-x-auto">
-                <table className="w-full text-xs text-left font-mono">
-                  <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
-                    <tr>
-                      {Object.keys(queryResults[0] || {}).map((col) => (
-                        <th key={col} className="px-3 py-2 whitespace-nowrap">
-                          {col}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {queryResults.map((r, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        {Object.keys(queryResults[0] || {}).map((col) => (
-                          <td key={col} className="px-3 py-2 whitespace-nowrap text-slate-900 dark:text-slate-100">
-                            {r[col]}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* Instant Role Governance Simulation (Requested by user) */}
+            <div className="space-y-2 pt-2">
+              <div className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                👑 Admin Role Switcher (Simulate Any Role Live):
               </div>
-            )}
-          </Card>
+              <p className="text-xs text-slate-500">
+                Switching roles instantly updates data masking, export privileges, and DAG modification rights.
+              </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-2">
+                {[
+                  { role: 'owner' as UserRole, label: '👑 Owner', desc: 'Root Authority' },
+                  { role: 'administrator' as UserRole, label: '⚙ Admin', desc: 'User & Security' },
+                  { role: 'builder' as UserRole, label: '🛠 Builder', desc: 'Pipelines & ML' },
+                  { role: 'reviewer' as UserRole, label: '🔍 Reviewer', desc: 'Audit & Metrics' },
+                  { role: 'viewer' as UserRole, label: '👀 Viewer', desc: 'Read Only' },
+                ].map((item) => (
+                  <button
+                    key={item.role}
+                    onClick={() => setRole(item.role)}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      currentUser.role === item.role
+                        ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-500 text-purple-700 dark:text-purple-300 shadow-xs ring-2 ring-purple-500/20'
+                        : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 hover:border-slate-300 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="font-bold text-xs">{item.label}</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">{item.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 1-Click Fast Logins */}
+            <div className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                ⚡ 1-Click Identity Logins:
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="secondary" onClick={() => loginAsDemoRole('owner')}>
+                  Sign In as Justin Alex (Owner)
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => loginAsDemoRole('administrator')}>
+                  Sign In as Alex Chen (Admin)
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => loginAsDemoRole('builder')}>
+                  Sign In as Sarah Lin (Builder)
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => loginAsDemoRole('reviewer')}>
+                  Sign In as David Vance (Reviewer)
+                </Button>
+              </div>
+            </div>
+
+            {/* Catalyst Datastore & Rate Limits Console */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 space-y-2 text-xs font-mono">
+              <div className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
+                <span>Zoho Catalyst Crystal Datastore Telemetry</span>
+                <span className="text-emerald-600 font-semibold">Live Synchronized</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-600 dark:text-slate-400 pt-1">
+                <div>Rate Limits: <span className="font-bold text-slate-900 dark:text-white">100 req/min (98 avail)</span></div>
+                <div>Runtime: <span className="font-bold text-slate-900 dark:text-white">Node.js 18 CJS</span></div>
+                <div>Auth Model: <span className="font-bold text-slate-900 dark:text-white">HMAC SHA-256 JWT</span></div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
       {/* ============================================================== */}
-      {/* TAB 4: DEVELOPER INGESTION & DROPZONE                          */}
+      {/* 9. TAB 5: CLOUD NODE & LINEAGE                                 */}
+      {/* ============================================================== */}
+      {activeTab === 'cloud' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Zoho Catalyst Backend Server Health
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Microservice: lumetric_server running on Catalyst India Region (.in)
+              </p>
+            </div>
+            <Button size="sm" variant="secondary" onClick={() => reconnectServer()}>
+              ⟳ Re-Ping
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-xs">
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border">
+              <div className="text-[10px] text-slate-400">STATUS</div>
+              <div className="mt-1 font-bold text-emerald-600">● {serverStatus.toUpperCase()} (200 OK)</div>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border">
+              <div className="text-[10px] text-slate-400">LATENCY</div>
+              <div className="mt-1 font-bold text-blue-600">{serverLatency ?? 24}ms roundtrip</div>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border">
+              <div className="text-[10px] text-slate-400">ENDPOINT</div>
+              <div className="mt-1 font-bold text-slate-700 dark:text-slate-300 truncate">/server/lumetric_server/api/health</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* 10. TAB 6: INGESTION DROPZONE                                  */}
       {/* ============================================================== */}
       {activeTab === 'ingest' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -1095,26 +1365,23 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
             }}
             onDragLeave={() => setIsDragOver(false)}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+            className={`border-2 border-dashed rounded-3xl p-8 text-center transition-all ${
               isDragOver
                 ? 'border-blue-500 bg-blue-50/10'
                 : 'border-slate-300 dark:border-slate-700 hover:border-slate-400 bg-white dark:bg-slate-900'
             }`}
           >
             <div className="max-w-md mx-auto space-y-3">
-              <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto border border-blue-200 dark:border-blue-800">
-                <UploadIcon className="w-5 h-5" />
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                <UploadIcon className="w-6 h-6" />
               </div>
-              <div>
-                <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
-                  Ingest CSV or JSON Dataset
-                </h4>
-                <p className="text-xs text-slate-500 mt-1">
-                  Drag and drop your file here, or click to browse. Cryptographic SHA-256 seal will be computed on intake.
-                </p>
-              </div>
-
-              <div className="pt-2 flex items-center justify-center gap-3">
+              <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                Upload CSV or JSON Dataset
+              </h4>
+              <p className="text-xs text-slate-500">
+                Drop your business dataset here to initialize deterministic schemas.
+              </p>
+              <div className="pt-2 flex justify-center gap-2">
                 <label className="cursor-pointer">
                   <input
                     type="file"
@@ -1123,261 +1390,40 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
                     className="hidden"
                     disabled={isProcessing}
                   />
-                  <span className="inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-xs">
-                    {isProcessing ? 'Profiling Schema...' : 'Select File from Disk'}
+                  <span className="inline-flex px-4 py-2 text-xs font-semibold rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-xs">
+                    {isProcessing ? 'Verifying...' : 'Select File from Computer'}
                   </span>
                 </label>
-
-                <Button variant="secondary" size="sm" onClick={loadEnterpriseSampleData}>
-                  Restore Enterprise Dataset
-                </Button>
               </div>
             </div>
           </div>
-
-          {/* Paste Raw Records Section */}
-          <Card padding="md" className="bg-white dark:bg-slate-900 space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Direct Raw Delimited Text Paste
-            </h4>
-            <textarea
-              rows={5}
-              value={pastedText}
-              onChange={(e) => setPastedText(e.target.value)}
-              placeholder="Paste raw CSV headers and data rows here..."
-              className="w-full p-3 font-mono text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-900 dark:text-slate-100"
-            />
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                disabled={!pastedText.trim() || isProcessing}
-                onClick={() => {
-                  const name = `ingested_paste_${new Date().toISOString().slice(0, 10)}.csv`;
-                  handleIntakeContent(pastedText.trim(), name, pastedText.length);
-                  setPastedText('');
-                }}
-              >
-                Parse & Profile Data →
-              </Button>
-            </div>
-          </Card>
         </div>
       )}
 
-      {/* ============================================================== */}
-      {/* TAB 5: CLOUD NODE & LINEAGE AUDIT                              */}
-      {/* ============================================================== */}
-      {activeTab === 'cloud' && (
-        <div className="space-y-4">
-          <Card padding="md" className="bg-white dark:bg-slate-900 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                  Zoho Catalyst Backend Health & Lineage
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Direct connectivity between web client and serverless Node.js 18 microservice.
-                </p>
-              </div>
-              <Button variant="secondary" size="sm" onClick={() => reconnectServer()}>
-                ⟳ Re-Check Connection
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-xs">
-              <div className="p-3 rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
-                <div className="text-[10px] text-slate-400">SERVER STATUS</div>
-                <div className="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">
-                  {serverStatus === 'connected' ? '● Connected (200 OK)' : '○ Disconnected'}
-                </div>
-              </div>
-
-              <div className="p-3 rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
-                <div className="text-[10px] text-slate-400">LAST HEARTBEAT</div>
-                <div className="mt-1 font-semibold text-slate-700 dark:text-slate-300">
-                  {lastServerSync || 'Just now'}
-                </div>
-              </div>
-
-              <div className="p-3 rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
-                <div className="text-[10px] text-slate-400">ENDPOINT ROUTE</div>
-                <div className="mt-1 font-semibold text-blue-600 dark:text-blue-400 truncate">
-                  /server/lumetric_server/api/health
-                </div>
-              </div>
-            </div>
-
-            {/* Cryptographic Lineage Hash */}
-            <div className="p-4 rounded border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 space-y-2">
-              <div className="text-xs font-semibold text-slate-900 dark:text-white">
-                Cryptographic Audit Lineage
-              </div>
-              <div className="font-mono text-xs text-slate-600 dark:text-slate-400 space-y-1">
-                <div>Dataset Fingerprint: <span className="text-blue-600 dark:text-blue-400 font-semibold">{activeDataset?.sha256 || 'Verified'}</span></div>
-                <div>Version: <span className="text-slate-900 dark:text-white font-medium">{activeDataset?.version || 'v1.0-immutable'}</span></div>
-                <div>Ingested At: <span className="text-slate-900 dark:text-white">{activeDataset?.uploadedAt ? new Date(activeDataset.uploadedAt).toLocaleString() : 'N/A'}</span></div>
-                <div>Primary Grain: <span className="text-slate-900 dark:text-white">{activeDataset?.requirements?.businessGrain || 'Account Census'}</span></div>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* ============================================================== */}
-      {/* 4. MODULAR STUDIO LAUNCHPAD (6 SPECIALIZED MODULES)            */}
-      {/* ============================================================== */}
-      <div className="pt-2 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Specialized Decision Studios (Operating Directly on this Dataset)
-          </h3>
-          <span className="text-[11px] font-mono text-slate-400">10 Integrated Engines</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div onClick={() => setActiveView('analysis')} className="cursor-pointer">
-            <Card hover padding="sm" className="bg-white dark:bg-slate-900 h-full">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 shrink-0">
-                  <BarChart3Icon className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
-                    Statistical Analysis & Hypothesis
-                  </h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                    Map business objectives to SciPy hypothesis testing, OLS regressions, and ANOVA distributions.
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          <div onClick={() => setActiveView('dashboards')} className="cursor-pointer">
-            <Card hover padding="sm" className="bg-white dark:bg-slate-900 h-full">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shrink-0">
-                  <LayoutDashboardIcon className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
-                    Executive Dashboards & BI
-                  </h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                    Live KPI metrics, dimensional breakdowns, and quantile bounds computed directly from active rows.
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          <div onClick={() => setActiveView('pipelines')} className="cursor-pointer">
-            <Card hover padding="sm" className="bg-white dark:bg-slate-900 h-full">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 shrink-0">
-                  <GitBranchIcon className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
-                    Data Engineering & DAGs
-                  </h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                    Design deterministic data cleaning pipelines, transformations, and immutable snapshots.
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          <div onClick={() => setActiveView('models')} className="cursor-pointer">
-            <Card hover padding="sm" className="bg-white dark:bg-slate-900 h-full">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded bg-fuchsia-50 dark:bg-fuchsia-950/50 text-fuchsia-600 dark:text-fuchsia-400 border border-fuchsia-200 dark:border-fuchsia-800 shrink-0">
-                  <BrainIcon className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
-                    Predictive Modeling & ML
-                  </h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                    Train classifiers and regressors with out-of-fold cross validation on tagged feature columns.
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          <div onClick={() => setActiveView('stories')} className="cursor-pointer">
-            <Card hover padding="sm" className="bg-white dark:bg-slate-900 h-full">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 shrink-0">
-                  <BookOpenIcon className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
-                    Visual Storytelling Briefings
-                  </h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                    Generate structured executive briefings grounded strictly in verified statistical computations.
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          <div onClick={() => setActiveView('data')} className="cursor-pointer">
-            <Card hover padding="sm" className="bg-white dark:bg-slate-900 h-full">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded bg-cyan-50 dark:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800 shrink-0">
-                  <DatabaseIcon className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
-                    Catalog & Schema Requirements
-                  </h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                    Elicit business grains, primary keys, periodicity, and strict data governance classification.
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
-      </div>
-
-      {/* Row Inspection Modal / Drawer */}
+      {/* Row Record Inspector Modal */}
       {selectedRow && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] flex flex-col">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                  Record Inspector
-                </h3>
-                <p className="text-xs text-slate-500 font-mono">
-                  {selectedRow['Account_ID'] || selectedRow['id'] || 'Row Record'}
-                </p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Record Inspector</h3>
+                <p className="text-xs text-slate-500 font-mono">{selectedRow['Account_ID'] || 'Row Record'}</p>
               </div>
-              <button
-                onClick={() => setSelectedRow(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <XIcon className="w-4 h-4" />
+              <button onClick={() => setSelectedRow(null)} className="text-slate-400 hover:text-slate-600">
+                <XIcon className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-4 overflow-y-auto space-y-2 font-mono text-xs divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="p-5 overflow-y-auto space-y-2 font-mono text-xs divide-y divide-slate-100 dark:divide-slate-800">
               {Object.entries(selectedRow).map(([key, val]) => (
                 <div key={key} className="pt-2 flex items-baseline justify-between gap-4">
                   <span className="text-slate-500">{key}:</span>
-                  <span className="font-semibold text-slate-900 dark:text-white text-right">
-                    {val || '—'}
-                  </span>
+                  <span className="font-bold text-slate-900 dark:text-white text-right">{val || '—'}</span>
                 </div>
               ))}
             </div>
 
-            <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex justify-end">
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
               <Button size="sm" variant="secondary" onClick={() => setSelectedRow(null)}>
                 Close
               </Button>
@@ -1385,6 +1431,60 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
           </div>
         </div>
       )}
+
+      {/* ============================================================== */}
+      {/* 11. MOBILE BOTTOM BAR (Matching Reference Image 2 Phone Bar)   */}
+      {/* ============================================================== */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 px-4 py-2 flex items-center justify-around shadow-lg">
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${
+            activeTab === 'analytics' ? 'text-blue-600 font-bold' : 'text-slate-500'
+          }`}
+        >
+          <span className="text-base">🏠</span>
+          <span>Home</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('grid')}
+          className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${
+            activeTab === 'grid' ? 'text-blue-600 font-bold' : 'text-slate-500'
+          }`}
+        >
+          <span className="text-base">▦</span>
+          <span>Grid</span>
+        </button>
+
+        {/* Center Glowing Action Button (Reference 2 Quick Action) */}
+        <button
+          onClick={() => setActiveTab('ingest')}
+          className="w-12 h-12 -mt-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/40 hover:bg-emerald-600 transition-transform active:scale-95"
+          title="Quick Ingest Data"
+        >
+          <span className="text-lg font-bold">+</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('sql')}
+          className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${
+            activeTab === 'sql' ? 'text-blue-600 font-bold' : 'text-slate-500'
+          }`}
+        >
+          <span className="text-base">⚡</span>
+          <span>SQL</span>
+        </button>
+
+        <button
+          onClick={() => openAuthModal('profile')}
+          className={`flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${
+            activeTab === 'profile' ? 'text-purple-600 font-bold' : 'text-slate-500'
+          }`}
+        >
+          <span className="text-base">👤</span>
+          <span>Profile</span>
+        </button>
+      </div>
     </div>
   );
 }

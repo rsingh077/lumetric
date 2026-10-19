@@ -45,11 +45,13 @@ export function Header() {
     serverLatency,
     lastServerSync,
     reconnectServer,
+    authModalOpen,
+    setAuthModalOpen,
+    authModalMode,
   } = useApp();
 
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [serverModalOpen, setServerModalOpen] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [newProjectModalOpen, setNewProjectModalOpen] = useState(false);
@@ -653,6 +655,7 @@ export function Header() {
       <UserAuthProfileModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
+        initialMode={authModalMode}
       />
     </>
   );

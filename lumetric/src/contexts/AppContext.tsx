@@ -57,6 +57,15 @@ interface AppContextType {
   // Notifications
   notifications: NotificationItem[];
   markNotificationRead: (id: string) => void;
+
+  // Authentication Modal & Profile Controls
+  authModalOpen: boolean;
+  setAuthModalOpen: (open: boolean) => void;
+  authModalMode: 'profile' | 'login' | 'register' | 'admin-dashboard';
+  openAuthModal: (mode?: 'profile' | 'login' | 'register' | 'admin-dashboard') => void;
+  closeAuthModal: () => void;
+  logout: () => Promise<void>;
+  loginAsDemoRole: (role: UserRole) => void;
 }
 
 const defaultUser: User = {
@@ -256,6 +265,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
+  const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
+  const [authModalMode, setAuthModalMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard'>('profile');
+
+  const openAuthModal = (mode: 'profile' | 'login' | 'register' | 'admin-dashboard' = 'login') => {
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
+  };
+
+  const closeAuthModal = () => {
+    setAuthModalOpen(false);
+  };
+
+  const logout = async () => {
+    await LumetricAuthService.logout();
+    setCurrentUser({
+      id: 'guest',
+      email: '',
+      name: 'Guest User',
+      role: 'viewer',
+      createdAt: new Date().toISOString()
+    });
+    setAuthModalMode('login');
+    setAuthModalOpen(true);
+  };
+
+  const loginAsDemoRole = (role: UserRole) => {
+    const roleProfiles: Record<UserRole, { name: string; email: string }> = {
+      owner: { name: 'Justin Alex', email: 'justin.alex@lumetric.dev' },
+      administrator: { name: 'Alex Chen', email: 'admin@lumetric.dev' },
+      builder: { name: 'Sarah Lin', email: 'builder@lumetric.dev' },
+      reviewer: { name: 'David Vance', email: 'reviewer@lumetric.dev' },
+      viewer: { name: 'Emma Watson', email: 'viewer@lumetric.dev' },
+    };
+    const profile = roleProfiles[role] || roleProfiles.owner;
+    const user: User = {
+      id: `usr-${role}-${Date.now().toString(36)}`,
+      name: profile.name,
+      email: profile.email,
+      role,
+      createdAt: new Date().toISOString(),
+    };
+    setCurrentUser(user);
+    LumetricAuthService.setSession(`demo_jwt_token_${role}_${Date.now()}`, {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+    });
+    setAuthModalOpen(false);
+  };
 
   // Server Connectivity & Reconnection State
   const [serverStatus, setServerStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
@@ -548,6 +608,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         lastServerSync,
         serverDetails,
         reconnectServer,
+        authModalOpen,
+        setAuthModalOpen,
+        authModalMode,
+        openAuthModal,
+        closeAuthModal,
+        logout,
+        loginAsDemoRole,
       }}
     >
       {children}
