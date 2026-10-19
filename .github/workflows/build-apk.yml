@@ -47,47 +47,39 @@ jobs:
       - name: Copy APK to Root for Direct Repo Download
         run: |
           cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric.apk
-          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.0.0.apk
+          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.0.1.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumetric-v2.0.0-debug-apk
-          path: Lumetric-v2.0.0.apk
+          name: lumetric-v2.0.1-debug-apk
+          path: Lumetric-v2.0.1.apk
 
-      - name: Create or Update GitHub Release v2.0.0
+      - name: Create or Update GitHub Release v2.0.1
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v2.0.0
-          name: "Lumetric v2.0.0 — Enterprise Fleet Analytics, 2FA, Real-Time Telemetry & AI Route Optimization"
+          tag_name: v2.0.1
+          name: "Lumetric v2.0.1 — Resolved Android WebView Hydration & Rapid Splash Transition"
           body: |
-            ### 🚀 Lumetric Mobile v2.0.0 Milestone Release
+            ### 🚀 Lumetric Mobile v2.0.1 Hotfix Release
 
-            #### 🔐 Enterprise Security & 2FA Governance
-            - **Two-Factor Authentication (2FA TOTP)**: Interactive QR code setup for Google Authenticator / 1Password via Zoho Catalyst with 6-digit TOTP verification.
-            - **Column-Level RBAC Data Masking**: Sensitive financial figures (`ARR_USD`, billing rates) are masked for non-owner roles.
-            - **Session Token Refresh**: Seamless session token renewal via `POST /api/auth/refresh`.
+            #### 🔧 Android WebView Hydration & Startup Fix
+            - **Reconciled Turbopack Chunk Resolution**: Removed path conflicts between Android Capacitor and Next.js Turbopack chunk resolver.
+            - **Native Asset Routing**: Android WebView loads clean root `/_next/` paths directly with zero chunk mismatches.
+            - **Rapid Splash Screen Auto-Transition**: Enhanced `SplashScreen.tsx` with smooth 1-second auto-transition, responsive tap-anywhere dismiss, and touch fallback.
 
-            #### 📡 Real-Time Fleet Telemetry & Event Automation
-            - **Dynamic Telemetry Stream**: Live speed (km/h), fuel %, engine temperature, cargo load, and checkpoint progression streamed from Zoho Catalyst (`lumetric_server`).
-            - **Automated Delay Alerting**: 1-click broadcast of route warnings anchored to the SHA-256 tamper-proof audit ledger.
-            - **Certified Digital Invoicing**: Automated billing receipt generation with HMAC-SHA256 signatures.
-
-            #### 📦 Offline-First Mobile Outbox Engine
-            - **Local Outbox Synchronization**: `OfflineSyncManager` buffers parcel scans and status changes offline with zero data loss.
-            - **Automatic Background Sync**: Auto-flushes pending actions when 4G/5G or Wi-Fi reconnects, with live visual indicator in header.
-
-            #### 🗺️ AI Multi-Stop Route Optimizer & Predictive Forecasting
-            - **Heuristic 2-Opt TSP Optimizer**: Solves French distribution hub route sequencing (Paris ➔ Auxerre ➔ Dijon ➔ Lyon ➔ Marseille), calculating -13.1% distance reduction, -37 L fuel savings, and 98 kg CO2 avoided.
-            - **Route Manifest Download**: 1-click export of the optimized stop sequence in CSV format.
-            - **30-Day Rolling Freight Forecast**: Bayesian demand curve with 95% confidence intervals and peak capacity surge alerts.
+            #### 🔐 Enterprise Features & Real-Time Sync
+            - **Two-Factor Authentication (2FA TOTP)**: Google Authenticator & 1Password support.
+            - **Real-Time Fleet Telemetry**: Live vehicle metrics (`⚡ 82 km/h`), automated 1-click delay alert dispatch to SHA-256 ledger.
+            - **AI Route Optimization**: 2-Opt TSP solver with downloadable manifest CSV.
+            - **Offline-First Outbox**: Background synchronization buffer.
 
             #### 📱 Direct Download
-            - **Direct APK Download (v2.0.0)**: [Lumetric-v2.0.0.apk](https://github.com/rsingh077/lumetric/releases/download/v2.0.0/Lumetric-v2.0.0.apk)
-            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.0.0/Lumetric.apk)
+            - **Direct APK Download (v2.0.1)**: [Lumetric-v2.0.1.apk](https://github.com/rsingh077/lumetric/releases/download/v2.0.1/Lumetric-v2.0.1.apk)
+            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.0.1/Lumetric.apk)
           files: |
             Lumetric.apk
-            Lumetric-v2.0.0.apk
+            Lumetric-v2.0.1.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

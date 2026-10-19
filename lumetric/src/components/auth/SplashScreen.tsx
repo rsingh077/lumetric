@@ -9,52 +9,60 @@ interface SplashScreenProps {
 }
 
 export function SplashScreen({ onComplete, serverStatus = 'connecting', serverLatency }: SplashScreenProps) {
-  const [progress, setProgress] = useState(20);
+  const [progress, setProgress] = useState(25);
   const [phaseText, setPhaseText] = useState('Démarrage du moteur logistique Lumetric...');
   const [showBypass, setShowBypass] = useState(false);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const completedRef = useRef(false);
 
   const handleEnter = () => {
-    onCompleteRef.current?.();
+    if (!completedRef.current) {
+      completedRef.current = true;
+      onCompleteRef.current?.();
+    }
   };
 
   useEffect(() => {
+    // 1. Smooth rapid progression
     const t1 = setTimeout(() => {
-      setProgress(45);
+      setProgress(55);
       setPhaseText('Connexion au Cloud Zoho Catalyst...');
-    }, 400);
+    }, 250);
 
     const t2 = setTimeout(() => {
-      setProgress(75);
+      setProgress(85);
       setPhaseText('Validation de session & synchronisation flotte...');
-    }, 900);
+    }, 600);
 
     const t3 = setTimeout(() => {
       setProgress(100);
       setPhaseText('Prêt. Lancement de Lumetric Studio...');
-    }, 1400);
-
-    const t4 = setTimeout(() => {
-      onCompleteRef.current?.();
-    }, 1800);
-
-    // Safety fallback: after 2.2s, show direct enter button if still on screen
-    const tBypass = setTimeout(() => {
       setShowBypass(true);
-    }, 2200);
+    }, 950);
+
+    // 2. Auto-enter once full
+    const t4 = setTimeout(() => {
+      handleEnter();
+    }, 1250);
+
+    // 3. Safety fallback timer: guarantee enter after 1.6s
+    const tFallback = setTimeout(() => {
+      handleEnter();
+    }, 1600);
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
       clearTimeout(t4);
-      clearTimeout(tBypass);
+      clearTimeout(tFallback);
     };
   }, []);
 
   return (
     <div
+      onClick={handleEnter}
       style={{
         position: 'fixed',
         inset: 0,
@@ -71,8 +79,9 @@ export function SplashScreen({ onComplete, serverStatus = 'connecting', serverLa
         padding: '24px',
         margin: 0,
         boxSizing: 'border-box',
+        cursor: 'pointer',
       }}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0B0F19] text-white select-none overflow-hidden"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0B0F19] text-white select-none overflow-hidden cursor-pointer"
     >
       {/* Background radial glow */}
       <div
@@ -189,24 +198,26 @@ export function SplashScreen({ onComplete, serverStatus = 'connecting', serverLa
 
       {/* Manual Enter / Bypass Button if needed */}
       <div style={{ minHeight: '44px', marginTop: '20px' }}>
-        {showBypass && (
-          <button
-            onClick={handleEnter}
-            style={{
-              padding: '8px 20px',
-              borderRadius: '9999px',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: '#FFFFFF',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            Accéder directement au Studio →
-          </button>
-        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEnter();
+          }}
+          style={{
+            padding: '8px 20px',
+            borderRadius: '9999px',
+            backgroundColor: showBypass ? 'rgba(244, 63, 94, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+            border: showBypass ? '1px solid rgba(244, 63, 94, 0.6)' : '1px solid rgba(255, 255, 255, 0.15)',
+            color: '#FFFFFF',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            opacity: showBypass ? 1 : 0.7,
+          }}
+        >
+          {showBypass ? 'Accéder au Studio →' : 'Chargement du Studio...'}
+        </button>
       </div>
 
       {/* Footer Info */}

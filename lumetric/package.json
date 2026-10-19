@@ -1,12 +1,12 @@
 {
   "name": "lumetric",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build && node scripts/postbuild.js",
-    "build:mobile": "next build && node scripts/postbuild.js && npx cap sync",
-    "cap:sync": "npx cap sync",
+    "build:mobile": "next build && node scripts/postbuild.js && npx cap sync && node scripts/postbuild.js",
+    "cap:sync": "npx cap sync && node scripts/postbuild.js",
     "cap:android": "npx cap open android",
     "cap:ios": "npx cap open ios",
     "start": "next start",

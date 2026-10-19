@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const outDir = path.join(__dirname, '..', 'out');
+const appOutDir = path.join(outDir, 'app');
 const androidPublicDir = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'assets', 'public');
 
 function copyDirRecursive(src, dest) {
@@ -21,43 +22,9 @@ function copyDirRecursive(src, dest) {
   }
 }
 
-function processHtmlDir(currentDir) {
-  if (!fs.existsSync(currentDir)) return;
-  const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+console.log('Starting Lumetric Postbuild & Dual-Platform Asset Routing Optimization...');
 
-  for (const entry of entries) {
-    const fullPath = path.join(currentDir, entry.name);
-    if (entry.isDirectory()) {
-      // Don't recursively re-process out/app to avoid double prefixes
-      if (entry.name === 'app') continue;
-      processHtmlDir(fullPath);
-    } else if (entry.isFile() && entry.name.endsWith('.html')) {
-      let html = fs.readFileSync(fullPath, 'utf8');
-
-      // Normalize any duplicate /app/app/ to single /app/
-      html = html.replace(/\/app\/app\//g, '/app/');
-
-      // Ensure /_next/ is prefixed with /app/_next/
-      html = html.replace(/(?<!\/app)\/_next\//g, '/app/_next/');
-
-      // Rewrite CSS stylesheet and script tags to /app/_next/
-      html = html.replace(/href="\/_next\//g, 'href="/app/_next/');
-      html = html.replace(/src="\/_next\//g, 'src="/app/_next/');
-      html = html.replace(/href="\/favicon.ico/g, 'href="/app/favicon.ico');
-
-      fs.writeFileSync(fullPath, html, 'utf8');
-      console.log('✓ Cleanly patched:', path.relative(__dirname, fullPath));
-    }
-  }
-}
-
-console.log('Starting Lumetric Postbuild & Asset Routing Optimization...');
-
-// 1. Process all HTML files in out/
-processHtmlDir(outDir);
-
-// 2. Mirror assets to out/app so requests to both /app/_next/ and /_next/ resolve with 200 OK
-const appOutDir = path.join(outDir, 'app');
+// 1. Prepare Catalyst mirror directory: out/app/
 if (!fs.existsSync(appOutDir)) {
   fs.mkdirSync(appOutDir, { recursive: true });
 }
@@ -66,12 +33,11 @@ if (!fs.existsSync(appOutDir)) {
 const nextSrc = path.join(outDir, '_next');
 const nextDest = path.join(appOutDir, '_next');
 if (fs.existsSync(nextSrc)) {
-  console.log('Copying _next to out/app/_next for dual-platform compatibility...');
   copyDirRecursive(nextSrc, nextDest);
-  console.log('✓ Mirrored _next to out/app/_next');
+  console.log('✓ Mirrored _next to out/app/_next for Catalyst');
 }
 
-// Copy favicon.ico to out/app/favicon.ico
+// Mirror favicon into out/app/
 const faviconSrc = path.join(outDir, 'favicon.ico');
 const faviconDest = path.join(appOutDir, 'favicon.ico');
 if (fs.existsSync(faviconSrc)) {
@@ -79,16 +45,43 @@ if (fs.existsSync(faviconSrc)) {
   console.log('✓ Mirrored favicon.ico to out/app/favicon.ico');
 }
 
-// Copy HTML files into out/app/
-const outEntries = fs.readdirSync(outDir, { withFileTypes: true });
-for (const entry of outEntries) {
-  if (entry.isFile() && entry.name.endsWith('.html')) {
-    fs.copyFileSync(path.join(outDir, entry.name), path.join(appOutDir, entry.name));
-  }
-}
-console.log('✓ Mirrored root HTML files into out/app/');
+// 2. Universal Turbopack base path injector
+// Allows Turbopack to dynamically identify chunks regardless of whether loaded from / or /app/
+const universalHeadInject = '<script>window.TURBOPACK_CHUNK_BASE_PATH = (typeof window !== "undefined" && window.location.pathname.startsWith("/app")) ? "/app/_next/" : "/_next/";</script>';
 
-// 3. Generate client-package.json for Catalyst
+// 3. Process root out/ HTML files
+// Keep native /_next/ root paths for Android Capacitor, while providing universal base path
+if (fs.existsSync(outDir)) {
+  const outEntries = fs.readdirSync(outDir, { withFileTypes: true });
+  for (const entry of outEntries) {
+    if (entry.isFile() && entry.name.endsWith('.html')) {
+      const fullPath = path.join(outDir, entry.name);
+      let html = fs.readFileSync(fullPath, 'utf8');
+
+      // Ensure clean /_next/ paths for Android
+      html = html.replace(/\/app\/_next\//g, '/_next/');
+      html = html.replace(/\/app\/favicon\.ico/g, '/favicon.ico');
+
+      // Inject Turbopack chunk base path before runtime scripts load
+      if (!html.includes('TURBOPACK_CHUNK_BASE_PATH')) {
+        html = html.replace('<head>', '<head>' + universalHeadInject);
+      }
+
+      fs.writeFileSync(fullPath, html, 'utf8');
+
+      // Also create Catalyst-specific copy in out/app/ with /app/_next/ paths
+      let catHtml = html;
+      catHtml = catHtml.replace(/(?<!\/app)\/_next\//g, '/app/_next/');
+      catHtml = catHtml.replace(/href="\/_next\//g, 'href="/app/_next/');
+      catHtml = catHtml.replace(/src="\/_next\//g, 'src="/app/_next/');
+      catHtml = catHtml.replace(/href="\/favicon.ico/g, 'href="/app/favicon.ico');
+      fs.writeFileSync(path.join(appOutDir, entry.name), catHtml, 'utf8');
+    }
+  }
+  console.log('✓ Processed root out/ (native /_next/) and out/app/ (Catalyst /app/_next/)');
+}
+
+// 4. Generate client-package.json for Catalyst
 const pkgInfo = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
 fs.writeFileSync(
   path.join(outDir, 'client-package.json'),
@@ -100,22 +93,39 @@ fs.writeFileSync(
     '404': '404.html'
   }, null, 2)
 );
-console.log(`✓ Generated client-package.json (v${pkgInfo.version || '2.0.0'}) with 404.html error page`);
+console.log(`✓ Generated client-package.json (v${pkgInfo.version || '2.0.0'})`);
 
-// 4. If Android assets directory exists, ensure it also has the mirrored app directory
+// 5. If Android assets directory exists, enforce clean /_next/ paths so Android WebView hydrates without errors
 if (fs.existsSync(androidPublicDir)) {
-  const androidAppDir = path.join(androidPublicDir, 'app');
-  if (!fs.existsSync(androidAppDir)) {
-    fs.mkdirSync(androidAppDir, { recursive: true });
-  }
-  const androidNextDest = path.join(androidAppDir, '_next');
+  // Ensure Android has clean _next directory
+  const androidNextDir = path.join(androidPublicDir, '_next');
   if (fs.existsSync(nextSrc)) {
-    copyDirRecursive(nextSrc, androidNextDest);
-    console.log('✓ Mirrored _next directly to android/app/src/main/assets/public/app/_next');
+    copyDirRecursive(nextSrc, androidNextDir);
   }
-  if (fs.existsSync(faviconSrc)) {
-    fs.copyFileSync(faviconSrc, path.join(androidAppDir, 'favicon.ico'));
+
+  // Ensure Android also has mirrored app/_next as a fallback
+  const androidAppNextDir = path.join(androidPublicDir, 'app', '_next');
+  if (fs.existsSync(nextSrc)) {
+    copyDirRecursive(nextSrc, androidAppNextDir);
+  }
+
+  // Patch all Android HTML files to use clean /_next/ paths
+  const androidEntries = fs.readdirSync(androidPublicDir, { withFileTypes: true });
+  for (const entry of androidEntries) {
+    if (entry.isFile() && entry.name.endsWith('.html')) {
+      const fullPath = path.join(androidPublicDir, entry.name);
+      let html = fs.readFileSync(fullPath, 'utf8');
+
+      html = html.replace(/\/app\/_next\//g, '/_next/');
+      html = html.replace(/\/app\/favicon\.ico/g, '/favicon.ico');
+      if (!html.includes('TURBOPACK_CHUNK_BASE_PATH')) {
+        html = html.replace('<head>', '<head><script>window.TURBOPACK_CHUNK_BASE_PATH = "/_next/";</script>');
+      }
+
+      fs.writeFileSync(fullPath, html, 'utf8');
+      console.log('✓ Clean Android patch:', entry.name);
+    }
   }
 }
 
-console.log('✓ Postbuild completed successfully. All asset paths verified for Android Capacitor and Zoho Catalyst.');
+console.log('✓ Postbuild completed successfully. Android and Catalyst asset paths fully reconciled.');
