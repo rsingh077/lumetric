@@ -50,29 +50,37 @@ jobs:
       - name: Copy APK to Root for Direct Repo Download
         run: |
           cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric.apk
-          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v1.6.0.apk
+          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v1.7.0.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumetric-v1.6.0-debug-apk
-          path: Lumetric-v1.6.0.apk
+          name: lumetric-v1.7.0-debug-apk
+          path: Lumetric-v1.7.0.apk
 
-      - name: Create or Update GitHub Release v1.6.0
+      - name: Create or Update GitHub Release v1.7.0
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v1.6.0
-          name: "Lumetric v1.6.0 — Loading Splash, Google/Gmail Server Auth & Executive Dashboard"
+          tag_name: v1.7.0
+          name: "Lumetric v1.7.0 — Executive Logistics & Analytics Dashboard, Fixed Splash & Catalyst Auth"
           body: |
-            ### 🚀 Lumetric Mobile v1.6.0 Enterprise Release
-            - **Loading / Splash Icon Screen**: Animated geometric 3D prism logo with live server handshake status.
-            - **Dedicated Google / Gmail Sign-In & Registration**: Real server-validated authentication with credentials stored in Zoho Catalyst Crystal Datastore.
-            - **Executive Dashboard Layout**: Faithful "Bonjour, Camille" UI overhaul with coral/rose accents, route progression (72%), entity status (Julien Morel / 78% capacity), and delivery performance (94%).
-            - **Complete App Experience**: Interactive from Home through Data, Analysis, Models, Dashboards, and Settings with instant profile/session management.
-            - **Direct Download**: Download `Lumetric-v1.6.0.apk` below.
+            ### 🚀 Lumetric Mobile v1.7.0 Production Release
+            - **Fixed Splash Transition**: Resolved splash loop bug using persistent ref callback, smoothly launching directly into Google / Gmail Auth or Studio Dashboard within 2 seconds.
+            - **Executive Logistics & Analytics Dashboard**: Fully matching the reference layout:
+              - *Bonjour, Camille* profile header and left navigation with coral-red active pill and bottom trip card (*32 courses, 870 km, 2h 45*).
+              - *Progression globale (72%)* route map tracker with Paris -> Auxerre -> Dijon -> Lyon -> Marseille milestones.
+              - *Détail de l'expédition*: Julien Morel (5 stars, 48 parcels, 68% loading dial, 5 860 € payment badge).
+              - *Capacité du camion (78%)*: 3D cargo truck graphic with 14,2 t / 18,0 t weight indicators.
+              - *Tendances des expéditions*: Red multi-point timeline curve across 7 days.
+              - *Performance de livraison (94%)*: Solid coral/rose milestone card with wave sparkline.
+              - *Donut chart (Répartition des envois)* & *Fuel consumption bar chart (128 L, -8%)*.
+              - *Messages de l'équipe*: Live dispatch feed with unread indicators.
+              - *Bottom CTA Banner*: "Gardez le contrôle de vos livraisons".
+            - **Server Auth Validation**: Integrated with Zoho Catalyst Serverless (`lumetric_server`) & Crystal Datastore with Google / Gmail sign-in.
+            - **Direct Download**: Download `Lumetric-v1.7.0.apk` below.
           files: |
             Lumetric.apk
-            Lumetric-v1.6.0.apk
+            Lumetric-v1.7.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
