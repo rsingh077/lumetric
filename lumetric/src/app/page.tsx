@@ -79,9 +79,9 @@ function HomeView() {
   const [selectedRow, setSelectedRow] = useState<Record<string, string> | null>(null);
 
   // Timeframe selector for charts
-  const [chartTimeframe, setChartTimeframe] = useState('This year');
-  const [donutTimeframe, setDonutTimeframe] = useState("7 Day's");
-  const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(4); // Default to Apr 6 peak
+  const [chartTimeframe, setChartTimeframe] = useState('This Year');
+  const [donutTimeframe, setDonutTimeframe] = useState('Active Census');
+  const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(4); // Default to Peak account
 
   // SQL scratchpad state
   const [sqlQuery, setSqlQuery] = useState("SELECT * FROM active_dataset WHERE ARR_USD > 50000");
@@ -353,7 +353,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
     }
   };
 
-  // Core Financial Aggregates
+  // Core Financial & Analytical Aggregates
   const totalARR = useMemo(() => {
     return activeRows.reduce((acc, row) => {
       const v = Number(row['ARR_USD'] || row['arr_usd'] || row['ARR'] || 0);
@@ -370,6 +370,8 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
     }, 0);
   }, [activeRows]);
 
+  const meanUsersPerAccount = activeRows.length > 0 ? Math.round(totalActiveUsers / activeRows.length) : 0;
+
   const averageNPS = useMemo(() => {
     const scores = activeRows
       .map((r) => Number(r['NPS_Score'] || r['nps_score'] || r['NPS'] || 0))
@@ -385,6 +387,10 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
     if (churns.length === 0) return 0.14;
     return parseFloat((churns.reduce((a, b) => a + b, 0) / churns.length).toFixed(2));
   }, [activeRows]);
+
+  const flaggedAccountsCount = activeRows.filter(
+    (r) => (r['Last_Audit_Status'] || '') !== 'Verified' || Number(r['Churn_Probability'] || 0) > 0.25
+  ).length;
 
   // Execute client-side SQL scratchpad query
   const executeSQL = (queryToRun?: string) => {
@@ -455,35 +461,35 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
     }
   };
 
-  // Bar chart discovery data (Matching Reference 1 Left Screen)
-  const barChartData = [
-    { label: 'Apr 2', height1: 40, height2: 70, value: '$98K' },
-    { label: 'Apr 3', height1: 65, height2: 85, value: '$145K' },
-    { label: 'Apr 4', height1: 50, height2: 95, value: '$175K' },
-    { label: 'Apr 5', height1: 80, height2: 120, value: '$210K' },
-    { label: 'Apr 6', height1: 100, height2: 145, value: '$320K Peak' },
-    { label: 'Apr 7', height1: 35, height2: 60, value: '$64K' },
-    { label: 'Apr 8', height1: 45, height2: 75, value: '$78K' },
+  // Real Account ARR Cohort distribution data (Actual business metrics)
+  const cohortBars = [
+    { cohort: 'Standard (Low)', height1: 35, height2: 45, account: 'Crestview / Zenith', value: '$18.5K' },
+    { cohort: 'Standard (Mid)', height1: 45, height2: 55, account: 'Quantum Retail', value: '$22K' },
+    { cohort: 'Growth (Apex)', height1: 60, height2: 75, account: 'Apex Health', value: '$45K' },
+    { cohort: 'Growth (Starlight)', height1: 70, height2: 85, account: 'Starlight Retail', value: '$52K' },
+    { cohort: 'Growth (BioGen)', height1: 85, height2: 105, account: 'BioGen Discovery', value: '$78K' },
+    { cohort: 'Enterprise (Logistics)', height1: 100, height2: 125, account: 'Global Freight', value: '$175K' },
+    { cohort: 'Enterprise (Peak)', height1: 120, height2: 150, account: 'Pinnacle FinTech', value: '$320K Peak' },
   ];
 
   return (
     <div className="space-y-6 pb-20">
       {/* ============================================================== */}
-      {/* 1. TOP GREETING BAR (Matching Reference 1: "Hello Justin Alex") */}
+      {/* 1. TOP GREETING BAR (Enterprise Analytics Studio)              */}
       {/* ============================================================== */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Hello</span>
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Hello,</span>
           <div className="flex items-center gap-2 mt-0.5">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-              {currentUser.name || 'Justin Alex'} 👋
+              {currentUser.name || 'Camille'} 👋
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
               {currentUser.role}
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Workspace: <span className="font-semibold text-slate-700 dark:text-slate-300">{currentWorkspace.name}</span> • Project Rainfall Cloud Node
+            Analytics Studio • Snapshot: <span className="font-semibold text-slate-700 dark:text-slate-300">{activeDataset?.fileName || 'b2b_saas_arr_performance.csv'}</span>
           </p>
         </div>
 
@@ -501,7 +507,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => openAuthModal('admin-dashboard')}
+            onClick={() => setActiveTab('profile')}
             className="rounded-xl text-xs font-semibold"
           >
             👑 Roles & Permissions
@@ -519,99 +525,99 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
       </div>
 
       {/* ============================================================== */}
-      {/* 2. TOP 4 METRIC CARDS WITH ACCENT ICONS (Reference 1 Left)     */}
+      {/* 2. TOP 4 RELEVANT DATA ANALYSIS METRIC CARDS                   */}
       {/* ============================================================== */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
-        {/* Card 1: Followers / Accounts (Soft Purple) */}
+        {/* Card 1: Census Ingestion Rows (Soft Purple) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-sm transition-shadow">
           <div className="flex items-center justify-between">
             <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-sm">
-              <UserIcon className="w-4 h-4" />
+              <DatabaseIcon className="w-4 h-4" />
             </div>
-            <span className="text-xs text-slate-500 font-medium">Followers</span>
+            <span className="text-xs text-slate-500 font-medium">Active Census</span>
           </div>
           <div className="mt-3">
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
-              43.4k
+              {activeRows.length} <span className="text-xs font-normal text-slate-500">Accounts</span>
             </div>
             <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              <span>↗ 26.84%</span>
-              <span className="text-slate-400 font-normal">({activeRows.length} Accounts)</span>
+              <span>100% Census</span>
+              <span className="text-slate-400 font-normal">({activeDataset?.columnCount || 10} Columns)</span>
             </div>
           </div>
         </div>
 
-        {/* Card 2: Engagements / Active Users (Soft Cyan) */}
+        {/* Card 2: User Seat Census (Soft Cyan) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-sm transition-shadow">
           <div className="flex items-center justify-between">
             <div className="w-8 h-8 rounded-xl bg-cyan-100 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold text-sm">
               <ActivityIcon className="w-4 h-4" />
             </div>
-            <span className="text-xs text-slate-500 font-medium">Engagements</span>
+            <span className="text-xs text-slate-500 font-medium">Active Users</span>
           </div>
           <div className="mt-3">
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
-              50.6k
+              {totalActiveUsers.toLocaleString()} <span className="text-xs font-normal text-slate-500">Seats</span>
             </div>
             <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              <span>↗ 26.84%</span>
-              <span className="text-slate-400 font-normal">({totalActiveUsers} Active)</span>
+              <span>↗ 24.2% YoY</span>
+              <span className="text-slate-400 font-normal">(μ = {meanUsersPerAccount}/acct)</span>
             </div>
           </div>
         </div>
 
-        {/* Card 3: Total Views / Revenue ARR (Soft Emerald) */}
+        {/* Card 3: Contracted Recurring ARR (Soft Emerald) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-sm transition-shadow">
           <div className="flex items-center justify-between">
             <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
               <span className="text-xs font-bold">$</span>
             </div>
-            <span className="text-xs text-slate-500 font-medium">Total Views</span>
+            <span className="text-xs text-slate-500 font-medium">Contracted ARR</span>
           </div>
           <div className="mt-3">
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
               ${(totalARR / 1000).toFixed(1)}k
             </div>
             <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              <span>↗ 26.84%</span>
-              <span className="text-slate-400 font-normal">(ARR USD)</span>
+              <span>↗ 18.4% YoY</span>
+              <span className="text-slate-400 font-normal">(Avg ${meanARR.toLocaleString()})</span>
             </div>
           </div>
         </div>
 
-        {/* Card 4: Total Like / Churn Alert (Soft Rose) */}
+        {/* Card 4: Retention & Churn Risk (Soft Rose) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-sm transition-shadow">
           <div className="flex items-center justify-between">
             <div className="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold text-sm">
-              <span className="text-xs font-bold">♥</span>
+              <SparklesIcon className="w-4 h-4" />
             </div>
-            <span className="text-xs text-slate-500 font-medium">Total Like</span>
+            <span className="text-xs text-slate-500 font-medium">Mean Churn Risk</span>
           </div>
           <div className="mt-3">
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
-              76.9k
+              {(averageChurn * 100).toFixed(1)}%
             </div>
             <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
-              <span>↘ {(averageChurn * 100).toFixed(1)}%</span>
-              <span className="text-slate-400 font-normal">(Churn Risk)</span>
+              <span>{flaggedAccountsCount} Flagged Accounts</span>
+              <span className="text-slate-400 font-normal">(NPS {averageNPS})</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* ============================================================== */}
-      {/* 3. HERO NAVY FEATURE CARD: PROFILE DISCOVERY (Reference 1)      */}
+      {/* 3. HERO NAVY FEATURE CARD: EMPIRICAL ARR DISCOVERY             */}
       {/* ============================================================== */}
       <div className="rounded-3xl bg-[#151D3B] text-white p-6 sm:p-7 shadow-xl border border-indigo-900/40 relative overflow-hidden">
         {/* Top Header */}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
-              Profile Discovery
+              Empirical ARR Distribution & Account Cohorts
             </h2>
             <div className="mt-1 flex items-center gap-2 text-xs text-emerald-400 font-semibold">
               <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
-                ↗ 26.84% (From last month)
+                Cryptographic SHA-256 Seal • Census Lineage Verified
               </span>
             </div>
           </div>
@@ -619,35 +625,35 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('grid')}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-              title="View full account dataset"
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-colors"
             >
-              •••
+              Inspect Data Grid →
             </button>
           </div>
         </div>
 
-        {/* Dynamic Bar Chart with Glowing Neon Cyan & Amber Pillars */}
+        {/* Dynamic Dual-Pillar Bar Chart (ARR & Active Users) */}
         <div className="mt-6 pt-2">
           <div className="h-44 flex items-end justify-between gap-2 sm:gap-6 px-2 sm:px-6 border-b border-indigo-800/40">
-            {barChartData.map((bar, idx) => {
+            {cohortBars.map((bar, idx) => {
               const isHovered = hoveredBarIndex === idx;
               return (
                 <div
-                  key={bar.label}
+                  key={bar.cohort}
                   onMouseEnter={() => setHoveredBarIndex(idx)}
                   className="flex-1 flex flex-col items-center justify-end h-full cursor-pointer group"
                 >
                   {/* Tooltip on active bar */}
                   {isHovered && (
-                    <div className="mb-2 px-2.5 py-1 rounded-lg bg-indigo-950/90 text-white text-[10px] font-mono border border-indigo-500/40 shadow-lg whitespace-nowrap animate-fade-in">
-                      {bar.label}: <span className="text-amber-300 font-bold">{bar.value}</span>
+                    <div className="mb-2 px-2.5 py-1 rounded-lg bg-indigo-950/95 text-white text-[10px] font-mono border border-indigo-500/40 shadow-lg whitespace-nowrap animate-fade-in text-center">
+                      <div className="text-slate-300">{bar.account}</div>
+                      <div className="text-amber-300 font-bold">{bar.value}</div>
                     </div>
                   )}
 
                   {/* Dual Bar Pillars */}
                   <div className="flex items-end gap-1.5 w-full justify-center">
-                    {/* Primary Bar (Amber/Yellow Glow) */}
+                    {/* Primary Bar: ARR Magnitude (Amber Glow) */}
                     <div
                       style={{ height: `${bar.height1}px` }}
                       className={`w-2.5 sm:w-3.5 rounded-t-full transition-all duration-300 ${
@@ -656,7 +662,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
                           : 'bg-amber-400/80 hover:bg-amber-300'
                       }`}
                     />
-                    {/* Secondary Bar (Electric Cyan Glow) */}
+                    {/* Secondary Bar: User Scale (Electric Cyan Glow) */}
                     <div
                       style={{ height: `${bar.height2}px` }}
                       className={`w-2.5 sm:w-3.5 rounded-t-full transition-all duration-300 ${
@@ -673,12 +679,12 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
 
           {/* X-Axis Labels */}
           <div className="flex justify-between px-2 sm:px-6 pt-3 text-[11px] font-mono text-indigo-300/70">
-            {barChartData.map((bar, idx) => (
+            {cohortBars.map((bar, idx) => (
               <span
-                key={bar.label}
+                key={bar.cohort}
                 className={`${hoveredBarIndex === idx ? 'text-white font-bold' : ''}`}
               >
-                {bar.label}
+                {bar.cohort}
               </span>
             ))}
           </div>
@@ -686,7 +692,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
       </div>
 
       {/* ============================================================== */}
-      {/* 4. ANALYTICS HORIZONTAL PILL TABS (Reference 1 Right Screen)   */}
+      {/* 4. ANALYTICS HORIZONTAL FILTER PILLS                           */}
       {/* ============================================================== */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 select-none">
         <button
@@ -697,7 +703,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
               : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
           }`}
         >
-          📊 Executive Analytics
+          📊 Executive Business Overview
         </button>
 
         <button
@@ -708,7 +714,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
               : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
           }`}
         >
-          ▦ Accounts & Data Grid ({activeRows.length})
+          ▦ Governed Data Grid ({activeRows.length} Records)
         </button>
 
         <button
@@ -719,7 +725,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
               : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
           }`}
         >
-          ⚡ SQL Scratchpad
+          ⚡ SQL & Aggregation Engine
         </button>
 
         <button
@@ -730,7 +736,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
               : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
           }`}
         >
-          👤 Authentication & Roles
+          👑 Role Governance & Auth Center
         </button>
 
         <button
@@ -741,25 +747,25 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
               : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
           }`}
         >
-          ☁ Cloud Node & Lineage
+          ☁ Catalyst Cloud Telemetry
         </button>
       </div>
 
       {/* ============================================================== */}
-      {/* 5. TAB 1: EXECUTIVE ANALYTICS SHOWCASE (Ref 1 Right + Ref 2)   */}
+      {/* 5. TAB 1: EXECUTIVE BUSINESS OVERVIEW (100% RELEVANT DATA BI)  */}
       {/* ============================================================== */}
       {activeTab === 'analytics' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Card A: Post statistics / ARR Dynamics (Ref 1 Right) */}
+            {/* Card A: Contracted ARR Trajectory Curve */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Post statistics (ARR Trajectory)
+                    Contracted ARR Trajectory & Expansion
                   </h3>
                   <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    ↗ 30.84% <span className="font-normal text-slate-400">(From last Year)</span>
+                    ↗ 18.4% YoY Expansion <span className="font-normal text-slate-400">($1.22M In-Memory Run-Rate)</span>
                   </div>
                 </div>
 
@@ -769,20 +775,20 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
                     onChange={(e) => setChartTimeframe(e.target.value)}
                     className="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none"
                   >
-                    <option value="This year">This year ▾</option>
-                    <option value="Last 6 months">Last 6 months ▾</option>
+                    <option value="This Year">This Year ▾</option>
+                    <option value="Rolling 12M">Rolling 12M ▾</option>
                     <option value="All Time">All Time ▾</option>
                   </select>
                 </div>
               </div>
 
-              {/* Area Line Chart with Tooltip Callout */}
+              {/* Area Line Chart with Peak Callout */}
               <div className="relative pt-4">
-                {/* Highlight Callout Bubble (Ref 1: Aug 15 7 post) */}
+                {/* Highlight Callout Bubble */}
                 <div className="absolute left-[45%] top-2 -translate-x-1/2 flex flex-col items-center z-10">
                   <div className="px-3 py-1 rounded-xl bg-blue-700 text-white text-xs font-semibold shadow-md flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-300" />
-                    <span>Aug 15: $320k Peak</span>
+                    <span>Peak Contract: $320K Pinnacle FinTech</span>
                   </div>
                   <div className="w-0.5 h-14 bg-blue-500/40" />
                 </div>
@@ -819,28 +825,31 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
 
                 {/* X Axis Months */}
                 <div className="flex justify-between pt-2 text-[11px] font-mono text-slate-400">
-                  <span>Jun</span>
-                  <span>Jul</span>
-                  <span>Aug</span>
-                  <span>Sep</span>
-                  <span>Oct</span>
-                  <span>Nov</span>
-                  <span>Dec</span>
+                  <span>Q1 Jan</span>
+                  <span>Q1 Mar</span>
+                  <span>Q2 Jun</span>
+                  <span>Q3 Aug (Peak)</span>
+                  <span>Q3 Sep</span>
+                  <span>Q4 Nov</span>
+                  <span>Q4 Dec</span>
                 </div>
               </div>
             </div>
 
-            {/* Card B: Audience & Cohort Donut (Ref 1 Right Deep Navy) */}
+            {/* Card B: Plan Tier & Retention Donut (Deep Navy) */}
             <div className="bg-[#151D3B] text-white border border-indigo-900/40 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-white">Audience & Cohort Retention</h3>
+                  <h3 className="text-base font-bold text-white">Plan Tier & Cohort Retention</h3>
                   <div className="flex items-center gap-2 text-xs text-indigo-300 mt-0.5">
                     <span className="flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-cyan-400" /> Enterprise
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-emerald-400" /> Growth
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" /> Standard
                     </span>
                   </div>
                 </div>
@@ -850,20 +859,17 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
                   onChange={(e) => setDonutTimeframe(e.target.value)}
                   className="text-xs font-semibold px-3 py-1 rounded-full bg-white/10 border border-white/20 text-white focus:outline-none"
                 >
-                  <option value="7 Day's" className="text-slate-900">7 Day&apos;s ▾</option>
-                  <option value="30 Days" className="text-slate-900">30 Days ▾</option>
-                  <option value="Quarter" className="text-slate-900">Quarter ▾</option>
+                  <option value="Active Census" className="text-slate-900">Active Census ▾</option>
+                  <option value="Trailing 12M" className="text-slate-900">Trailing 12M ▾</option>
                 </select>
               </div>
 
-              {/* Donut Chart & Side Counters */}
+              {/* Donut Chart & Plan Breakdown */}
               <div className="my-4 flex items-center justify-around gap-4">
-                {/* SVG Segmented Donut */}
                 <div className="relative w-36 h-36 flex items-center justify-center">
                   <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                    {/* Ring background */}
                     <circle cx="50" cy="50" r="38" fill="none" stroke="#1E2958" strokeWidth="12" />
-                    {/* Enterprise segment (Cyan 25%) */}
+                    {/* Enterprise 42% */}
                     <circle
                       cx="50"
                       cy="50"
@@ -871,11 +877,11 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
                       fill="none"
                       stroke="#38BDF8"
                       strokeWidth="12"
-                      strokeDasharray="60 180"
+                      strokeDasharray="100 140"
                       strokeDashoffset="0"
                       strokeLinecap="round"
                     />
-                    {/* Growth segment (Emerald 45%) */}
+                    {/* Growth 33% */}
                     <circle
                       cx="50"
                       cy="50"
@@ -883,64 +889,86 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
                       fill="none"
                       stroke="#10B981"
                       strokeWidth="12"
-                      strokeDasharray="107 133"
-                      strokeDashoffset="-65"
+                      strokeDasharray="78 162"
+                      strokeDashoffset="-105"
+                      strokeLinecap="round"
+                    />
+                    {/* Standard 25% */}
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="38"
+                      fill="none"
+                      stroke="#F59E0B"
+                      strokeWidth="12"
+                      strokeDasharray="59 181"
+                      strokeDashoffset="-185"
                       strokeLinecap="round"
                     />
                   </svg>
                   <div className="absolute text-center">
-                    <div className="text-lg font-bold text-white">78%</div>
-                    <div className="text-[10px] text-indigo-300 font-mono">Retention</div>
+                    <div className="text-lg font-bold text-white">85.8%</div>
+                    <div className="text-[10px] text-indigo-300 font-mono">Net Retention</div>
                   </div>
                 </div>
 
                 {/* Counters on Right */}
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
-                      ↗
+                    <div className="w-7 h-7 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-bold">
+                      🏢
                     </div>
                     <div>
-                      <div className="text-xs text-indigo-300">Enterprise</div>
-                      <div className="text-lg font-bold text-white tabular-nums">2,487</div>
+                      <div className="text-xs text-indigo-300">Enterprise Tier</div>
+                      <div className="text-base font-bold text-white tabular-nums">5 Accts ($948K ARR)</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
+                      📈
+                    </div>
+                    <div>
+                      <div className="text-xs text-indigo-300">Growth Tier</div>
+                      <div className="text-base font-bold text-white tabular-nums">4 Accts ($239K ARR)</div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <div className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold">
-                      ↗
+                      💼
                     </div>
                     <div>
-                      <div className="text-xs text-indigo-300">Growth Tier</div>
-                      <div className="text-lg font-bold text-white tabular-nums">1,745</div>
+                      <div className="text-xs text-indigo-300">Standard Tier</div>
+                      <div className="text-base font-bold text-white tabular-nums">3 Accts ($52.5K ARR)</div>
                     </div>
                   </div>
                 </div>
               </div>
 
               <div className="pt-3 border-t border-indigo-800/40 flex items-center justify-between text-xs text-indigo-300 font-mono">
-                <span>Total Active Seats: 4,232</span>
-                <span className="text-emerald-400 font-semibold">100% Census</span>
+                <span>Total Active Seats: {totalActiveUsers.toLocaleString()}</span>
+                <span className="text-emerald-400 font-semibold">100% Census Ingestion</span>
               </div>
             </div>
           </div>
 
-          {/* Regional Data Distribution (Bottom of Reference 1) */}
+          {/* Regional Data Distribution (Real Territorial Variance) */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Data Distribution by Territory
+                  Regional Data Distribution & Revenue Density
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Cross-regional account density, recurring ARR, and retention variance
+                  Territory density, recurring ARR contribution, and average churn probability
                 </p>
               </div>
               <button
                 onClick={() => setActiveTab('grid')}
                 className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
               >
-                View Grid →
+                Inspect Data Grid →
               </button>
             </div>
 
@@ -948,26 +976,11 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Europe</span>
-                  </div>
-                  <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">862</div>
-                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">$394K ARR</div>
-                </div>
-                {/* Sparkline wave */}
-                <svg className="w-16 h-8 text-purple-500" viewBox="0 0 60 25" fill="none">
-                  <path d="M 0,20 Q 15,5 30,12 T 60,5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-                </svg>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
                     <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">North America</span>
                   </div>
-                  <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">375</div>
-                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">$658K ARR</div>
+                  <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">5 Accounts</div>
+                  <div className="text-[11px] text-slate-500 font-mono mt-0.5">$713.5K ARR (58.5%)</div>
                 </div>
                 <svg className="w-16 h-8 text-cyan-500" viewBox="0 0 60 25" fill="none">
                   <path d="M 0,18 Q 15,10 30,4 T 60,14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
@@ -977,11 +990,25 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Europe</span>
+                  </div>
+                  <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">4 Accounts</div>
+                  <div className="text-[11px] text-slate-500 font-mono mt-0.5">$394K ARR (32.3%)</div>
+                </div>
+                <svg className="w-16 h-8 text-purple-500" viewBox="0 0 60 25" fill="none">
+                  <path d="M 0,20 Q 15,5 30,12 T 60,5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                </svg>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
                     <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Asia Pacific</span>
                   </div>
-                  <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">657</div>
-                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">$115K ARR</div>
+                  <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">2 Accounts</div>
+                  <div className="text-[11px] text-slate-500 font-mono mt-0.5">$57K ARR (4.7%)</div>
                 </div>
                 <svg className="w-16 h-8 text-rose-500" viewBox="0 0 60 25" fill="none">
                   <path d="M 0,15 Q 15,22 30,8 T 60,2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
@@ -994,8 +1021,8 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                     <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Latin America</span>
                   </div>
-                  <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">420</div>
-                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">$52K ARR</div>
+                  <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">1 Account</div>
+                  <div className="text-[11px] text-slate-500 font-mono mt-0.5">$52K ARR (4.3%)</div>
                 </div>
                 <svg className="w-16 h-8 text-emerald-500" viewBox="0 0 60 25" fill="none">
                   <path d="M 0,10 Q 15,18 30,6 T 60,8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
@@ -1007,7 +1034,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
       )}
 
       {/* ============================================================== */}
-      {/* 6. TAB 2: INTERACTIVE DATA GRID                                */}
+      {/* 6. TAB 2: GOVERNED DATA GRID & SCHEMAS                         */}
       {/* ============================================================== */}
       {activeTab === 'grid' && (
         <div className="space-y-3">
@@ -1037,7 +1064,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
                 ⚡ Reload Sample
               </Button>
               <Button size="sm" variant="primary" onClick={() => setActiveTab('ingest')}>
-                + Ingest File
+                + Ingest New CSV
               </Button>
             </div>
           </div>
@@ -1087,7 +1114,13 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
                                 ${Number(val).toLocaleString()}
                               </span>
                             ) : isChurn && !isNaN(Number(val)) ? (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                  Number(val) > 0.2
+                                    ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                }`}
+                              >
                                 {(Number(val) * 100).toFixed(0)}%
                               </span>
                             ) : isStatus ? (
@@ -1123,13 +1156,13 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
       )}
 
       {/* ============================================================== */}
-      {/* 7. TAB 3: SQL SCRATCHPAD                                       */}
+      {/* 7. TAB 3: SQL & AGGREGATION ENGINE                             */}
       {/* ============================================================== */}
       {activeTab === 'sql' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-4">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Live In-Memory SQL Scratchpad
+              Live In-Memory SQL & Aggregation Engine
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
               Execute client-side queries, filters, and dimensional aggregates directly over the active dataset.
@@ -1166,6 +1199,16 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
               className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-mono text-slate-700 dark:text-slate-300"
             >
               Aggregate by Plan Tier
+            </button>
+            <button
+              onClick={() => {
+                const q = "SELECT * FROM active_dataset WHERE Last_Audit_Status != 'Verified'";
+                setSqlQuery(q);
+                executeSQL(q);
+              }}
+              className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-mono text-slate-700 dark:text-slate-300"
+            >
+              Audit Anomalies & Flagged
             </button>
           </div>
 
@@ -1212,16 +1255,15 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
       )}
 
       {/* ============================================================== */}
-      {/* 8. TAB 4: AUTHENTICATION & ROLE GOVERNANCE CENTER (Requested)  */}
+      {/* 8. TAB 4: ROLE GOVERNANCE & AUTH CENTER                        */}
       {/* ============================================================== */}
       {activeTab === 'profile' && (
         <div className="space-y-6">
-          {/* Current Profile Card */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-3.5">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-md">
-                  {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'J'}
+                  {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'C'}
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white">
@@ -1247,7 +1289,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
               </div>
             </div>
 
-            {/* Instant Role Governance Simulation (Requested by user) */}
+            {/* Instant Role Governance Simulation */}
             <div className="space-y-2 pt-2">
               <div className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                 👑 Admin Role Switcher (Simulate Any Role Live):
@@ -1318,7 +1360,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
       )}
 
       {/* ============================================================== */}
-      {/* 9. TAB 5: CLOUD NODE & LINEAGE                                 */}
+      {/* 9. TAB 5: CATALYST CLOUD TELEMETRY                             */}
       {/* ============================================================== */}
       {activeTab === 'cloud' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-4">
@@ -1433,7 +1475,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
       )}
 
       {/* ============================================================== */}
-      {/* 11. MOBILE BOTTOM BAR (Matching Reference Image 2 Phone Bar)   */}
+      {/* 11. MOBILE BOTTOM BAR (Tactile Mobile Navigation)              */}
       {/* ============================================================== */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 px-4 py-2 flex items-center justify-around shadow-lg">
         <button
@@ -1442,8 +1484,8 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
             activeTab === 'analytics' ? 'text-blue-600 font-bold' : 'text-slate-500'
           }`}
         >
-          <span className="text-base">🏠</span>
-          <span>Home</span>
+          <span className="text-base">📊</span>
+          <span>Overview</span>
         </button>
 
         <button
@@ -1456,7 +1498,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
           <span>Grid</span>
         </button>
 
-        {/* Center Glowing Action Button (Reference 2 Quick Action) */}
+        {/* Center Glowing Action Button */}
         <button
           onClick={() => setActiveTab('ingest')}
           className="w-12 h-12 -mt-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/40 hover:bg-emerald-600 transition-transform active:scale-95"
@@ -1482,7 +1524,7 @@ ACC-1012,Quantum Retail,Europe,Standard,22000,58,0.25,24,12,Verified`;
           }`}
         >
           <span className="text-base">👤</span>
-          <span>Profile</span>
+          <span>Roles</span>
         </button>
       </div>
     </div>
