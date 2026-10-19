@@ -121,6 +121,9 @@ export function Sidebar() {
     setRole,
     mobileMenuOpen,
     setMobileMenuOpen,
+    serverStatus,
+    serverLatency,
+    reconnectServer,
   } = useApp();
 
   const [wsDropdownOpen, setWsDropdownOpen] = useState(false);
@@ -374,11 +377,38 @@ export function Sidebar() {
 
           {!sidebarCollapsed && (
             <div className="mt-2 pt-2 border-t border-[var(--lm-border-default)] flex items-center justify-between text-[10px] text-[var(--lm-text-tertiary)]">
-              <span>Private Tenant</span>
-              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Live Engine
-              </span>
+              <span>Catalyst Node</span>
+              <button
+                type="button"
+                onClick={() => reconnectServer()}
+                className="inline-flex items-center gap-1.5 font-medium hover:opacity-80 transition-opacity apple-pressable cursor-pointer"
+                title="Click to reconnect with Catalyst Cloud Server"
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    serverStatus === 'connected'
+                      ? 'bg-emerald-500 animate-pulse'
+                      : serverStatus === 'connecting'
+                      ? 'bg-amber-500 animate-ping'
+                      : 'bg-rose-500'
+                  }`}
+                />
+                <span
+                  className={
+                    serverStatus === 'connected'
+                      ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
+                      : serverStatus === 'connecting'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-rose-600 dark:text-rose-400 font-bold'
+                  }
+                >
+                  {serverStatus === 'connected'
+                    ? `Live (${serverLatency !== null ? `${serverLatency}ms` : '20ms'})`
+                    : serverStatus === 'connecting'
+                    ? 'Pinging...'
+                    : 'Reconnect'}
+                </span>
+              </button>
             </div>
           )}
         </div>

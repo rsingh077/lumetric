@@ -41,17 +41,29 @@ export function Header() {
     notifications,
     markNotificationRead,
     datasets,
+    serverStatus,
+    serverLatency,
+    lastServerSync,
+    reconnectServer,
   } = useApp();
 
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [serverModalOpen, setServerModalOpen] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const [newProjectModalOpen, setNewProjectModalOpen] = useState(false);
   const [newPrjName, setNewPrjName] = useState('');
   const [newPrjObjective, setNewPrjObjective] = useState('');
   const [newPrjDesc, setNewPrjDesc] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const handleManualReconnect = async () => {
+    setIsReconnecting(true);
+    await reconnectServer();
+    setIsReconnecting(false);
+  };
 
   const workspaceProjects = projects.filter((p) => p.workspaceId === currentWorkspace.id);
 
@@ -283,10 +295,124 @@ export function Header() {
 
         {/* Right Section: Command Palette, Notifications, Profile */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
-          {/* Catalyst Live Backend Connection Indicator */}
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-[11px] font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Catalyst Cloud Live</span>
+          {/* Interactive Catalyst Server Status & Reconnect Pill */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setServerModalOpen(!serverModalOpen)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all apple-pressable cursor-pointer ${
+                serverStatus === 'connected'
+                  ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20'
+                  : serverStatus === 'connecting'
+                  ? 'bg-amber-500/10 border-amber-500/25 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20'
+                  : 'bg-rose-500/10 border-rose-500/25 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20'
+              }`}
+              title="Click to view Catalyst Server connection status or reconnect"
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  serverStatus === 'connected'
+                    ? 'bg-emerald-500 animate-pulse'
+                    : serverStatus === 'connecting'
+                    ? 'bg-amber-500 animate-ping'
+                    : 'bg-rose-500'
+                }`}
+              />
+              <span className="hidden sm:inline">
+                {serverStatus === 'connected'
+                  ? `Server Live ${serverLatency !== null ? `• ${serverLatency}ms` : ''}`
+                  : serverStatus === 'connecting'
+                  ? 'Connecting...'
+                  : 'Server Offline (Reconnect)'}
+              </span>
+              <span className="sm:hidden font-mono text-[10px]">
+                {serverStatus === 'connected' ? 'LIVE' : 'SYNC'}
+              </span>
+            </button>
+
+            {serverModalOpen && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] rounded-2xl shadow-[var(--lm-shadow-xl)] p-4 z-50 animate-fade-in text-xs space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-[var(--lm-border-default)]">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`w-2.5 h-2.5 rounded-full ${
+                        serverStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+                      }`}
+                    />
+                    <span className="font-bold text-[var(--lm-text-primary)]">Zoho Catalyst Serverless</span>
+                  </div>
+                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                    India (.in)
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 text-[11px] text-[var(--lm-text-secondary)]">
+                  <div className="flex justify-between">
+                    <span>Target Function:</span>
+                    <span className="font-mono font-medium text-[var(--lm-text-primary)]">lumetric_server</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Status:</span>
+                    <span
+                      className={`font-semibold ${
+                        serverStatus === 'connected' ? 'text-emerald-600' : 'text-rose-600'
+                      }`}
+                    >
+                      {serverStatus === 'connected' ? 'Online (200 OK)' : 'Disconnected'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Round-Trip Latency:</span>
+                    <span className="font-mono font-semibold text-emerald-600">
+                      {serverLatency !== null ? `${serverLatency}ms` : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Last Synced:</span>
+                    <span className="font-mono text-[10px] text-[var(--lm-text-tertiary)]">
+                      {lastServerSync || 'Just now'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Rate Limiter:</span>
+                    <span className="font-medium text-emerald-600">Active (Sliding IP Window)</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-[var(--lm-border-default)] flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={isReconnecting}
+                    onClick={handleManualReconnect}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-xs apple-pressable disabled:opacity-50"
+                  >
+                    {isReconnecting ? (
+                      <>
+                        <span className="animate-spin text-sm">⟳</span>
+                        <span>Reconnecting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>⟳</span>
+                        <span>Reconnect with Server</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setServerModalOpen(false);
+                      setAuthModalOpen(true);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-[var(--lm-bg-secondary)] hover:bg-[var(--lm-bg-tertiary)] text-[var(--lm-text-primary)] font-medium text-xs transition-colors apple-pressable"
+                    title="Open Authentication Studio"
+                  >
+                    Auth
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Global Search Pill (Apple ⌘K Style) */}

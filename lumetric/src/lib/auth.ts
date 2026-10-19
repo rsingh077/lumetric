@@ -62,6 +62,41 @@ export class LumetricAuthService {
     localStorage.removeItem(USER_STORAGE_KEY);
   }
 
+  public static getServerUrl(): string {
+    return CATALYST_SERVER_URL;
+  }
+
+  public static async checkHealth(): Promise<{
+    connected: boolean;
+    latencyMs: number;
+    data?: any;
+    error?: string;
+  }> {
+    const start = Date.now();
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/health`, {
+        signal: controller.signal,
+        cache: 'no-store'
+      });
+      clearTimeout(timeoutId);
+      const latencyMs = Date.now() - start;
+      if (res.ok) {
+        const data = await res.json();
+        return { connected: true, latencyMs, data };
+      } else {
+        return { connected: false, latencyMs, error: `HTTP ${res.status}` };
+      }
+    } catch (err: any) {
+      return {
+        connected: false,
+        latencyMs: Date.now() - start,
+        error: err.name === 'AbortError' ? 'Connection timed out' : err.message || 'Cannot reach server'
+      };
+    }
+  }
+
   public static async register(payload: {
     email: string;
     password: string;

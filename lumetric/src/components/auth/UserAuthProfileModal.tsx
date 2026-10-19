@@ -12,7 +12,7 @@ export function UserAuthProfileModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const { setRole } = useApp();
+  const { setRole, serverStatus, serverLatency, reconnectServer } = useApp();
   const [mode, setMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit'>('profile');
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
@@ -258,9 +258,28 @@ export function UserAuthProfileModal({
                   ? 'Sign In to Lumetric'
                   : 'Create Cloud Account'}
               </h3>
-              <p className="text-[11px] text-[var(--lm-text-secondary)] font-mono">
-                Zoho Catalyst Serverless • Crystal Data Store
-              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[11px] text-[var(--lm-text-secondary)] font-mono">
+                  Zoho Catalyst Serverless • Crystal Store
+                </span>
+                <button
+                  type="button"
+                  onClick={() => reconnectServer()}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border cursor-pointer hover:opacity-85 transition-opacity ${
+                    serverStatus === 'connected'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                  }`}
+                  title="Click to verify server connectivity"
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      serverStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+                    }`}
+                  />
+                  <span>{serverStatus === 'connected' ? `${serverLatency !== null ? `${serverLatency}ms` : 'Online'}` : 'Reconnect'}</span>
+                </button>
+              </div>
             </div>
           </div>
           <button

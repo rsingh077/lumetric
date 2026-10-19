@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Workspace, Project, User, UserRole, DatasetProfile, ActiveView } from '@/types';
+import { LumetricAuthService } from '@/lib/auth';
 
 interface NotificationItem {
   id: string;
@@ -46,6 +47,13 @@ interface AppContextType {
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
   
+  // Server Connectivity & Reconnection
+  serverStatus: 'connected' | 'connecting' | 'disconnected';
+  serverLatency: number | null;
+  lastServerSync: string | null;
+  serverDetails: any;
+  reconnectServer: () => Promise<boolean>;
+
   // Notifications
   notifications: NotificationItem[];
   markNotificationRead: (id: string) => void;
@@ -192,6 +200,93 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
+
+  // Server Connectivity & Reconnection State
+  const [serverStatus, setServerStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
+  const [serverLatency, setServerLatency] = useState<number | null>(null);
+  const [lastServerSync, setLastServerSync] = useState<string | null>(null);
+  const [serverDetails, setServerDetails] = useState<any>(null);
+
+  const reconnectServer = async (): Promise<boolean> => {
+    setServerStatus('connecting');
+    try {
+      const res = await LumetricAuthService.checkHealth();
+      if (res.connected) {
+        setServerStatus('connected');
+        setServerLatency(res.latencyMs);
+        setServerDetails(res.data);
+        const timeStr = new Date().toLocaleTimeString();
+        setLastServerSync(timeStr);
+
+        // Sync stored user if available
+        const storedUser = LumetricAuthService.getStoredUser();
+        if (storedUser) {
+          setCurrentUser({
+            id: storedUser.id,
+            email: storedUser.email,
+            name: storedUser.name || 'User',
+            role: storedUser.role || 'owner',
+            createdAt: storedUser.createdAt || new Date().toISOString()
+          });
+        }
+
+        setNotifications(prev => [
+          {
+            id: `srv-sync-${Date.now()}`,
+            title: 'Server Reconnected',
+            message: `Connected to Zoho Catalyst Cloud (${res.latencyMs}ms roundtrip).`,
+            timestamp: timeStr,
+            read: false,
+            type: 'success'
+          },
+          ...prev.slice(0, 19)
+        ]);
+        return true;
+      } else {
+        setServerStatus('disconnected');
+        setServerLatency(null);
+        setNotifications(prev => [
+          {
+            id: `srv-err-${Date.now()}`,
+            title: 'Server Offline',
+            message: res.error || 'Could not establish connection to Catalyst Server.',
+            timestamp: new Date().toLocaleTimeString(),
+            read: false,
+            type: 'error'
+          },
+          ...prev.slice(0, 19)
+        ]);
+        return false;
+      }
+    } catch (e: any) {
+      setServerStatus('disconnected');
+      setServerLatency(null);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    // Attempt connection immediately on mount
+    reconnectServer();
+
+    // Heartbeat every 45s
+    const interval = setInterval(() => {
+      reconnectServer();
+    }, 45000);
+
+    const handleRecheck = () => {
+      reconnectServer();
+    };
+
+    window.addEventListener('online', handleRecheck);
+    window.addEventListener('focus', handleRecheck);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', handleRecheck);
+      window.removeEventListener('focus', handleRecheck);
+    };
+  }, []);
 
   useEffect(() => {
     const getViewFromLocation = (): ActiveView => {
@@ -392,6 +487,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setMobileMenuOpen,
         notifications,
         markNotificationRead,
+        serverStatus,
+        serverLatency,
+        lastServerSync,
+        serverDetails,
+        reconnectServer,
       }}
     >
       {children}
