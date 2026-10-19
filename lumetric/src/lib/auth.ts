@@ -108,7 +108,7 @@ export class LumetricAuthService {
       ...payload,
       email: (payload.email || '').trim().toLowerCase(),
       name: (payload.name || '').trim(),
-      organization: (payload.organization || 'Enterprise Fleet').trim(),
+      organization: (payload.organization || 'Enterprise Data Lab').trim(),
       role: payload.role || 'builder'
     };
 
@@ -153,14 +153,14 @@ export class LumetricAuthService {
         this.setSession(localToken, localUser);
         return {
           success: true,
-          message: 'Mode hors ligne : Profil créé localement.',
+          message: 'Offline Mode: Profile created locally.',
           token: localToken,
           user: localUser
         };
       }
       return {
         success: false,
-        error: err.name === 'AbortError' ? 'Délai d’attente serveur dépassé. Réessayez.' : err.message || 'Erreur réseau vers le serveur Catalyst'
+        error: err.name === 'AbortError' ? 'Server connection timed out. Please try again.' : err.message || 'Network error connecting to Catalyst Server'
       };
     }
   }
@@ -195,7 +195,7 @@ export class LumetricAuthService {
     } catch (err: any) {
       return {
         success: false,
-        error: err.name === 'AbortError' ? 'Délai de connexion dépassé.' : err.message || 'Erreur réseau vers le serveur'
+        error: err.name === 'AbortError' ? 'Connection timed out.' : err.message || 'Network error connecting to server'
       };
     }
   }
@@ -435,19 +435,19 @@ export class LumetricAuthService {
     }
   }
 
-  public static async fetchFleetTelemetry(): Promise<any> {
+  public static async fetchDataIntelligence(): Promise<any> {
     try {
-      const res = await fetch(`${CATALYST_SERVER_URL}/api/fleet/telemetry/live`, { cache: 'no-store' });
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/data/intelligence/live`, { cache: 'no-store' });
       return await res.json();
     } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to fetch telemetry' };
+      return { success: false, error: err.message || 'Failed to fetch data intelligence' };
     }
   }
 
-  public static async dispatchFleetAlert(payload: { truckId?: string; alertType?: string; message: string; severity?: string }): Promise<any> {
+  public static async submitDocumentTreatment(payload: { docId?: string; treatmentType?: string; documentName?: string }): Promise<any> {
     const token = this.getStoredToken();
     try {
-      const res = await fetch(`${CATALYST_SERVER_URL}/api/fleet/dispatch/alert`, {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/documents/treatment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -457,36 +457,19 @@ export class LumetricAuthService {
       });
       return await res.json();
     } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to dispatch alert' };
+      return { success: false, error: err.message || 'Failed to submit document treatment' };
     }
   }
 
-  public static async generateDigitalInvoice(payload: { shipmentId?: string; customerName?: string; parcelsCount?: number; distanceKm?: number; amountEur?: number }): Promise<any> {
+  public static async fetchGovernedRecords(): Promise<any> {
     const token = this.getStoredToken();
     try {
-      const res = await fetch(`${CATALYST_SERVER_URL}/api/fleet/invoice/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      return await res.json();
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to generate digital invoice' };
-    }
-  }
-
-  public static async fetchFleetRecords(): Promise<any> {
-    const token = this.getStoredToken();
-    try {
-      const res = await fetch(`${CATALYST_SERVER_URL}/api/fleet/records`, {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/data/records`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       return await res.json();
     } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to fetch fleet records' };
+      return { success: false, error: err.message || 'Failed to fetch governed records' };
     }
   }
 }

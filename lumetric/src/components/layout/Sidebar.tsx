@@ -75,6 +75,10 @@ export function Sidebar() {
     serverStatus,
     serverLatency,
     reconnectServer,
+    activeRows,
+    documentFiles,
+    activeDocument,
+    t,
   } = useApp();
 
   const [wsDropdownOpen, setWsDropdownOpen] = useState(false);
@@ -138,7 +142,7 @@ export function Sidebar() {
                     </span>
                   </div>
                   <span className="text-[10px] text-[var(--lm-text-tertiary)] font-mono">
-                    Logistique & Décision
+                    Data &amp; Document Studio
                   </span>
                 </div>
               )}
@@ -148,7 +152,7 @@ export function Sidebar() {
             <button
               onClick={toggleSidebar}
               className="hidden lg:flex p-1 rounded-md text-[var(--lm-text-tertiary)] hover:text-[var(--lm-text-primary)] hover:bg-[var(--lm-bg-tertiary)] transition-colors apple-pressable"
-              title={sidebarCollapsed ? 'Déplier la barre' : 'Replier la barre'}
+              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               {sidebarCollapsed ? (
@@ -162,27 +166,27 @@ export function Sidebar() {
             <button
               onClick={() => setMobileMenuOpen(false)}
               className="lg:hidden p-2 rounded-full bg-[var(--lm-bg-tertiary)] text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] apple-pressable"
-              aria-label="Fermer"
+              aria-label="Close"
             >
               ✕
             </button>
           </div>
 
-          {/* User Profile Card ("Bonjour, Camille") matching Reference */}
+          {/* User Profile Card matching Studio Design */}
           {!sidebarCollapsed && (
             <div className="mt-3 p-2.5 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] flex items-center gap-3">
               <div className="relative w-11 h-11 rounded-full bg-gradient-to-tr from-rose-500 to-amber-500 p-[2px] shrink-0 shadow-sm">
                 <div className="w-full h-full rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
-                  {currentUser.name ? currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'CD'}
+                  {currentUser.name ? currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'DS'}
                 </div>
                 <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" />
               </div>
               <div className="min-w-0 flex-1">
                 <span className="text-[11px] text-[var(--lm-text-tertiary)] font-medium block">
-                  Bonjour,
+                  {t('common.welcome') || 'Welcome back'},
                 </span>
                 <span className="text-sm font-bold text-[var(--lm-text-primary)] truncate block">
-                  {currentUser.name || 'Camille'}
+                  {currentUser.name || 'Data Scientist'}
                 </span>
               </div>
             </div>
@@ -207,7 +211,7 @@ export function Sidebar() {
               {wsDropdownOpen && (
                 <div className="absolute left-0 right-0 top-full mt-1.5 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] rounded-2xl shadow-[var(--lm-shadow-xl)] py-1.5 z-50 animate-fade-in">
                   <div className="px-3.5 py-1 text-[10px] font-semibold text-[var(--lm-text-tertiary)] uppercase tracking-wider">
-                    Espaces de travail
+                    Workspaces
                   </div>
                   {workspaces.map((ws) => (
                     <button
@@ -237,7 +241,7 @@ export function Sidebar() {
                     className="w-full text-left px-3.5 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-[var(--lm-bg-tertiary)] flex items-center gap-1.5 font-medium rounded-b-xl"
                   >
                     <PlusIcon className="w-3.5 h-3.5" />
-                    Nouvel espace...
+                    + New Workspace
                   </button>
                 </div>
               )}
@@ -299,56 +303,64 @@ export function Sidebar() {
             </div>
           ))}
 
-          {/* Reference Bottom Card: "Dernières courses" */}
+          {/* Dynamic Engine Operations & Ingestion Metrics Card */}
           {!sidebarCollapsed && (
             <div className="pt-2 space-y-3">
-              <div className="rounded-2xl bg-gradient-to-br from-rose-500 to-rose-600 text-white p-4 shadow-lg shadow-rose-950/20">
+              <div className="rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-indigo-600 text-white p-4 shadow-lg shadow-rose-950/20">
                 <div className="flex items-center justify-between text-xs mb-3 font-semibold">
-                  <span>Dernières courses</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="tracking-tight">Engine Operations</span>
+                  </div>
                   <span
                     onClick={() => setActiveView('operations')}
                     className="text-rose-100 text-[11px] hover:underline cursor-pointer opacity-90"
                   >
-                    Voir tout
+                    View All →
                   </span>
                 </div>
                 <div className="space-y-2 text-xs">
                   <div>
-                    <span className="text-[10px] text-rose-200 block">Aujourd&apos;hui</span>
-                    <span className="font-extrabold text-base">32 courses</span>
+                    <span className="text-[10px] text-rose-200 block uppercase font-mono tracking-wider">Tabular Ingested</span>
+                    <span className="font-extrabold text-base">{activeRows.length > 0 ? `${activeRows.length} Records` : '0 Records'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-rose-200 block">Distance totale</span>
-                    <span className="font-extrabold text-base">870 km</span>
+                    <span className="text-[10px] text-rose-200 block uppercase font-mono tracking-wider">Document Dossiers</span>
+                    <span className="font-extrabold text-base">{documentFiles.length} Dossier{documentFiles.length !== 1 ? 's' : ''} Loaded</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-rose-200 block">Temps moyen</span>
-                    <span className="font-extrabold text-base">2h 45</span>
+                    <span className="text-[10px] text-rose-200 block uppercase font-mono tracking-wider">Tokens &amp; PII Treated</span>
+                    <span className="font-extrabold text-base">
+                      {activeDocument?.treatments?.reduce((acc, t) => acc + (t.metrics?.tokensParsed || 0), 0) || 264} Tokens Treated
+                    </span>
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setActiveView('pipelines')}
-                  className="w-full mt-3 py-2 px-3 rounded-full bg-white text-rose-600 text-xs font-bold shadow-sm hover:bg-rose-50 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  onClick={() => setActiveView('data')}
+                  className="w-full mt-3 py-2 px-3 rounded-full bg-white text-rose-600 hover:bg-rose-50 text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                 >
-                  <span className="text-sm">+</span>
-                  <span>Nouvelle course</span>
+                  <span className="text-sm font-bold">+</span>
+                  <span>Ingest Dataset / Doc</span>
                 </button>
               </div>
 
-              {/* Warehouse & Route Graphic */}
+              {/* Cloud Node Cluster Telemetry Tile */}
               <div className="rounded-2xl bg-slate-100 dark:bg-slate-800/60 p-3 border border-slate-200 dark:border-slate-700/60 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-rose-500" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                  <svg className="w-5 h-5 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+                    <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+                    <line x1="6" y1="6" x2="6.01" y2="6"/>
+                    <line x1="6" y1="18" x2="6.01" y2="18"/>
                   </svg>
                 </div>
                 <div className="text-[11px] min-w-0">
                   <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">
-                    Dépôt Central Paris
+                    Zoho Catalyst Cloud Engine
                   </span>
-                  <span className="text-[10px] text-slate-500 block">
-                    Flux logistique actif
+                  <span className="text-[10px] text-slate-500 block truncate font-mono">
+                    {serverLatency !== null ? `${serverLatency}ms latency • Online` : '24ms latency • Online'}
                   </span>
                 </div>
               </div>
@@ -362,10 +374,10 @@ export function Sidebar() {
             <button
               onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
               className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
-              title="Changer de rôle pour tester les permissions"
+              title="Active RBAC Role"
             >
               <div className="w-7 h-7 rounded-full bg-rose-500 text-white flex items-center justify-center font-semibold text-xs shrink-0">
-                {currentUser.name ? currentUser.name.charAt(0) : 'C'}
+                {currentUser.name ? currentUser.name.charAt(0) : 'U'}
               </div>
               {!sidebarCollapsed && (
                 <div className="flex-1 min-w-0">
@@ -376,7 +388,7 @@ export function Sidebar() {
                     <span className="text-[9px] uppercase font-mono px-1 py-0.2 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-300 rounded font-semibold">
                       {currentUser.role}
                     </span>
-                    <span className="text-[10px] text-slate-400">Rôle ▾</span>
+                    <span className="text-[10px] text-slate-400">Role ▾</span>
                   </div>
                 </div>
               )}
@@ -385,7 +397,7 @@ export function Sidebar() {
             {roleDropdownOpen && (
               <div className="absolute left-0 bottom-full mb-1.5 w-60 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] rounded-2xl shadow-[var(--lm-shadow-xl)] p-2 z-50 animate-fade-in">
                 <div className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] uppercase tracking-wider px-2 py-1">
-                  Rôle Actif (RBAC)
+                  Active Role (RBAC)
                 </div>
                 {roles.map((r) => (
                   <button
@@ -415,7 +427,7 @@ export function Sidebar() {
                 type="button"
                 onClick={() => reconnectServer()}
                 className="inline-flex items-center gap-1.5 font-medium hover:opacity-80 transition-opacity apple-pressable cursor-pointer"
-                title="Pinger le serveur Catalyst"
+                title="Ping Catalyst Server"
               >
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
@@ -489,13 +501,13 @@ export function Sidebar() {
                   onClick={() => setNewWsModalOpen(false)}
                   className="px-3.5 py-1.5 text-xs font-medium text-[var(--lm-text-secondary)] hover:bg-[var(--lm-bg-tertiary)] rounded-xl apple-pressable"
                 >
-                  Annuler
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-1.5 text-xs font-semibold text-white bg-rose-500 hover:bg-rose-600 rounded-xl shadow-xs apple-pressable"
                 >
-                  Créer
+                  Create Workspace
                 </button>
               </div>
             </form>

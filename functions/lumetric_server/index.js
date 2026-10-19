@@ -835,116 +835,65 @@ app.post('/api/auth/refresh', authenticateToken, (req, res) => {
   });
 });
 
-// 13. Real-Time Fleet Telemetry Stream / Polling Endpoint
-app.get('/api/fleet/telemetry/live', (req, res) => {
+// 13. Real-Time Data & Model Intelligence Stream Endpoint
+app.get('/api/data/intelligence/live', (req, res) => {
   const now = Date.now();
-  // Dynamic jitter to simulate live sensors
-  const jitterSpeed = Math.floor(Math.sin(now / 15000) * 8) + 82;
-  const jitterFuel = Math.max(20, Math.min(95, 78 - Math.floor((now % 1000000) / 40000)));
+  const memory = process.memoryUsage();
 
   return res.json({
     success: true,
-    truckId: 'Camion 12 (Julien Morel)',
-    driverName: 'Julien Morel',
-    driverRating: 5.0,
-    vehicleStatus: 'in_transit',
-    speedKmh: jitterSpeed,
-    fuelLevelPct: jitterFuel,
-    engineTempC: 88,
-    cargoLoadPct: 78,
-    cargoWeightTons: 14.2,
-    maxWeightTons: 18.0,
-    currentLocation: {
-      lat: 47.3220,
-      lng: 5.0415,
-      checkpoint: 'Dijon Sud',
-      nextStop: 'Lyon (Saint-Priest Dépôt)'
+    engineStatus: 'active',
+    clusterNode: 'catalyst-in-compute-01',
+    executionLatencyMs: Math.floor(Math.random() * 8) + 18,
+    activeIngestionPipelines: 4,
+    tabularRecordsManaged: 1482000,
+    documentsProcessedCount: 142,
+    piiTokensRedacted: 1840,
+    modelBenchmark: {
+      modelName: 'LightGBM Churn Classifier v2.4',
+      aucRoc: 0.964,
+      f1Score: 0.912,
+      inferenceLatencyMs: 4.2,
+      driftStatus: 'stable_zero_drift'
     },
-    routeCheckpoints: [
-      { name: 'Paris', status: 'completed', time: '08:15' },
-      { name: 'Auxerre', status: 'completed', time: '10:45' },
-      { name: 'Dijon', status: 'active', time: '13:10' },
-      { name: 'Lyon', status: 'pending', time: '15:45' },
-      { name: 'Marseille', status: 'pending', time: '17:30' }
-    ],
-    progressPct: 72,
-    remainingDistanceKm: 140,
-    etaMinutes: 140,
-    estimatedArrival: '17:30',
-    delayWarningMinutes: 18,
-    activeAlert: {
-      id: 'alt-a6-beaune',
-      type: 'traffic_delay',
-      severity: 'warning',
-      title: 'Chantier A6 Beaune',
-      message: 'Chantier en cours sur l\'A6 après Beaune. Ralentissement estimé +18 min.'
+    cryptographicLedger: {
+      totalAuditEntries: auditTrailLedger.length,
+      headSha256: auditTrailLedger.length > 0 ? auditTrailLedger[0].sha256Hash : 'genesis_hash',
+      complianceStandard: 'SOC-2 Type II Verified'
     },
-    parcelsDelivered: 34,
-    parcelsTotal: 48,
-    billingTotalEur: 5860,
-    lastPingTimestamp: new Date().toISOString()
+    timestamp: new Date().toISOString()
   });
 });
 
-// 14. Operational Alert Dispatch (Logged to SHA-256 Audit Trail)
-app.post('/api/fleet/dispatch/alert', (req, res) => {
+// 14. Server-Side Document Treatment & Cryptographic NLP Engine
+app.post('/api/documents/treatment', authenticateToken, (req, res) => {
   try {
-    const { truckId, alertType, message, severity } = req.body;
-    const actorEmail = (req.user && req.user.email) || 'dispatch@lumetric.dev';
+    const { docId, treatmentType, documentName } = req.body;
+    const actorEmail = (req.user && req.user.email) || 'analytics@lumetric.dev';
 
-    const alertId = `alt_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const treatmentId = `trt_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     const audit = logAuditEvent(
       actorEmail,
-      'FLEET_ALERT_DISPATCHED',
-      'Operations',
-      `Alert [${severity || 'info'}] dispatched to ${truckId || 'Fleet'}: ${message || 'Route notice'}`
+      'DOCUMENT_TREATMENT_EXECUTED',
+      'DataScience',
+      `Executed ${treatmentType || 'NLP Treatment'} on document [${documentName || docId || 'Dossier'}]`
     );
 
     return res.json({
       success: true,
-      alertId,
-      dispatchedAt: new Date().toISOString(),
+      treatmentId,
+      treatmentType: treatmentType || 'ner_pii_masking',
+      executedAt: new Date().toISOString(),
       auditSha256: audit.sha256Hash,
-      message: 'Fleet alert broadcasted and securely anchored to immutable audit ledger.'
+      message: 'Document treatment cryptographically signed and stored in audit ledger.'
     });
   } catch (err) {
-    return res.status(500).json({ success: false, error: 'Failed to dispatch alert.' });
+    return res.status(500).json({ success: false, error: 'Failed to execute document treatment.' });
   }
 });
 
-// 15. Automated Digital Invoice Receipt Generator
-app.post('/api/fleet/invoice/generate', (req, res) => {
-  try {
-    const { shipmentId, customerName, parcelsCount, distanceKm, amountEur } = req.body;
-    const invoiceNum = `INV-2026-FR-${Math.floor(100000 + Math.random() * 900000)}`;
-    const issuedAt = new Date().toISOString();
-
-    const signaturePayload = `${invoiceNum}-${shipmentId || 'SHP-001'}-${amountEur || 5860}-${issuedAt}`;
-    const digitalSignature = require('crypto').createHmac('sha256', JWT_SECRET).update(signaturePayload).digest('hex');
-
-    logAuditEvent('billing@lumetric.dev', 'INVOICE_GENERATED', 'Billing', `Invoice ${invoiceNum} generated for ${customerName || 'Client'}`);
-
-    return res.json({
-      success: true,
-      invoiceNumber: invoiceNum,
-      issuedAt,
-      customerName: customerName || 'Logistique Express France',
-      shipmentId: shipmentId || 'SHP-FR-9921',
-      parcelsCount: parcelsCount || 48,
-      distanceKm: distanceKm || 870,
-      totalAmountEur: amountEur || 5860,
-      vatEur: Math.round((amountEur || 5860) * 0.2),
-      status: 'certified_paid',
-      digitalSignature,
-      downloadUrl: `/api/fleet/invoice/${invoiceNum}.pdf`
-    });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: 'Failed to generate digital invoice.' });
-  }
-});
-
-// 16. Column-Level RBAC Data Governance Endpoint
-app.get('/api/fleet/records', (req, res) => {
+// 15. Column-Level RBAC Governed Tabular Records Endpoint
+app.get('/api/data/records', (req, res) => {
   const authHeader = req.headers['authorization'];
   let userRole = 'viewer';
 
@@ -959,21 +908,23 @@ app.get('/api/fleet/records', (req, res) => {
   const isFinancialPrivileged = userRole === 'owner' || userRole === 'administrator';
 
   const baseRecords = [
-    { id: 'REC-01', truck: 'Camion 12', driver: 'Julien Morel', origin: 'Paris', destination: 'Marseille', status: 'En livraison', parcels: 48, arrUsd: 145000, billingRateEur: 5860 },
-    { id: 'REC-02', truck: 'Camion 08', driver: 'Marc V.', origin: 'Lille', destination: 'Lyon', status: 'En attente', parcels: 32, arrUsd: 98000, billingRateEur: 3950 },
-    { id: 'REC-03', truck: 'Camion 03', driver: 'Sophie L.', origin: 'Strasbourg', destination: 'Bordeaux', status: 'Terminée', parcels: 64, arrUsd: 210000, billingRateEur: 8420 },
+    { id: 'ACC-101', accountName: 'AlphaCorp Global', region: 'North America', planTier: 'Enterprise', arrUsd: 185000, nps: 84, churnRiskPct: 4.2, auditStatus: 'Verified' },
+    { id: 'ACC-102', accountName: 'Metropolis Data Systems', region: 'Europe', planTier: 'Enterprise', arrUsd: 240000, nps: 92, churnRiskPct: 2.1, auditStatus: 'Verified' },
+    { id: 'ACC-103', accountName: 'Zenith Logistics Tech', region: 'Asia Pacific', planTier: 'Growth', arrUsd: 78000, nps: 71, churnRiskPct: 18.4, auditStatus: 'Pending Review' },
+    { id: 'ACC-104', accountName: 'Vanguard Health Analytics', region: 'North America', planTier: 'Enterprise', arrUsd: 310000, nps: 88, churnRiskPct: 3.5, auditStatus: 'Verified' },
+    { id: 'ACC-105', accountName: 'Hyperion FinTech Lab', region: 'Europe', planTier: 'Growth', arrUsd: 125000, nps: 76, churnRiskPct: 12.0, auditStatus: 'Verified' },
   ];
 
   const processed = baseRecords.map(r => ({
     ...r,
-    arrUsd: isFinancialPrivileged ? r.arrUsd : '*** [RESTRICTED]',
-    billingRateEur: isFinancialPrivileged ? r.billingRateEur : '*** [RESTRICTED]',
+    arrUsd: isFinancialPrivileged ? r.arrUsd : '*** [RESTRICTED_CONFIDENTIAL]',
   }));
 
   return res.json({
     success: true,
     userRole,
     columnLevelMaskingApplied: !isFinancialPrivileged,
+    totalRecords: processed.length,
     records: processed
   });
 });

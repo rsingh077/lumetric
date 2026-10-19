@@ -93,7 +93,6 @@ interface AppContextType {
   openAuthModal: (mode?: 'profile' | 'login' | 'register' | 'admin-dashboard') => void;
   closeAuthModal: () => void;
   logout: () => Promise<void>;
-  loginAsDemoRole: (role: UserRole) => void;
 }
 
 const defaultUser: User = {
@@ -424,6 +423,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isSplashLoading, setIsSplashLoading] = useState<boolean>(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
+      const stored = LumetricAuthService.getStoredUser();
+      // Purge legacy test session if present
+      if (stored && (stored.email === 'sarah.lin@lumetric.io' || stored.id?.startsWith('token_instant_') || stored.id?.startsWith('token_demo_'))) {
+        LumetricAuthService.clearSession();
+        return false;
+      }
       return LumetricAuthService.isAuthenticated();
     }
     return false;
@@ -432,7 +437,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User>(() => {
     if (typeof window !== 'undefined') {
       const stored = LumetricAuthService.getStoredUser();
-      if (stored && stored.email) {
+      if (stored && stored.email && stored.email !== 'sarah.lin@lumetric.io') {
         return {
           id: stored.id,
           email: stored.email,
@@ -458,29 +463,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    LumetricAuthService.clearSession();
+    await LumetricAuthService.logout();
     setIsAuthenticated(false);
     setCurrentUser(defaultUser);
-  };
-
-  const loginAsDemoRole = (role: UserRole) => {
-    const demoUserMap: Record<UserRole, User> = {
-      owner: { id: 'usr-data-001', email: 'alex.vance@lumetric.io', name: 'Dr. Alexander Vance', role: 'owner', createdAt: '2026-10-15T08:00:00Z' },
-      administrator: { id: 'usr-admin-002', email: 'sarah.lin@lumetric.io', name: 'Sarah Lin', role: 'administrator', createdAt: '2026-10-15T08:00:00Z' },
-      builder: { id: 'usr-eng-003', email: 'dev.marcus@lumetric.io', name: 'Marcus Brody', role: 'builder', createdAt: '2026-10-15T08:00:00Z' },
-      reviewer: { id: 'usr-rev-004', email: 'elena.rostova@lumetric.io', name: 'Dr. Elena Rostova', role: 'reviewer', createdAt: '2026-10-15T08:00:00Z' },
-      viewer: { id: 'usr-view-005', email: 'director.harrison@lumetric.io', name: 'James Harrison', role: 'viewer', createdAt: '2026-10-15T08:00:00Z' },
-    };
-    const targetUser = demoUserMap[role];
-    LumetricAuthService.setSession(`token_demo_${role}_${Date.now()}`, {
-      id: targetUser.id,
-      email: targetUser.email,
-      name: targetUser.name,
-      role: targetUser.role,
-      createdAt: targetUser.createdAt
-    });
-    setCurrentUser(targetUser);
-    setIsAuthenticated(true);
     closeAuthModal();
   };
 
@@ -779,7 +764,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         openAuthModal,
         closeAuthModal,
         logout,
-        loginAsDemoRole,
       }}
     >
       {children}

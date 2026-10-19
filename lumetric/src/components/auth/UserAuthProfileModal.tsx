@@ -14,7 +14,7 @@ export function UserAuthProfileModal({
   onClose: () => void;
   initialMode?: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit';
 }) {
-  const { setRole, serverStatus, serverLatency, reconnectServer, loginAsDemoRole } = useApp();
+  const { setRole, serverStatus, serverLatency, reconnectServer, logout } = useApp();
   const [mode, setMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit'>(initialMode || 'profile');
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
@@ -599,54 +599,6 @@ export function UserAuthProfileModal({
                   />
                 </div>
               )}
-
-              <div className="space-y-1.5 pt-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--lm-text-tertiary)]">
-                  ⚡ 1-Click Instant Role Sign In:
-                </span>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      loginAsDemoRole('owner');
-                      onClose();
-                    }}
-                    className="p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/20 text-left font-medium transition-colors"
-                  >
-                    👑 Justin Alex (Owner)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      loginAsDemoRole('administrator');
-                      onClose();
-                    }}
-                    className="p-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/20 text-left font-medium transition-colors"
-                  >
-                    ⚙ Alex Chen (Admin)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      loginAsDemoRole('builder');
-                      onClose();
-                    }}
-                    className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-left font-medium transition-colors"
-                  >
-                    🛠 Sarah Lin (Builder)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      loginAsDemoRole('reviewer');
-                      onClose();
-                    }}
-                    className="p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-left font-medium transition-colors"
-                  >
-                    🔍 David Vance (Reviewer)
-                  </button>
-                </div>
-              </div>
 
               <div className="p-3 rounded-2xl bg-blue-500/5 border border-blue-500/15 text-[11px] text-[var(--lm-text-secondary)] leading-relaxed">
                 💡 <span className="font-semibold text-[var(--lm-text-primary)]">Preloaded Admin:</span>{' '}

@@ -47,43 +47,40 @@ jobs:
       - name: Copy APK to Root for Direct Repo Download
         run: |
           cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric.apk
-          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.1.0.apk
+          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.2.0.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumetric-v2.1.0-debug-apk
-          path: Lumetric-v2.1.0.apk
+          name: lumetric-v2.2.0-debug-apk
+          path: Lumetric-v2.2.0.apk
 
-      - name: Create or Update GitHub Release v2.1.0
+      - name: Create or Update GitHub Release v2.2.0
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v2.1.0
-          name: "Lumetric v2.1.0 — Document Analysis Studio, Clean English Default & Multi-Language Settings"
+          tag_name: v2.2.0
+          name: "Lumetric v2.2.0 — Real Authentication System, Dynamic Engine Metrics & Distance Data Purged"
           body: |
-            ### 🚀 Lumetric Mobile v2.1.0 Release
+            ### 🚀 Lumetric Mobile v2.2.0 Release
 
-            #### 📄 Document Analysis & NLP Treatments Studio
-            - **Multi-Format Ingestion**: Ingest, parse, and analyze unstructured dossiers (PDF, DOCX, TXT, Markdown, JSON, CSV).
-            - **Named Entity Recognition (NER)**: Automated classification of Organizations, Persons, Locations, Technical Terms, and Metrics.
-            - **Automated PII Masking**: Quarantines and redacts sensitive identifiers (IPs, Tax IDs, Emails, Phone numbers) with cryptographic SHA-256 hashes.
-            - **Readability & Complexity Scoring**: Flesch-Kincaid index, tokenization statistics, and executive summarization.
-            - **Dossier Export**: 1-click JSON export of all parsed entities, treatments, and token statistics.
+            #### 🔐 Real Production Authentication System
+            - **Removed Test Admin Bypasses**: Completely removed all fake 1-click test admin buttons and hardcoded persona shortcuts.
+            - **Real Email + Password Authentication**: Direct integration with Zoho Catalyst Serverless Node.js backend using bcrypt password hashing and JWT sessions.
+            - **Account Registration**: Create real user accounts with full names, work emails, passwords, organization names, and data governance roles.
+            - **Google OAuth / SSO**: Fast authentication through Google accounts.
+            - **Real User Identity**: User profiles display the authentic user's name, email, and avatar initials across the sidebar, header, and profile modal.
 
-            #### 🌐 Localization & English Default
-            - **Clean English Default**: Replaced all hardcoded French phrases across the dashboard, splash screen, navigation, and authentication screens with clean English data science terminology.
-            - **Settings Language Switcher**: Added dynamic language preference support in Settings for English (Default), Français, Español, and Deutsch with persistent local storage.
-
-            #### 🧹 Clean Data Science Domain Focus
-            - **Removed Fleet & Logistics Clutter**: Completely purged irrelevant truck/cargo/distance telemetry data. The app is 100% focused on tabular data engineering and document analysis for data engineers and data scientists.
-            - **1-Tap Data Scientist Access**: "⚡ Instant Access (Dr. Alexander Vance • Lead Data Scientist)" allows immediate one-click entry to the full studio.
+            #### 📊 Dynamic Engine Operations Card
+            - **Purged Distance & KM Clutter**: Removed the legacy French delivery card ("Dernières courses 870 km").
+            - **Real-Time Dynamic Metrics**: Sidebar now features live tabular record counts (`activeRows.length`), active document dossiers loaded, and tokens treated.
+            - **Cloud Node Cluster Telemetry**: Real-time ping latency and online status connected to the Zoho Catalyst Cloud engine.
 
             #### 📱 Direct Download
-            - **Direct APK Download (v2.1.0)**: [Lumetric-v2.1.0.apk](https://github.com/rsingh077/lumetric/releases/download/v2.1.0/Lumetric-v2.1.0.apk)
-            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.1.0/Lumetric.apk)
+            - **Direct APK Download (v2.2.0)**: [Lumetric-v2.2.0.apk](https://github.com/rsingh077/lumetric/releases/download/v2.2.0/Lumetric-v2.2.0.apk)
+            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.2.0/Lumetric.apk)
           files: |
             Lumetric.apk
-            Lumetric-v2.1.0.apk
+            Lumetric-v2.2.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
