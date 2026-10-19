@@ -326,6 +326,28 @@ export class LumetricAuthService {
     }
   }
 
+  public static async changePassword(payload: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<{ success: boolean; message?: string; error?: string }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/user/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to change password' };
+    }
+  }
+
   public static async fetchWorkspaceUsers(): Promise<{ success: boolean; users?: AuthUser[]; error?: string }> {
     const token = this.getStoredToken();
     if (!token) return { success: false, error: 'Not authenticated' };

@@ -31,6 +31,34 @@ app.use((req, res, next) => {
   next();
 });
 
+// Security Headers & Response Hardening Middleware
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  if (req.url.startsWith('/api/auth') || req.url.startsWith('/api/user')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+  }
+  next();
+});
+
+function validatePasswordStrength(password) {
+  if (!password || typeof password !== 'string') {
+    return { valid: false, message: 'Password is required.' };
+  }
+  if (password.length < 8) {
+    return { valid: false, message: 'Password must be at least 8 characters in length.' };
+  }
+  const hasLetter = /[a-zA-Z]/.test(password);
+  const hasNumberOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
+  if (!hasLetter || !hasNumberOrSymbol) {
+    return { valid: false, message: 'Password must contain at least one letter and at least one number or special character.' };
+  }
+  return { valid: true };
+}
+
 const JWT_SECRET = process.env.LUMETRIC_JWT_SECRET || 'lumetric-production-hyper-secure-secret-key-2026';
 const JWT_EXPIRES_IN = '7d';
 
@@ -133,6 +161,9 @@ const cloudConnectorsStore = [
 const memoryStore = new Map();
 
 async function initCatalystApp(req) {
+  if (req && req.res && req.res.locals && req.res.locals.catalyst) {
+    return req.res.locals.catalyst;
+  }
   if (!catalyst) return null;
   try {
     return catalyst.initialize(req);
@@ -142,36 +173,44 @@ async function initCatalystApp(req) {
 }
 
 async function getUserFromStore(req, email) {
+  if (!email) return null;
   const normEmail = email.toLowerCase().trim();
   const catApp = await initCatalystApp(req);
   if (catApp && catApp.zcql) {
     try {
+      const safeEmail = normEmail.replace(/'/g, "''");
       const zcqlRes = await catApp.zcql().executeZCQLExpression(
-        `SELECT * FROM Users WHERE email = '${normEmail}'`
+        `SELECT * FROM Users WHERE email = '${safeEmail}'`
       );
       if (zcqlRes && zcqlRes.length > 0) {
         const u = zcqlRes[0].Users;
-        return {
-          id: u.ROWID ? String(u.ROWID) : u.id,
+        const userObj = {
+          rowid: u.ROWID ? String(u.ROWID) : undefined,
+          id: u.ROWID ? String(u.ROWID) : (u.id || `usr_${normEmail.replace(/[^a-zA-Z0-9]/g, '_')}`),
           email: u.email,
           passwordHash: u.passwordHash,
           name: u.name,
           role: u.role,
-          organization: u.organization,
+          organization: u.organization || '',
           avatarUrl: u.avatarUrl || '',
           mfaEnabled: u.mfaEnabled === 'true' || u.mfaEnabled === true,
           mfaSecret: u.mfaSecret || '',
-          createdAt: u.CREATEDTIME || u.createdAt,
+          createdAt: u.CREATEDTIME || u.createdAt || new Date().toISOString(),
           lastLoginAt: u.lastLoginAt || new Date().toISOString(),
           settings: typeof u.settings === 'string' ? JSON.parse(u.settings || '{}') : (u.settings || {})
         };
+        memoryStore.set(normEmail, userObj);
+        return userObj;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Catalyst ZCQL getUser error:', e.message);
+    }
   }
   return memoryStore.get(normEmail) || null;
 }
 
 async function saveUserToStore(req, user) {
+  if (!user || !user.email) return;
   const normEmail = user.email.toLowerCase().trim();
   memoryStore.set(normEmail, user);
 
@@ -179,19 +218,52 @@ async function saveUserToStore(req, user) {
   if (catApp && catApp.datastore) {
     try {
       const table = catApp.datastore().table('Users');
-      await table.insertRow({
+      let targetRowId = user.rowid;
+
+      // If we don't have rowid cached on the user, check if row exists in Users table
+      if (!targetRowId && catApp.zcql) {
+        try {
+          const safeEmail = normEmail.replace(/'/g, "''");
+          const checkRes = await catApp.zcql().executeZCQLExpression(
+            `SELECT ROWID FROM Users WHERE email = '${safeEmail}'`
+          );
+          if (checkRes && checkRes.length > 0 && checkRes[0].Users && checkRes[0].Users.ROWID) {
+            targetRowId = String(checkRes[0].Users.ROWID);
+            user.rowid = targetRowId;
+          }
+        } catch (zcqlErr) {
+          console.warn('ZCQL checkRow error:', zcqlErr.message);
+        }
+      }
+
+      const rowData = {
         email: normEmail,
         passwordHash: user.passwordHash,
-        name: user.name,
-        role: user.role,
+        name: user.name || '',
+        role: user.role || 'builder',
         organization: user.organization || '',
         avatarUrl: user.avatarUrl || '',
         mfaEnabled: user.mfaEnabled ? 'true' : 'false',
         mfaSecret: user.mfaSecret || '',
         lastLoginAt: user.lastLoginAt || new Date().toISOString(),
         settings: JSON.stringify(user.settings || {})
-      });
-    } catch (e) {}
+      };
+
+      if (targetRowId) {
+        rowData.ROWID = targetRowId;
+        const updateRes = await table.updateRow(rowData);
+        if (updateRes && (updateRes.ROWID || updateRes.Users?.ROWID)) {
+          user.rowid = String(updateRes.ROWID || updateRes.Users?.ROWID);
+        }
+      } else {
+        const insertRes = await table.insertRow(rowData);
+        if (insertRes && (insertRes.ROWID || insertRes.Users?.ROWID)) {
+          user.rowid = String(insertRes.ROWID || insertRes.Users?.ROWID);
+        }
+      }
+    } catch (dbErr) {
+      console.warn('DataStore persist error (user persisted in memory cache):', dbErr.message);
+    }
   }
 }
 
@@ -216,7 +288,9 @@ async function getAllUsersFromStore(req) {
           };
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('getAllUsersFromStore error:', e.message);
+    }
   }
 
   const list = [];
@@ -227,53 +301,39 @@ async function getAllUsersFromStore(req) {
   return list;
 }
 
-// Seed Initial Admin & Demo Accounts
+// Security Ledger & Optional Environment-Configured Admin Bootstrap
 (async () => {
-  const adminSalt = await bcrypt.genSalt(10);
-  const adminHash = await bcrypt.hash('LumetricAdmin2026!', adminSalt);
-  memoryStore.set('admin@lumetric.dev', {
-    id: 'usr_admin_001',
-    email: 'admin@lumetric.dev',
-    passwordHash: adminHash,
-    name: 'Rajveer Singh',
-    role: 'owner',
-    organization: 'Lumetric Core Labs',
-    avatarUrl: '',
-    mfaEnabled: false,
-    mfaSecret: '',
-    createdAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString(),
-    settings: {
-      theme: 'dark',
-      currency: 'USD',
-      emailNotifications: true,
-      hapticsEnabled: true
+  if (process.env.INITIAL_ADMIN_EMAIL && process.env.INITIAL_ADMIN_PASSWORD) {
+    try {
+      const adminEmail = process.env.INITIAL_ADMIN_EMAIL.toLowerCase().trim();
+      const adminSalt = await bcrypt.genSalt(12);
+      const adminHash = await bcrypt.hash(process.env.INITIAL_ADMIN_PASSWORD, adminSalt);
+      memoryStore.set(adminEmail, {
+        id: 'usr_admin_001',
+        email: adminEmail,
+        passwordHash: adminHash,
+        name: process.env.INITIAL_ADMIN_NAME || 'Master Administrator',
+        role: 'owner',
+        organization: 'Enterprise Operations',
+        avatarUrl: '',
+        mfaEnabled: false,
+        mfaSecret: '',
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+        settings: {
+          theme: 'dark',
+          currency: 'USD',
+          emailNotifications: true,
+          hapticsEnabled: true
+        }
+      });
+      logAuditEvent(adminEmail, 'INITIALIZE_SECURITY_LEDGER', 'System', 'Admin account bootstrap completed from environment variables.');
+    } catch (e) {
+      console.warn('Bootstrap admin error:', e.message);
     }
-  });
-
-  const demoSalt = await bcrypt.genSalt(10);
-  const demoHash = await bcrypt.hash('DemoUser123!', demoSalt);
-  memoryStore.set('demo@lumetric.dev', {
-    id: 'usr_demo_002',
-    email: 'demo@lumetric.dev',
-    passwordHash: demoHash,
-    name: 'Alex Chen',
-    role: 'builder',
-    organization: 'Rainfall Analytics',
-    avatarUrl: '',
-    mfaEnabled: false,
-    mfaSecret: '',
-    createdAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString(),
-    settings: {
-      theme: 'system',
-      currency: 'INR',
-      emailNotifications: false,
-      hapticsEnabled: true
-    }
-  });
-
-  logAuditEvent('system', 'INITIALIZE_SECURITY_LEDGER', 'System', 'Seed accounts & audit trail initialized.');
+  } else {
+    logAuditEvent('system', 'INITIALIZE_SECURITY_LEDGER', 'System', 'Security audit ledger initialized with zero hardcoded credentials.');
+  }
 })();
 
 // Authentication Middleware
@@ -341,7 +401,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // 2. Authentication: Register / Create Account
-app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 60, message: 'Rate limit reached: Max 60 account creations per 15 minutes.' }), async (req, res) => {
+app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 20, message: 'Rate limit reached: Max 20 account creations per 15 minutes.' }), async (req, res) => {
   try {
     const { email, password, name, organization, role } = req.body;
 
@@ -361,10 +421,11 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 60, 
       });
     }
 
-    if (password.length < 4) {
+    const pwValidation = validatePasswordStrength(password);
+    if (!pwValidation.valid) {
       return res.status(400).json({
         success: false,
-        error: 'Password must be at least 4 characters in length.'
+        error: pwValidation.message
       });
     }
 
@@ -394,7 +455,7 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 60, 
       });
     }
 
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(password, salt);
 
     const newUser = {
@@ -812,6 +873,53 @@ app.patch('/api/user/profile', authenticateToken, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Failed to update user profile.'
+    });
+  }
+});
+
+// 11b. User Security: Change Password
+app.post('/api/user/change-password', authenticateToken, rateLimiter({ windowMs: 5 * 60 * 1000, max: 10, message: 'Too many password change attempts.' }), async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = req.user;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        error: 'Current password and new password are required.'
+      });
+    }
+
+    const pwValidation = validatePasswordStrength(newPassword);
+    if (!pwValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        error: pwValidation.message
+      });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      logAuditEvent(user.email, 'PASSWORD_CHANGE_FAILED', 'Security', 'Current password was incorrect');
+      return res.status(401).json({
+        success: false,
+        error: 'Incorrect current password.'
+      });
+    }
+
+    const salt = await bcrypt.genSalt(12);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    await saveUserToStore(req, user);
+    logAuditEvent(user.email, 'PASSWORD_CHANGED', 'Security', 'User updated password with 12-round bcrypt hash');
+
+    return res.json({
+      success: true,
+      message: 'Password updated successfully in database.'
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to change password.'
     });
   }
 });

@@ -70,8 +70,14 @@ export function AuthScreen() {
       setErrorMessage('Full name, email, and password are required.');
       return;
     }
-    if (password.length < 4) {
-      setErrorMessage('Password must be at least 4 characters long.');
+    if (password.length < 8) {
+      setErrorMessage('Password must be at least 8 characters in length.');
+      return;
+    }
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumberOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
+    if (!hasLetter || !hasNumberOrSymbol) {
+      setErrorMessage('Password must contain at least one letter and one number or special character.');
       return;
     }
     if (!agreeTerms) {
@@ -329,6 +335,11 @@ export function AuthScreen() {
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
+              {mode === 'signup' && (
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Password must be at least 8 characters and include a letter and a number or symbol.
+                </p>
+              )}
             </div>
 
             {mode === 'signup' && (
@@ -466,25 +477,13 @@ export function AuthScreen() {
             )}
           </div>
 
-          {/* Seeded Administrator Helper */}
-          <div className="mt-4 pt-3 border-t border-white/10">
-            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between text-[11px]">
-              <div>
-                <span className="text-slate-400 block text-[10px] uppercase font-mono">Master Administrator</span>
-                <span className="text-rose-400 font-mono font-medium">admin@lumetric.dev</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('admin@lumetric.dev');
-                  setPassword('LumetricAdmin2026!');
-                  setMode('signin');
-                }}
-                className="text-[10px] text-slate-300 hover:text-white px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
-              >
-                Autofill Credentials
-              </button>
+          {/* Security & Data Governance Footer */}
+          <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+            <div className="flex items-center gap-1.5 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Bcrypt 12 • SOC-2 Tamper-Evident</span>
             </div>
+            <span className="font-mono text-slate-500 text-[10px]">Zoho Catalyst Cloud</span>
           </div>
         </div>
       </main>

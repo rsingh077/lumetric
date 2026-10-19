@@ -95,12 +95,12 @@ interface AppContextType {
   logout: () => Promise<void>;
 }
 
-const defaultUser: User = {
-  id: 'usr-data-001',
-  email: 'alex.vance@lumetric.io',
-  name: 'Dr. Alexander Vance',
-  role: 'owner',
-  createdAt: '2026-10-15T08:00:00Z',
+const emptyUser: User = {
+  id: '',
+  email: '',
+  name: 'Lumetric User',
+  role: 'viewer',
+  createdAt: '',
 };
 
 const initialWorkspaces: Workspace[] = [
@@ -109,12 +109,8 @@ const initialWorkspaces: Workspace[] = [
     name: 'Lumetric Data & Document Studio',
     slug: 'core-analytics',
     description: 'Enterprise studio workspace for tabular profiling, document NLP, pipelines, and ML modeling',
-    ownerId: 'usr-data-001',
-    members: [
-      { userId: 'usr-data-001', role: 'owner', joinedAt: '2026-10-15T08:00:00Z' },
-      { userId: 'usr-eng-002', role: 'builder', joinedAt: '2026-10-15T09:00:00Z' },
-      { userId: 'usr-exec-003', role: 'viewer', joinedAt: '2026-10-16T11:00:00Z' }
-    ],
+    ownerId: 'usr-active-owner',
+    members: [],
     createdAt: '2026-10-15T08:00:00Z',
     updatedAt: '2026-10-19T09:00:00Z',
   },
@@ -123,10 +119,8 @@ const initialWorkspaces: Workspace[] = [
     name: 'Unstructured Document & LLM Lab',
     slug: 'doc-nlp-sandbox',
     description: 'Specialized environment for PDF parsing, entity extraction, PII masking, and summarization',
-    ownerId: 'usr-data-001',
-    members: [
-      { userId: 'usr-data-001', role: 'owner', joinedAt: '2026-10-16T10:00:00Z' }
-    ],
+    ownerId: 'usr-active-owner',
+    members: [],
     createdAt: '2026-10-16T10:00:00Z',
     updatedAt: '2026-10-19T08:30:00Z',
   }
@@ -424,8 +418,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const stored = LumetricAuthService.getStoredUser();
-      // Purge legacy test session if present
-      if (stored && (stored.email === 'sarah.lin@lumetric.io' || stored.id?.startsWith('token_instant_') || stored.id?.startsWith('token_demo_'))) {
+      // Purge legacy test sessions if present
+      if (stored && (
+        stored.email === 'sarah.lin@lumetric.io' ||
+        stored.email === 'alex.vance@lumetric.io' ||
+        stored.id?.startsWith('token_instant_') ||
+        stored.id?.startsWith('token_demo_')
+      )) {
         LumetricAuthService.clearSession();
         return false;
       }
@@ -437,7 +436,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User>(() => {
     if (typeof window !== 'undefined') {
       const stored = LumetricAuthService.getStoredUser();
-      if (stored && stored.email && stored.email !== 'sarah.lin@lumetric.io') {
+      if (stored && stored.email && stored.email !== 'sarah.lin@lumetric.io' && stored.email !== 'alex.vance@lumetric.io') {
         return {
           id: stored.id,
           email: stored.email,
@@ -447,8 +446,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
       }
     }
-    return defaultUser;
+    return emptyUser;
   });
+
+  // Verify and sync authenticated profile from database on initial mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && LumetricAuthService.isAuthenticated()) {
+      LumetricAuthService.fetchProfile().then((res) => {
+        if (res.success && res.user) {
+          setCurrentUser({
+            id: res.user.id,
+            email: res.user.email,
+            name: res.user.name,
+            role: res.user.role,
+            createdAt: res.user.createdAt
+          });
+          setIsAuthenticated(true);
+        } else if (res.error && (res.error.includes('expired') || res.error.includes('no longer exists') || res.error.includes('401') || res.error.includes('403'))) {
+          LumetricAuthService.clearSession();
+          setIsAuthenticated(false);
+          setCurrentUser(emptyUser);
+        }
+      }).catch(() => {});
+    }
+  }, []);
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard'>('profile');
@@ -465,7 +486,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     await LumetricAuthService.logout();
     setIsAuthenticated(false);
-    setCurrentUser(defaultUser);
+    setCurrentUser(emptyUser);
     closeAuthModal();
   };
 

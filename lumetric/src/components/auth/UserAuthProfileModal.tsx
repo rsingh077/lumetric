@@ -14,7 +14,7 @@ export function UserAuthProfileModal({
   onClose: () => void;
   initialMode?: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit';
 }) {
-  const { setRole, serverStatus, serverLatency, reconnectServer, logout } = useApp();
+  const { setRole, serverStatus, serverLatency, reconnectServer, logout, setCurrentUser } = useApp();
   const [mode, setMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit'>(initialMode || 'profile');
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
@@ -24,6 +24,13 @@ export function UserAuthProfileModal({
   const [name, setName] = useState('');
   const [org, setOrg] = useState('');
   const [selectedRole, setSelectedRole] = useState<'owner' | 'administrator' | 'builder' | 'reviewer' | 'viewer'>('builder');
+
+  // Change Password state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [changePwLoading, setChangePwLoading] = useState(false);
+  const [changePwMsg, setChangePwMsg] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [showChangePw, setShowChangePw] = useState(false);
 
   // MFA state
   const [totpToken, setTotpToken] = useState('');
@@ -175,6 +182,7 @@ export function UserAuthProfileModal({
 
     if (res.success && res.user) {
       setAuthUser(res.user);
+      setCurrentUser(res.user);
       setRole(res.user.role);
       setRequiresMfa(false);
       setFeedback({ type: 'success', message: 'Signed in successfully. Live session active.' });
@@ -189,6 +197,17 @@ export function UserAuthProfileModal({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password.length < 8) {
+      setFeedback({ type: 'error', message: 'Password must be at least 8 characters in length.' });
+      return;
+    }
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumberOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
+    if (!hasLetter || !hasNumberOrSymbol) {
+      setFeedback({ type: 'error', message: 'Password must contain at least one letter and one number or special character.' });
+      return;
+    }
+
     setLoading(true);
     setFeedback(null);
 
@@ -203,6 +222,7 @@ export function UserAuthProfileModal({
 
     if (res.success && res.user) {
       setAuthUser(res.user);
+      setCurrentUser(res.user);
       setRole(res.user.role);
       setFeedback({ type: 'success', message: 'Account registered and persisted to database!' });
       setTimeout(() => {
@@ -227,10 +247,42 @@ export function UserAuthProfileModal({
 
     if (res.success && res.user) {
       setAuthUser(res.user);
+      setCurrentUser(res.user);
       setFeedback({ type: 'success', message: 'Profile updated in database.' });
       setTimeout(() => setFeedback(null), 3000);
     } else {
       setFeedback({ type: 'error', message: res.error || 'Failed to update profile.' });
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword) return;
+    if (newPassword.length < 8) {
+      setChangePwMsg({ type: 'error', message: 'New password must be at least 8 characters in length.' });
+      return;
+    }
+    const hasLetter = /[a-zA-Z]/.test(newPassword);
+    const hasNumberOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(newPassword);
+    if (!hasLetter || !hasNumberOrSymbol) {
+      setChangePwMsg({ type: 'error', message: 'New password must contain at least one letter and one number or special character.' });
+      return;
+    }
+
+    setChangePwLoading(true);
+    setChangePwMsg(null);
+    const res = await LumetricAuthService.changePassword({ currentPassword, newPassword });
+    setChangePwLoading(false);
+    if (res.success) {
+      setChangePwMsg({ type: 'success', message: 'Password updated successfully in database.' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setTimeout(() => {
+        setShowChangePw(false);
+        setChangePwMsg(null);
+      }, 2500);
+    } else {
+      setChangePwMsg({ type: 'error', message: res.error || 'Failed to update password.' });
     }
   };
 
@@ -423,6 +475,61 @@ export function UserAuthProfileModal({
                 )}
               </div>
 
+              {/* Change Password Section */}
+              <div className="p-4 rounded-2xl border border-[var(--lm-border-default)] bg-[var(--lm-bg-secondary)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-[var(--lm-text-primary)]">Account Security & Password</h4>
+                    <p className="text-[11px] text-[var(--lm-text-secondary)]">Bcrypt 12-round salted encryption with complexity verification.</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    type="button"
+                    onClick={() => setShowChangePw(!showChangePw)}
+                  >
+                    {showChangePw ? 'Cancel' : 'Change Password'}
+                  </Button>
+                </div>
+
+                {changePwMsg && (
+                  <div
+                    className={`p-2.5 rounded-xl text-xs font-semibold ${
+                      changePwMsg.type === 'success'
+                        ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                        : 'bg-red-500/10 text-red-600 border border-red-500/20'
+                    }`}
+                  >
+                    {changePwMsg.message}
+                  </div>
+                )}
+
+                {showChangePw && (
+                  <form onSubmit={handleChangePassword} className="pt-2 border-t border-[var(--lm-border-default)] space-y-3 animate-fade-in">
+                    <Input
+                      label="Current Password"
+                      type="password"
+                      required
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="••••••••"
+                    />
+                    <Input
+                      label="New Password"
+                      type="password"
+                      required
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="At least 8 characters with letter & number"
+                      hint="Must be at least 8 characters with a letter and a number or symbol"
+                    />
+                    <Button type="submit" size="sm" loading={changePwLoading} className="w-full">
+                      Update Password in Database
+                    </Button>
+                  </form>
+                )}
+              </div>
+
               <form onSubmit={handleUpdateProfile} className="space-y-3">
                 <Input
                   label="Display Name"
@@ -600,10 +707,12 @@ export function UserAuthProfileModal({
                 </div>
               )}
 
-              <div className="p-3 rounded-2xl bg-blue-500/5 border border-blue-500/15 text-[11px] text-[var(--lm-text-secondary)] leading-relaxed">
-                💡 <span className="font-semibold text-[var(--lm-text-primary)]">Preloaded Admin:</span>{' '}
-                <code className="font-mono text-blue-600">admin@lumetric.dev</code> /{' '}
-                <code className="font-mono text-blue-600">LumetricAdmin2026!</code>
+              <div className="p-2.5 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] flex items-center justify-between text-[11px] text-[var(--lm-text-secondary)]">
+                <span className="flex items-center gap-1.5 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Bcrypt 12 • Catalyst DataStore
+                </span>
+                <span className="font-mono text-[10px]">Cloud Synced</span>
               </div>
 
               <Button type="submit" size="md" className="w-full" loading={loading}>

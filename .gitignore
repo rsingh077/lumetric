@@ -1,38 +1,98 @@
-# Dependencies
+# =============================================================================
+# LUMETRIC REPOSITORY SECURITY & SECRETS PREVENTION (.gitignore)
+# Strict exclusion rules to prevent leakage of credentials, keys, tokens & configs
+# =============================================================================
+
+# 1. Environment & Secrets Variables (Never commit secrets)
+.env
+.env*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.env.*
+
+# 2. Cryptographic Keys, Certificates & Keystores
+*.pem
+*.key
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.cer
+*.crt
+*.der
+*.pub
+id_rsa*
+id_ed25519*
+
+# 3. Access Tokens, API Credentials & Service Accounts
+*credentials*
+*secret*
+*.token
+*.auth
+service-account*.json
+client_secrets*.json
+oauth*.json
+
+# 4. Zoho Catalyst Local State & Deployment Artifacts
+.catalyst/
+.catalyst-temp/
+catalyst.logs/
+*.catalyst.log
+catalyst-runtime/
+
+# 5. Node & Package Dependencies
 node_modules/
+**/node_modules/
 .pnp
 .pnp.js
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# Next.js Build Outputs
+# 6. Web Build & Compiler Outputs
 .next/
-out/
+**/out/
+build/
+dist/
+.tsbuildinfo
+next-env.d.ts
+.eslintcache
 
-# Android build outputs & local properties
+# 7. Mobile Android Build Artifacts & Signing Keys
 android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
 android/.idea/
+*.apk
+*.aab
+apk_build*/
 
-# iOS build outputs
+# 8. iOS Build Outputs
 ios/App/Pods/
 ios/App/build/
 ios/App/DerivedData/
 
-# Testing & logs
+# 9. Logs & Runtime Debuggers
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.eslintcache
+.pnpm-debug.log*
 
-# Environment variables
-.env*.local
-.env
+# 10. AI Agents & Local Assistants Workspace Data
+.gemini/
+brain/
+.agents/
+.task/
 
-# OS Files
+# 11. OS-Generated Files
 .DS_Store
 Thumbs.db
-
-# Downloaded APK artifacts
-apk_build*/
-*.apk
+Desktop.ini
