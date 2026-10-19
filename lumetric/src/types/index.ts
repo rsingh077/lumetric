@@ -151,45 +151,60 @@ export type ActiveView =
   | 'operations'
   | 'settings';
 
-export interface RouteCheckpoint {
-  name: string;
-  status: 'completed' | 'active' | 'pending';
-  time: string;
+// ========== Document & File Analysis Treatment Types ==========
+
+export type DocumentType = 'pdf' | 'docx' | 'txt' | 'markdown' | 'json' | 'csv' | 'xml' | 'html';
+
+export interface DocumentEntity {
+  text: string;
+  category: 'ORGANIZATION' | 'PERSON' | 'LOCATION' | 'METRIC' | 'DATE' | 'IDENTIFIER' | 'TECHNICAL';
+  confidence: number;
+  frequency: number;
 }
 
-export interface FleetTelemetryData {
-  truckId: string;
-  driverName: string;
-  driverRating: number;
-  vehicleStatus: 'in_transit' | 'loading' | 'completed' | 'delayed';
-  speedKmh: number;
-  fuelLevelPct: number;
-  engineTempC: number;
-  cargoLoadPct: number;
-  cargoWeightTons: number;
-  maxWeightTons: number;
-  currentLocation: {
-    lat: number;
-    lng: number;
-    checkpoint: string;
-    nextStop: string;
-  };
-  routeCheckpoints: RouteCheckpoint[];
-  progressPct: number;
-  remainingDistanceKm: number;
-  etaMinutes: number;
-  estimatedArrival: string;
-  delayWarningMinutes: number;
-  activeAlert?: {
-    id: string;
-    type: string;
-    severity: string;
-    title: string;
-    message: string;
-  };
-  parcelsDelivered: number;
-  parcelsTotal: number;
-  billingTotalEur: number;
-  lastPingTimestamp?: string;
+export interface DocumentSummary {
+  executiveSummary: string;
+  keyTakeaways: string[];
+  sentiment: 'positive' | 'neutral' | 'negative' | 'analytical';
+  sentimentScore: number;
+  wordCount: number;
+  readingTimeMinutes: number;
+  readabilityScore: number;
+  complexityLevel: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
 }
+
+export interface DocumentTreatmentResult {
+  treatmentType: 'pii_redaction' | 'summarization' | 'entity_extraction' | 'schema_normalization' | 'token_profiling' | 'doc_diff';
+  status: 'completed' | 'in_progress' | 'failed';
+  processedAt: string;
+  metrics: {
+    charactersProcessed: number;
+    tokensParsed: number;
+    entitiesDetected: number;
+    piiMaskedCount?: number;
+    processingTimeMs: number;
+  };
+  outputContent?: string;
+  entities?: DocumentEntity[];
+  summary?: DocumentSummary;
+}
+
+export interface DocumentFileProfile {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  fileType: DocumentType;
+  uploadedAt: string;
+  sha256: string;
+  rawTextPreview: string;
+  wordCount: number;
+  tokenCount: number;
+  language: string;
+  treatments: DocumentTreatmentResult[];
+  status: 'ready' | 'processing' | 'error';
+}
+
+// ========== Application Language Localization ==========
+export type AppLanguage = 'en' | 'fr' | 'es' | 'de';
+
 

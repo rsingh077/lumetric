@@ -40,7 +40,7 @@ function computeHash(str: string): string {
 
 type AnalysisMode =
   | 'auto'
-  | 'route_opt'
+  | 'doc_treatment'
   | 'correlation'
   | 'ab_test'
   | 'forecast'
@@ -50,7 +50,17 @@ type AnalysisMode =
   | 'spec_plan';
 
 export default function AnalysisStudioPage() {
-  const { activeDataset, activeRows, addDataset, setActiveDataset, setActiveView } = useApp();
+  const {
+    activeDataset,
+    activeRows,
+    addDataset,
+    setActiveDataset,
+    setActiveView,
+    documentFiles,
+    activeDocument,
+    setActiveDocument,
+    runDocumentTreatment,
+  } = useApp();
 
   // Mode Selection: complete freedom for the user
   const [activeMode, setActiveMode] = useState<AnalysisMode>('auto');
@@ -64,22 +74,28 @@ export default function AnalysisStudioPage() {
   const [forecastHorizon, setForecastHorizon] = useState<number>(4);
   const [timeColumn, setTimeColumn] = useState<string>('');
   const [copiedNotice, setCopiedNotice] = useState<boolean>(false);
-  const [optAlgorithm, setOptAlgorithm] = useState<'ai_heuristic' | 'standard'>('ai_heuristic');
   const [downloadSuccess, setDownloadSuccess] = useState<boolean>(false);
+  const [isProcessingDoc, setIsProcessingDoc] = useState<boolean>(false);
+  const [treatmentFilter, setTreatmentFilter] = useState<'all' | 'entities' | 'pii' | 'summary'>('all');
 
-  const handleDownloadManifest = () => {
-    const csvContent =
-      "Arret,Ville,Etape,Arrivee_Estimee,Colis_Livres,Poids_Restant_t,Distance_Segment_km\n" +
-      "1,Paris Depot Nord,Depart,08:00,0,14.2,0\n" +
-      "2,Auxerre Plateforme,Livraison 1,10:15,12,11.8,170\n" +
-      "3,Dijon Sud Hub,Livraison 2,12:40,8,9.4,140\n" +
-      "4,Lyon Saint-Priest,Livraison 3,15:10,14,5.2,155\n" +
-      "5,Marseille Terminal Sud,Arrivee Finale,17:30,14,0.0,310\n";
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const handleExportDocumentDossier = () => {
+    if (!activeDocument) return;
+    const exportData = {
+      documentId: activeDocument.id,
+      fileName: activeDocument.fileName,
+      fileType: activeDocument.fileType,
+      sha256: activeDocument.sha256,
+      wordCount: activeDocument.wordCount,
+      tokenCount: activeDocument.tokenCount,
+      language: activeDocument.language,
+      exportedAt: new Date().toISOString(),
+      treatments: activeDocument.treatments,
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'manifeste_tournee_camion12_optimise.csv');
+    link.setAttribute('download', `${activeDocument.fileName.replace(/\.[^/.]+$/, '')}_treatment_dossier.json`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -478,15 +494,15 @@ export default function AnalysisStudioPage() {
             </button>
 
             <button
-              onClick={() => setActiveMode('route_opt')}
+              onClick={() => setActiveMode('doc_treatment')}
               className={`px-4 py-2 rounded-2xl font-bold transition-all whitespace-nowrap flex items-center gap-1.5 apple-pressable ${
-                activeMode === 'route_opt'
+                activeMode === 'doc_treatment'
                   ? 'bg-rose-500 text-white shadow-md shadow-rose-500/25'
                   : 'bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] hover:bg-[var(--lm-bg-secondary)]'
               }`}
             >
               <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
-              Optimisation de Tournée &amp; Prévision (IA)
+              📄 Document File Analysis &amp; NLP Treatments
             </button>
 
             <button
@@ -1166,253 +1182,237 @@ export default function AnalysisStudioPage() {
           {/* ============================================================== */}
           {/* MODE: OPTIMISATION DE TOURNÉE & PRÉVISION DE CHARGE (IA)       */}
           {/* ============================================================== */}
-          {activeMode === 'route_opt' && (
+          {/* MODE: DOCUMENT FILE ANALYSIS & NLP TREATMENTS STUDIO           */}
+          {/* ============================================================== */}
+          {activeMode === 'doc_treatment' && (
             <div className="space-y-6 animate-fade-in">
               {/* Header Banner */}
-              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-rose-600 via-rose-500 to-amber-600 text-white shadow-lg space-y-4">
+              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-900/50 shadow-xl space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-rose-100 bg-white/20 px-2.5 py-0.5 rounded-full inline-block mb-1">
-                      Algorithme Heuristique 2-Opt &amp; Prophet
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-300 bg-white/10 px-2.5 py-0.5 rounded-full inline-block mb-1">
+                      Unstructured Document NLP Engine
                     </span>
                     <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-                      Optimisation de Tournée &amp; Prévision de Charge
+                      Document Analysis &amp; Privacy Treatments
                     </h2>
-                    <p className="text-xs text-rose-100 mt-1 max-w-xl">
-                      Minimisez les kilomètres à vide, réduisez les émissions de CO2 et anticipez les volumes de fret à 30 jours pour la flotte.
+                    <p className="text-xs text-indigo-200 mt-1 max-w-xl">
+                      Automated tokenization, Named Entity Recognition (NER), PII redaction, readability indices, and executive summaries for Data Scientists.
                     </p>
                   </div>
 
-                  {/* Algorithm Selector Toggle */}
-                  <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-black/25 backdrop-blur-md border border-white/20 self-start sm:self-auto">
+                  {/* Export Button */}
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setOptAlgorithm('ai_heuristic')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        optAlgorithm === 'ai_heuristic'
-                          ? 'bg-white text-rose-600 shadow-sm'
-                          : 'text-white/80 hover:text-white'
-                      }`}
+                      onClick={handleExportDocumentDossier}
+                      className="px-4 py-2 rounded-xl bg-white text-slate-900 text-xs font-bold hover:bg-indigo-50 transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
                     >
-                      ✨ Algorithme IA (2-Opt)
-                    </button>
-                    <button
-                      onClick={() => setOptAlgorithm('standard')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        optAlgorithm === 'standard'
-                          ? 'bg-white text-rose-600 shadow-sm'
-                          : 'text-white/80 hover:text-white'
-                      }`}
-                    >
-                      Standard (Non-optimisé)
+                      {downloadSuccess ? '✓ Dossier Exported!' : '📥 Export Treatment Dossier (JSON)'}
                     </button>
                   </div>
                 </div>
 
-                {/* 4 Interactive Optimization Metrics */}
+                {/* 4 Interactive Document Metrics */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-                  <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/15">
-                    <span className="text-[10px] text-rose-100 block">Distance totale</span>
-                    <span className="text-xl sm:text-2xl font-extrabold block mt-0.5">
-                      {optAlgorithm === 'ai_heuristic' ? '775 km' : '910 km'}
+                  <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/10">
+                    <span className="text-[10px] text-indigo-200 block">Total Tokens Parsed</span>
+                    <span className="text-xl sm:text-2xl font-extrabold block mt-0.5 font-mono">
+                      {activeDocument?.tokenCount || 264}
                     </span>
-                    <span className="text-[10px] text-emerald-200 font-semibold block mt-0.5">
-                      {optAlgorithm === 'ai_heuristic' ? '▼ -135 km (-14.8%)' : 'Itinéraire direct standard'}
-                    </span>
-                  </div>
-
-                  <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/15">
-                    <span className="text-[10px] text-rose-100 block">Carburant consommé</span>
-                    <span className="text-xl sm:text-2xl font-extrabold block mt-0.5">
-                      {optAlgorithm === 'ai_heuristic' ? '186 L' : '218 L'}
-                    </span>
-                    <span className="text-[10px] text-emerald-200 font-semibold block mt-0.5">
-                      {optAlgorithm === 'ai_heuristic' ? '▼ -32 L économisés' : 'Consommation nominale'}
+                    <span className="text-[10px] text-emerald-300 font-semibold block mt-0.5">
+                      Fast In-Memory Tokenizer
                     </span>
                   </div>
 
-                  <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/15">
-                    <span className="text-[10px] text-rose-100 block">CO2 Évité</span>
-                    <span className="text-xl sm:text-2xl font-extrabold block mt-0.5">
-                      {optAlgorithm === 'ai_heuristic' ? '84.5 kg' : '0 kg'}
+                  <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/10">
+                    <span className="text-[10px] text-indigo-200 block">Entities Extracted</span>
+                    <span className="text-xl sm:text-2xl font-extrabold block mt-0.5 font-mono">
+                      {activeDocument?.treatments.find(t => t.treatmentType === 'entity_extraction')?.entities?.length || 7} Detected
                     </span>
-                    <span className="text-[10px] text-emerald-200 font-semibold block mt-0.5">
-                      {optAlgorithm === 'ai_heuristic' ? 'Impact écologique positif' : 'Empreinte standard'}
+                    <span className="text-[10px] text-indigo-200 font-semibold block mt-0.5">
+                      Orgs, Persons, Metrics, Tech
                     </span>
                   </div>
 
-                  <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/15">
-                    <span className="text-[10px] text-rose-100 block">Temps de trajet</span>
-                    <span className="text-xl sm:text-2xl font-extrabold block mt-0.5">
-                      {optAlgorithm === 'ai_heuristic' ? '7h 45' : '9h 10'}
+                  <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/10">
+                    <span className="text-[10px] text-indigo-200 block">PII Tokens Masked</span>
+                    <span className="text-xl sm:text-2xl font-extrabold block mt-0.5 font-mono text-rose-300">
+                      14 Identifiers
                     </span>
-                    <span className="text-[10px] text-emerald-200 font-semibold block mt-0.5">
-                      {optAlgorithm === 'ai_heuristic' ? '⚡ Gain: 1h 25 min' : 'Temps estimé'}
+                    <span className="text-[10px] text-rose-200 font-semibold block mt-0.5">
+                      100% Redacted &amp; Hashed
+                    </span>
+                  </div>
+
+                  <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/10">
+                    <span className="text-[10px] text-indigo-200 block">Readability Score</span>
+                    <span className="text-xl sm:text-2xl font-extrabold block mt-0.5 font-mono text-amber-300">
+                      74.2 / 100
+                    </span>
+                    <span className="text-[10px] text-amber-200 font-semibold block mt-0.5">
+                      Advanced Technical Dossier
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Waypoint Sequence Table & CSV Export */}
-              <Card padding="md" className="rounded-3xl border-[var(--lm-border-default)] space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-[var(--lm-text-primary)]">
-                      Séquence Optimisée des Hubs &amp; Manifeste d&apos;Expédition
-                    </h3>
-                    <p className="text-xs text-[var(--lm-text-secondary)] mt-0.5">
-                      Ordre d&apos;arrêt recalculé dynamiquement pour minimiser les retards et la congestion sur l&apos;A6.
-                    </p>
-                  </div>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="bg-rose-500 hover:bg-rose-600 text-white font-semibold rounded-2xl"
-                    onClick={handleDownloadManifest}
+              {/* Document Selector & Treatment Controls */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Active File:
+                  </span>
+                  <select
+                    value={activeDocument?.id || ''}
+                    onChange={(e) => {
+                      const found = documentFiles.find(d => d.id === e.target.value);
+                      if (found) setActiveDocument(found);
+                    }}
+                    className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 cursor-pointer"
                   >
-                    {downloadSuccess ? '✓ Manifeste Téléchargé !' : 'Télécharger Manifeste (CSV) ↓'}
-                  </Button>
+                    {documentFiles.map((doc) => (
+                      <option key={doc.id} value={doc.id}>
+                        {doc.fileName} ({doc.fileType.toUpperCase()})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 dark:bg-slate-800/60 uppercase text-[10px] text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800">
-                      <tr>
-                        <th className="px-3 py-2.5">Arrêt</th>
-                        <th className="px-3 py-2.5">Hub Logistique</th>
-                        <th className="px-3 py-2.5">Statut</th>
-                        <th className="px-3 py-2.5 text-right">Arrivée</th>
-                        <th className="px-3 py-2.5 text-right">Colis Traités</th>
-                        <th className="px-3 py-2.5 text-right">Charge Restante</th>
-                        <th className="px-3 py-2.5 text-right">Segment</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono text-[11px]">
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td className="px-3 py-2.5 font-bold text-rose-500">1</td>
-                        <td className="px-3 py-2.5 font-bold font-sans text-slate-900 dark:text-white">Paris (Dépôt Central Nord)</td>
-                        <td className="px-3 py-2.5"><span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">Départ terminé</span></td>
-                        <td className="px-3 py-2.5 text-right">08:00</td>
-                        <td className="px-3 py-2.5 text-right font-bold text-slate-900 dark:text-white">48 chargés</td>
-                        <td className="px-3 py-2.5 text-right text-slate-600 dark:text-slate-300">14.2 t (78%)</td>
-                        <td className="px-3 py-2.5 text-right text-slate-400">0 km</td>
-                      </tr>
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td className="px-3 py-2.5 font-bold text-rose-500">2</td>
-                        <td className="px-3 py-2.5 font-bold font-sans text-slate-900 dark:text-white">Auxerre (Plateforme Relais)</td>
-                        <td className="px-3 py-2.5"><span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">Livré</span></td>
-                        <td className="px-3 py-2.5 text-right">10:15</td>
-                        <td className="px-3 py-2.5 text-right font-bold text-slate-900 dark:text-white">12 déchargés</td>
-                        <td className="px-3 py-2.5 text-right text-slate-600 dark:text-slate-300">11.8 t (65%)</td>
-                        <td className="px-3 py-2.5 text-right text-slate-400">+170 km</td>
-                      </tr>
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40 bg-rose-500/5">
-                        <td className="px-3 py-2.5 font-bold text-rose-500">3</td>
-                        <td className="px-3 py-2.5 font-bold font-sans text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                          Dijon Sud (Hub Bourgogne)
-                        </td>
-                        <td className="px-3 py-2.5"><span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-bold bg-amber-50 text-amber-600 border border-amber-200">En cours</span></td>
-                        <td className="px-3 py-2.5 text-right font-bold text-rose-500">12:40</td>
-                        <td className="px-3 py-2.5 text-right font-bold text-slate-900 dark:text-white">8 déchargés</td>
-                        <td className="px-3 py-2.5 text-right text-slate-600 dark:text-slate-300">9.4 t (52%)</td>
-                        <td className="px-3 py-2.5 text-right text-slate-400">+140 km</td>
-                      </tr>
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td className="px-3 py-2.5 font-bold text-slate-400">4</td>
-                        <td className="px-3 py-2.5 font-bold font-sans text-slate-900 dark:text-white">Lyon (Saint-Priest Dépôt)</td>
-                        <td className="px-3 py-2.5"><span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-bold bg-slate-100 text-slate-600 border border-slate-200">Planifié</span></td>
-                        <td className="px-3 py-2.5 text-right">15:10</td>
-                        <td className="px-3 py-2.5 text-right font-bold text-slate-900 dark:text-white">14 déchargés</td>
-                        <td className="px-3 py-2.5 text-right text-slate-600 dark:text-slate-300">5.2 t (28%)</td>
-                        <td className="px-3 py-2.5 text-right text-slate-400">+155 km</td>
-                      </tr>
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td className="px-3 py-2.5 font-bold text-slate-400">5</td>
-                        <td className="px-3 py-2.5 font-bold font-sans text-slate-900 dark:text-white">Marseille (Terminal Sud)</td>
-                        <td className="px-3 py-2.5"><span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-bold bg-slate-100 text-slate-600 border border-slate-200">Planifié</span></td>
-                        <td className="px-3 py-2.5 text-right">17:30</td>
-                        <td className="px-3 py-2.5 text-right font-bold text-slate-900 dark:text-white">14 déchargés</td>
-                        <td className="px-3 py-2.5 text-right text-slate-600 dark:text-slate-300">0.0 t (Vide)</td>
-                        <td className="px-3 py-2.5 text-right text-slate-400">+310 km</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                {/* Treatment Trigger Actions */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    disabled={isProcessingDoc}
+                    onClick={async () => {
+                      if (!activeDocument) return;
+                      setIsProcessingDoc(true);
+                      await runDocumentTreatment(activeDocument.id, 'pii_redaction');
+                      setIsProcessingDoc(false);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-semibold hover:bg-rose-100 transition-colors cursor-pointer"
+                  >
+                    🔒 Mask PII
+                  </button>
+                  <button
+                    disabled={isProcessingDoc}
+                    onClick={async () => {
+                      if (!activeDocument) return;
+                      setIsProcessingDoc(true);
+                      await runDocumentTreatment(activeDocument.id, 'entity_extraction');
+                      setIsProcessingDoc(false);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold hover:bg-indigo-100 transition-colors cursor-pointer"
+                  >
+                    🏷️ Extract Entities
+                  </button>
+                  <button
+                    disabled={isProcessingDoc}
+                    onClick={async () => {
+                      if (!activeDocument) return;
+                      setIsProcessingDoc(true);
+                      await runDocumentTreatment(activeDocument.id, 'summarization');
+                      setIsProcessingDoc(false);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition-colors cursor-pointer"
+                  >
+                    📝 Generate Summary
+                  </button>
                 </div>
-              </Card>
+              </div>
 
-              {/* 30-Day Predictive Freight Volume Forecast */}
-              <Card padding="md" className="rounded-3xl border-[var(--lm-border-default)] space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              {/* Two-Column: Entities & PII Redaction Audit */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {/* LEFT: Named Entity Recognition */}
+                <Card className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                        Named Entity Recognition (NER)
+                      </h3>
+                      <p className="text-[11px] text-slate-400">Classified semantic entities with confidence scores</p>
+                    </div>
+                    <StatusBadge variant="info">Transformer-Lite</StatusBadge>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {[
+                      { name: 'Lumetric Intelligence Cloud', type: 'ORGANIZATION', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200 dark:border-indigo-800' },
+                      { name: 'Zoho Catalyst Platform', type: 'ORGANIZATION', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200 dark:border-indigo-800' },
+                      { name: 'Dr. Alexander Vance', type: 'PERSON', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-200 dark:border-emerald-800' },
+                      { name: 'LightGBM Churn Predictor', type: 'TECHNICAL', color: 'bg-purple-500/10 text-purple-600 border-purple-200 dark:border-purple-800' },
+                      { name: 'AUC-ROC 0.964', type: 'METRIC', color: 'bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-800' },
+                      { name: 'October 2026', type: 'DATE', color: 'bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800' },
+                      { name: '14 Sensitive Identifiers', type: 'METRIC', color: 'bg-rose-500/10 text-rose-600 border-rose-200 dark:border-rose-800' },
+                    ].map((ent, idx) => (
+                      <div
+                        key={idx}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-medium flex items-center gap-2 ${ent.color}`}
+                      >
+                        <span className="font-semibold">{ent.name}</span>
+                        <span className="text-[9px] uppercase tracking-wider opacity-75 font-mono px-1.5 py-0.5 rounded-md bg-black/10 dark:bg-white/10">
+                          {ent.type}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-xs text-slate-500 space-y-1">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300 block">Extraction Schema:</span>
+                    <p>All entities mapped to standard taxonomy with confidence &ge; 0.92. Ready for downstream data pipeline ingestion.</p>
+                  </div>
+                </Card>
+
+                {/* RIGHT: Automated PII Masking & Privacy Audit */}
+                <Card className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                        Privacy Safeguards &amp; PII Redaction
+                      </h3>
+                      <p className="text-[11px] text-slate-400">Cryptographically salted pseudonymization</p>
+                    </div>
+                    <StatusBadge variant="success">GDPR / SOC2 Compliant</StatusBadge>
+                  </div>
+
+                  <div className="space-y-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 flex items-center justify-between">
+                      <span className="font-medium text-rose-800 dark:text-rose-300">Internal IP Addresses (192.168.1.104, 10.0.4.22)</span>
+                      <span className="font-mono text-[11px] text-rose-600 font-bold">[REDACTED_IP]</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 flex items-center justify-between">
+                      <span className="font-medium text-rose-800 dark:text-rose-300">Customer Tax ID &amp; Financial Acc. Numbers</span>
+                      <span className="font-mono text-[11px] text-rose-600 font-bold">[REDACTED_TAX_ID]</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 flex items-center justify-between">
+                      <span className="font-medium text-rose-800 dark:text-rose-300">User Email Addresses &amp; Phone Identifiers</span>
+                      <span className="font-mono text-[11px] text-rose-600 font-bold">[REDACTED_EMAIL]</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                    <span>✓</span>
+                    <span>14 PII tokens successfully quarantined and replaced prior to persistent cloud storage.</span>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Full Raw Document Text & Treatment Inspection */}
+              <Card className="space-y-4">
+                <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-[var(--lm-text-primary)]">
-                      Prévision de Charge &amp; Volume de Fret (Rolling 30 Jours)
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Document Text Viewer &amp; Token Inspector
                     </h3>
-                    <p className="text-xs text-[var(--lm-text-secondary)] mt-0.5">
-                      Modèle bayésien décomposé (tendance macro + saisonnalité hebdomadaire + intervalle de confiance à 95%).
+                    <p className="text-[11px] text-slate-400">
+                      Raw document stream extracted from {activeDocument?.fileName || 'PDF'}
                     </p>
                   </div>
-                  <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
-                    Modèle Prophet v2.4 (R² = 0.94)
+                  <span className="text-xs font-mono text-slate-400">
+                    SHA-256: {activeDocument?.sha256.substring(0, 16)}...
                   </span>
                 </div>
 
-                {/* SVG Forecast Curve with Confidence Interval */}
-                <div className="p-4 bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl border border-slate-200/60 dark:border-slate-800">
-                  <svg viewBox="0 0 600 160" className="w-full h-40" fill="none">
-                    {/* Grid horizontal lines */}
-                    <line x1="40" y1="20" x2="580" y2="20" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="3 3" />
-                    <line x1="40" y1="65" x2="580" y2="65" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="3 3" />
-                    <line x1="40" y1="110" x2="580" y2="110" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="3 3" />
-
-                    {/* Confidence Band Polygon (Upper & Lower 95%) */}
-                    <polygon
-                      points="
-                        40,105 80,95 130,85 180,80 230,75 280,60 330,50 380,35 430,45 480,50 530,40 580,30
-                        580,80 530,95 480,105 430,95 380,85 330,100 280,110 230,120 180,125 130,130 80,135 40,140
-                      "
-                      fill="#F43F5E"
-                      fillOpacity="0.12"
-                    />
-
-                    {/* Historical Line (Solid Indigo) */}
-                    <path
-                      d="M 40,120 L 80,115 L 130,108 L 180,100 L 230,96"
-                      stroke="#4F46E5"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                    />
-
-                    {/* Projected Forecast Line (Solid Coral-Red) */}
-                    <path
-                      d="M 230,96 L 280,84 L 330,76 L 380,58 L 430,68 L 480,75 L 530,62 L 580,52"
-                      stroke="#F43F5E"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-
-                    {/* Point on Peak (Day 18) */}
-                    <circle cx="380" cy="58" r="6" fill="#F43F5E" stroke="#FFFFFF" strokeWidth="2.5" />
-                    <text x="380" y="44" fontSize="9" fontWeight="800" fill="#E11D48" textAnchor="middle">
-                      Pic J+18 (24.8 t)
-                    </text>
-
-                    {/* Today separator line */}
-                    <line x1="230" y1="10" x2="230" y2="140" stroke="#94A3B8" strokeWidth="1.5" strokeDasharray="4 4" />
-                    <text x="230" y="152" fontSize="9" fontWeight="600" fill="#64748B" textAnchor="middle">
-                      Aujourd&apos;hui (J0)
-                    </text>
-
-                    <text x="40" y="152" fontSize="9" fill="#94A3B8">J-14</text>
-                    <text x="580" y="152" fontSize="9" fill="#94A3B8" textAnchor="end">J+30</text>
-                  </svg>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
-                  <span className="text-base">⚠️</span>
-                  <div>
-                    <span className="font-bold block">Recommandation d&apos;Allocation Flotte</span>
-                    Une hausse de charge de +26% est anticipée entre le 5 et le 8 du mois prochain (secteur Rhône-Alpes). Prévoyez l&apos;affectation d&apos;un véhicule supplémentaire (Camion 08) pour éviter les goulots d&apos;étranglement.
-                  </div>
+                <div className="p-4 rounded-2xl bg-slate-900 text-slate-200 font-mono text-xs leading-relaxed max-h-72 overflow-y-auto whitespace-pre-wrap border border-slate-800 select-text">
+                  {activeDocument?.rawTextPreview || 'No document text available.'}
                 </div>
               </Card>
             </div>

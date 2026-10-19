@@ -36,23 +36,23 @@ interface NavSection {
 
 const navSections: NavSection[] = [
   {
-    title: 'Menu Principal',
+    title: 'Core Studio',
     items: [
-      { id: 'home', label: "Vue d'ensemble", icon: HomeIcon },
-      { id: 'data', label: 'Expéditions', icon: DatabaseIcon },
-      { id: 'projects', label: 'Clients', icon: FolderIcon },
-      { id: 'analysis', label: 'Analyse', badge: '2', icon: BarChart3Icon },
-      { id: 'operations', label: 'Historique', badge: '1', icon: ActivityIcon },
-      { id: 'settings', label: 'Paramètres', icon: SettingsIcon },
+      { id: 'home', label: 'Overview', icon: HomeIcon },
+      { id: 'data', label: 'Data & Documents', icon: DatabaseIcon },
+      { id: 'projects', label: 'Projects & Goals', icon: FolderIcon },
+      { id: 'analysis', label: 'Analysis & EDA', badge: 'Active', icon: BarChart3Icon },
+      { id: 'pipelines', label: 'Data Pipelines', icon: GitBranchIcon },
+      { id: 'models', label: 'ML Models & AI', icon: BrainIcon },
     ],
   },
   {
-    title: 'Studio Avancé',
+    title: 'Executive & Delivery',
     items: [
-      { id: 'pipelines', label: 'Pipelines DAG', icon: GitBranchIcon },
-      { id: 'models', label: 'Modèles ML', icon: BrainIcon },
-      { id: 'dashboards', label: 'Tableaux de bord', icon: LayoutDashboardIcon },
-      { id: 'stories', label: 'Rapports & Stories', icon: BookOpenIcon },
+      { id: 'dashboards', label: 'Dashboards', icon: LayoutDashboardIcon },
+      { id: 'stories', label: 'Data Stories', icon: BookOpenIcon },
+      { id: 'operations', label: 'Engine Operations', icon: ActivityIcon },
+      { id: 'settings', label: 'Settings', icon: SettingsIcon },
     ],
   },
 ];
@@ -452,20 +452,20 @@ export function Sidebar() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md animate-fade-in">
           <div className="bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] rounded-2xl shadow-[var(--lm-shadow-xl)] p-6 w-full max-w-md">
             <h3 className="text-base font-bold text-[var(--lm-text-primary)] mb-1">
-              Créer un nouvel espace
+              Create New Workspace
             </h3>
             <p className="text-xs text-[var(--lm-text-secondary)] mb-4">
-              Isolez les données, pipelines et autorisations de votre flotte.
+              Isolate datasets, pipelines, and document treatments for your data engineering team.
             </p>
             <form onSubmit={handleCreateWs} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[var(--lm-text-secondary)] mb-1">
-                  Nom de l&apos;espace
+                  Workspace Name
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="ex: Flotte Logistique Europe"
+                  placeholder="e.g. Quantitative Risk Analytics"
                   value={newWsName}
                   onChange={(e) => setNewWsName(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-[var(--lm-bg-primary)] border border-[var(--lm-border-default)] rounded-xl text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-rose-500"
@@ -473,11 +473,11 @@ export function Sidebar() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[var(--lm-text-secondary)] mb-1">
-                  Description (Optionnelle)
+                  Description (Optional)
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Objectif de la zone logistique"
+                  placeholder="Scope and analytical objectives of this environment"
                   value={newWsDesc}
                   onChange={(e) => setNewWsDesc(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-[var(--lm-bg-primary)] border border-[var(--lm-border-default)] rounded-xl text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-rose-500"

@@ -47,36 +47,43 @@ jobs:
       - name: Copy APK to Root for Direct Repo Download
         run: |
           cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric.apk
-          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.0.2.apk
+          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.1.0.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumetric-v2.0.2-debug-apk
-          path: Lumetric-v2.0.2.apk
+          name: lumetric-v2.1.0-debug-apk
+          path: Lumetric-v2.1.0.apk
 
-      - name: Create or Update GitHub Release v2.0.2
+      - name: Create or Update GitHub Release v2.1.0
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v2.0.2
-          name: "Lumetric v2.0.2 — Account Creation Resolution, Mobile Keyboard Fix & Seamless Auth"
+          tag_name: v2.1.0
+          name: "Lumetric v2.1.0 — Document Analysis Studio, Clean English Default & Multi-Language Settings"
           body: |
-            ### 🚀 Lumetric Mobile v2.0.2 Release
+            ### 🚀 Lumetric Mobile v2.1.0 Release
 
-            #### 🛠️ Account Creation & Authentication Fixes
-            - **Seamless Account Creation**: Relaxed backend password restriction (min 4 chars) and increased auth rate limiter (60/15min).
-            - **Duplicate-Email Smart Resolution**: If an email is already registered and credentials match, users are auto-authenticated immediately without throwing a 409 Conflict.
-            - **Mobile Keyboard Zoom Prevention**: Set standard 16px font sizes on form inputs to prevent Android WebView auto-zooming and layout shifts.
-            - **Scrollable Auth Viewport**: Soft keyboard no longer crops or obscures sign-in / registration action buttons.
-            - **1-Tap Instant Executive Access**: "⚡ Accéder Immédiat (Camille Dubois • Direction)" button allows immediate entry with zero typing.
-            - **Offline Session Fallback**: If cellular data or Wi-Fi drops, creates a secure local session so you can use the app without blockage.
+            #### 📄 Document Analysis & NLP Treatments Studio
+            - **Multi-Format Ingestion**: Ingest, parse, and analyze unstructured dossiers (PDF, DOCX, TXT, Markdown, JSON, CSV).
+            - **Named Entity Recognition (NER)**: Automated classification of Organizations, Persons, Locations, Technical Terms, and Metrics.
+            - **Automated PII Masking**: Quarantines and redacts sensitive identifiers (IPs, Tax IDs, Emails, Phone numbers) with cryptographic SHA-256 hashes.
+            - **Readability & Complexity Scoring**: Flesch-Kincaid index, tokenization statistics, and executive summarization.
+            - **Dossier Export**: 1-click JSON export of all parsed entities, treatments, and token statistics.
+
+            #### 🌐 Localization & English Default
+            - **Clean English Default**: Replaced all hardcoded French phrases across the dashboard, splash screen, navigation, and authentication screens with clean English data science terminology.
+            - **Settings Language Switcher**: Added dynamic language preference support in Settings for English (Default), Français, Español, and Deutsch with persistent local storage.
+
+            #### 🧹 Clean Data Science Domain Focus
+            - **Removed Fleet & Logistics Clutter**: Completely purged irrelevant truck/cargo/distance telemetry data. The app is 100% focused on tabular data engineering and document analysis for data engineers and data scientists.
+            - **1-Tap Data Scientist Access**: "⚡ Instant Access (Dr. Alexander Vance • Lead Data Scientist)" allows immediate one-click entry to the full studio.
 
             #### 📱 Direct Download
-            - **Direct APK Download (v2.0.2)**: [Lumetric-v2.0.2.apk](https://github.com/rsingh077/lumetric/releases/download/v2.0.2/Lumetric-v2.0.2.apk)
-            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.0.2/Lumetric.apk)
+            - **Direct APK Download (v2.1.0)**: [Lumetric-v2.1.0.apk](https://github.com/rsingh077/lumetric/releases/download/v2.1.0/Lumetric-v2.1.0.apk)
+            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.1.0/Lumetric.apk)
           files: |
             Lumetric.apk
-            Lumetric-v2.0.2.apk
+            Lumetric-v2.1.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

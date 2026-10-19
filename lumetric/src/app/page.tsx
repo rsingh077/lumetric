@@ -12,6 +12,9 @@ import {
   GitBranchIcon,
   SearchIcon,
   BellIcon,
+  BrainIcon,
+  FileSpreadsheetIcon,
+  FolderIcon,
 } from '@/components/icons';
 
 // Sub-page imports for routing between application tabs
@@ -30,827 +33,625 @@ function HomeView() {
     currentUser,
     activeDataset,
     activeRows,
+    documentFiles,
+    activeDocument,
+    setActiveDocument,
+    runDocumentTreatment,
     setActiveView,
     serverStatus,
     serverLatency,
     openAuthModal,
-    fleetTelemetry,
-    dispatchAlert,
-    generateInvoice,
+    t,
   } = useApp();
 
-  const [selectedTruck, setSelectedTruck] = useState('Camion 12 (Julien Morel)');
-  const [deliveryStatusTab, setDeliveryStatusTab] = useState<'delivering' | 'waiting' | 'completed'>('delivering');
-  const [trendTimeframe, setTrendTimeframe] = useState('7 derniers jours');
-  const [perfTimeframe, setPerfTimeframe] = useState('Mois en cours');
-  const [isDispatching, setIsDispatching] = useState(false);
-  const [isGeneratingInv, setIsGeneratingInv] = useState(false);
-  const [alertNotice, setAlertNotice] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'tabular' | 'documents' | 'pipelines' | 'models'>('all');
+  const [treatmentRunning, setTreatmentRunning] = useState(false);
+  const [treatmentMessage, setTreatmentMessage] = useState<string | null>(null);
 
-  // Compute real metrics from ingested rows if available
-  const computedMetrics = useMemo(() => {
-    const rowCount = activeRows?.length || 12;
-    const totalARR = activeRows?.reduce((acc, r) => acc + (parseFloat(r.ARR_USD || '0') || 0), 0) || 5860;
-    return {
-      rowCount,
-      totalARR,
-      progressPct: 72,
-      truckCapacity: 78,
-      deliverySuccessPct: 94,
-    };
+  // Compute real metrics from active tabular dataset
+  const tabularMetrics = useMemo(() => {
+    const rows = activeRows || [];
+    const rowCount = rows.length || 12;
+    const totalARR = rows.reduce((acc, r) => acc + (parseFloat(r.ARR_USD || '0') || 0), 0) || 1439000;
+    const avgNPS = rows.length > 0
+      ? Math.round(rows.reduce((acc, r) => acc + (parseFloat(r.NPS_Score || '0') || 0), 0) / rows.length)
+      : 72;
+    const avgChurn = rows.length > 0
+      ? (rows.reduce((acc, r) => acc + (parseFloat(r.Churn_Probability || '0') || 0), 0) / rows.length * 100).toFixed(1)
+      : '11.0';
+    return { rowCount, totalARR, avgNPS, avgChurn };
   }, [activeRows]);
 
+  // Execute quick document treatment
+  const handleQuickTreatment = async (type: 'pii_redaction' | 'entity_extraction' | 'summarization') => {
+    if (!activeDocument) return;
+    setTreatmentRunning(true);
+    setTreatmentMessage(null);
+    try {
+      const res = await runDocumentTreatment(activeDocument.id, type);
+      setTreatmentMessage(`✓ Treatment completed in ${res.metrics.processingTimeMs}ms (${type.replace('_', ' ')})`);
+      setTimeout(() => setTreatmentMessage(null), 4000);
+    } finally {
+      setTreatmentRunning(false);
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto space-y-5 animate-fade-in pb-12">
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-16">
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* HEADER: Tableau de bord & Suivi logistique (Matches Reference) */}
+      {/* 1. EXECUTIVE HEADER: Data & Document Intelligence Studio     */}
       {/* ══════════════════════════════════════════════════════════════ */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-medium text-slate-400 block">Tableau de bord</span>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-semibold text-rose-500 uppercase tracking-wider">
+              {t('app.subtitle')}
+            </span>
+            <span className="text-slate-400 text-xs">•</span>
+            <span className="text-xs text-slate-400">Production Studio</span>
+          </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Suivi logistique
+            {t('common.welcome')}, {currentUser.name}
           </h1>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Truck / Fleet Selector Dropdown */}
-          <div className="relative">
-            <select
-              value={selectedTruck}
-              onChange={(e) => setSelectedTruck(e.target.value)}
-              className="appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 pr-8 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-xs cursor-pointer"
-            >
-              <option value="Camion 12 (Julien Morel)">Sélectionner un camion : Camion 12</option>
-              <option value="Camion 08 (Marc V.)">Camion 08 (Marc V.)</option>
-              <option value="Camion 03 (Sophie L.)">Camion 03 (Sophie L.)</option>
-            </select>
-            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs">
-              ▾
-            </span>
-          </div>
-
-          {/* Quick Search */}
-          <div className="relative hidden md:block">
-            <input
-              type="text"
-              placeholder="Rechercher"
-              className="w-44 pl-8 pr-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-200"
+          {/* Server Status Pill */}
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 shadow-xs">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                serverStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+              }`}
             />
-            <SearchIcon className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+              {serverStatus === 'connected' ? 'Zoho Catalyst Cloud' : 'Connecting...'}
+            </span>
+            {serverLatency && (
+              <span className="text-[11px] font-mono text-slate-400">({serverLatency}ms)</span>
+            )}
           </div>
 
-          {/* Notification Bell with Red Badge */}
+          {/* Profile & Role Button */}
           <button
-            onClick={() => setActiveView('operations')}
-            className="relative w-9 h-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-xs"
-            aria-label="Notifications"
+            onClick={() => openAuthModal('profile')}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-rose-500 transition-colors shadow-xs cursor-pointer"
           >
-            <BellIcon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-              3
-            </span>
+            <div className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold text-[10px]">
+              {currentUser.name.charAt(0)}
+            </div>
+            <span className="capitalize">{currentUser.role}</span>
           </button>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* SECTION 1: Progression globale (72%) & Carte d'expédition      */}
+      {/* 2. FILTER PILLS: Data Domain Navigation                       */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs hover:shadow-sm transition-shadow relative overflow-hidden">
-        {/* Status Filter Tabs (En livraison, En attente, Terminée) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/60">
-            <button
-              onClick={() => setDeliveryStatusTab('delivering')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                deliveryStatusTab === 'delivering'
-                  ? 'bg-rose-500 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              En livraison
-            </button>
-            <button
-              onClick={() => setDeliveryStatusTab('waiting')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                deliveryStatusTab === 'waiting'
-                  ? 'bg-rose-500 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              En attente
-            </button>
-            <button
-              onClick={() => setDeliveryStatusTab('completed')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                deliveryStatusTab === 'completed'
-                  ? 'bg-rose-500 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Terminée
-            </button>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {[
+          { id: 'all', label: 'All Studio Assets' },
+          { id: 'tabular', label: 'Tabular Data (CSV & SQL)' },
+          { id: 'documents', label: 'Document NLP & Treatments' },
+          { id: 'pipelines', label: 'Data Pipelines' },
+          { id: 'models', label: 'Predictive ML Models' },
+        ].map((f) => (
+          <button
+            key={f.id}
+            onClick={() => setActiveFilter(f.id as any)}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              activeFilter === f.id
+                ? 'bg-rose-500 text-white shadow-xs'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* 3. STUDIO HIGHLIGHT BANNER: Pipeline Progress & Health        */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-rose-500" />
+              <span className="text-xs font-bold text-rose-500 uppercase tracking-wider">
+                Enterprise Intelligence Pipeline
+              </span>
+              <StatusBadge variant="success">98.4% Clean Records</StatusBadge>
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+              Data Quality, Document Treatments &amp; Model Scoring
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Automated ingestion engine reconciling structured database schemas and parsing unstructured documents with cryptographic SHA-256 integrity checks.
+            </p>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-slate-500">Catalyst Live ({serverLatency ?? 24}ms)</span>
-            <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/20">
-              ⚡ {fleetTelemetry?.speedKmh || 82} km/h
-            </span>
+          {/* Quick Metrics Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
+              <span className="text-[10px] text-slate-400 block font-medium">Tabular Records</span>
+              <span className="text-lg font-bold text-slate-900 dark:text-white font-mono mt-0.5 block">
+                {tabularMetrics.rowCount} Rows
+              </span>
+            </div>
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
+              <span className="text-[10px] text-slate-400 block font-medium">Document Dossiers</span>
+              <span className="text-lg font-bold text-slate-900 dark:text-white font-mono mt-0.5 block">
+                {documentFiles.length} Loaded
+              </span>
+            </div>
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
+              <span className="text-[10px] text-slate-400 block font-medium">Tokens Parsed</span>
+              <span className="text-lg font-bold text-rose-500 font-mono mt-0.5 block">
+                {activeDocument ? activeDocument.tokenCount : 264}
+              </span>
+            </div>
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
+              <span className="text-[10px] text-slate-400 block font-medium">ML ROC-AUC</span>
+              <span className="text-lg font-bold text-emerald-500 font-mono mt-0.5 block">
+                0.964
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Global Progression Number & Progress Bar */}
-        <div className="mb-4">
-          <span className="text-xs text-slate-500 block font-medium">Progression globale</span>
-          <div className="flex items-baseline gap-2 mt-0.5">
-            <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tabular-nums">
-              {computedMetrics.progressPct} %
+        {/* Pipeline Phase Progression */}
+        <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800/80">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
+            <span className="font-semibold text-slate-800 dark:text-slate-200">
+              ETL &amp; NLP Treatment Progression
             </span>
+            <span className="font-mono text-rose-500 font-bold">96% Completed</span>
           </div>
-          <div className="w-full max-w-md h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
-            <div
-              className="h-full bg-rose-500 rounded-full transition-all duration-700"
-              style={{ width: `${computedMetrics.progressPct}%` }}
-            />
+          <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-rose-500 via-indigo-500 to-emerald-500 rounded-full w-[96%]" />
           </div>
-        </div>
-
-        {/* Interactive Route Map Graphic with Checkpoints */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
-          <div className="lg:col-span-2 relative min-h-[140px] bg-slate-50/70 dark:bg-slate-800/30 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between overflow-hidden">
-            {/* SVG Background Contour Lines & Delivery Path */}
-            <svg viewBox="0 0 540 120" className="w-full h-24 my-auto select-none" fill="none">
-              {/* Map grid lines */}
-              <path d="M 0,20 Q 150,15 300,30 T 540,20" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="3 3" />
-              <path d="M 0,70 Q 120,60 280,80 T 540,65" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="3 3" />
-
-              {/* Dotted Route Curve */}
-              <path
-                d="M 20,95 Q 120,40 220,70 T 360,35 Q 430,25 500,45"
-                stroke="#F43F5E"
-                strokeWidth="2.5"
-                strokeDasharray="5 4"
-                strokeLinecap="round"
-              />
-
-              {/* Checkpoint Milestone Circles */}
-              {/* Point 1: Paris */}
-              <circle cx="20" cy="95" r="5" fill="#F43F5E" stroke="#fff" strokeWidth="2" />
-              <text x="20" y="112" fontSize="9" fill="#94A3B8" fontWeight="600" textAnchor="middle">Paris (Départ)</text>
-
-              {/* Point 2: Auxerre */}
-              <circle cx="150" cy="65" r="4.5" fill="#F43F5E" stroke="#fff" strokeWidth="2" />
-              <text x="150" y="82" fontSize="8" fill="#94A3B8" textAnchor="middle">Auxerre</text>
-
-              {/* Point 3: Dijon */}
-              <circle cx="280" cy="55" r="5.5" fill="#F43F5E" stroke="#fff" strokeWidth="2" />
-              <text x="280" y="42" fontSize="8" fill="#F43F5E" fontWeight="700" textAnchor="middle">Dijon</text>
-
-              {/* Point 4: Lyon (Active Location) */}
-              <circle cx="360" cy="35" r="8" fill="#F43F5E" fillOpacity="0.2" className="animate-ping" />
-              <circle cx="360" cy="35" r="5.5" fill="#F43F5E" stroke="#fff" strokeWidth="2.5" />
-              <text x="360" y="22" fontSize="9" fill="#F43F5E" fontWeight="800" textAnchor="middle">Lyon (En cours)</text>
-
-              {/* Point 5: Marseille (Destination) */}
-              <circle cx="500" cy="45" r="6" fill="#0F172A" stroke="#F43F5E" strokeWidth="2" />
-              <text x="500" y="62" fontSize="9" fill="#94A3B8" fontWeight="600" textAnchor="middle">Marseille (Arrivée)</text>
-            </svg>
-
-            {/* Distance & Time Remaining Boxes */}
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/60 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center font-bold text-xs">
-                  📍
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-medium">Distance parcourue</span>
-                  <span className="text-sm font-bold text-slate-800 dark:text-slate-100">540 km</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center font-bold text-xs">
-                  ⏱
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-medium">Temps restant</span>
-                  <span className="text-sm font-bold text-slate-800 dark:text-slate-100">1h 20 min</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Alert Card ("Ralentissement prévu") */}
-          <div className="bg-slate-50/70 dark:bg-slate-800/30 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Alertes</span>
-                <span className="text-[10px] text-slate-400 hover:underline cursor-pointer">Voir tout</span>
-              </div>
-              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs mt-1">
-                <div className="flex items-center gap-2 text-rose-500 text-xs font-bold mb-1">
-                  <span>⏱</span>
-                  <span>Ralentissement prévu</span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Circulation dense dans votre zone de livraison (Secteur A6 / Lyon Sud).
-                </p>
-              </div>
-            </div>
-
-            {alertNotice && (
-              <p className="text-[10px] text-emerald-500 font-bold mb-1">
-                {alertNotice}
-              </p>
-            )}
-
-            <div className="flex gap-2 mt-4">
-              <button
-                type="button"
-                onClick={async () => {
-                  setIsDispatching(true);
-                  await dispatchAlert("Chantier A6 Beaune : Retard estimé 18 min notifié aux clients.", "warning");
-                  setIsDispatching(false);
-                  setAlertNotice("✓ Alerte diffusée et scellée dans l'audit ledger SHA-256");
-                  setTimeout(() => setAlertNotice(null), 4000);
-                }}
-                disabled={isDispatching}
-                className="flex-1 py-2 px-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
-              >
-                {isDispatching ? "Diffusion..." : "Diffuser Alerte Retard"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveView('operations')}
-                className="py-2 px-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs transition-colors shadow-xs cursor-pointer"
-              >
-                Détails
-              </button>
-            </div>
+          <div className="grid grid-cols-4 text-[11px] text-slate-400 mt-2">
+            <span>1. File Ingestion</span>
+            <span className="text-center">2. Schema Profiling</span>
+            <span className="text-center">3. PII &amp; Tokenization</span>
+            <span className="text-right">4. Model Scoring</span>
           </div>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* SECTION 2: Détail de l'expédition & Capacité du camion        */}
+      {/* 4. TWO-COLUMN: Active Tabular Dataset & Document Treatments    */}
       {/* ══════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Card A: Détail de l'expédition (Julien Morel) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs hover:shadow-sm transition-shadow flex flex-col justify-between">
+        {/* LEFT: Active Tabular Dataset */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Détail de l&apos;expédition</h2>
-              <span
-                onClick={() => setActiveView('data')}
-                className="text-xs text-rose-500 hover:underline cursor-pointer font-medium"
-              >
-                Plus d&apos;infos
-              </span>
-            </div>
-
-            {/* Profile Row: Julien Morel */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-rose-500 to-indigo-600 p-[2px] shadow-xs">
-                  <div className="w-full h-full rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
-                    JM
-                  </div>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                  <DatabaseIcon className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Julien Morel</h3>
-                  <p className="text-[11px] text-slate-500 font-mono">
-                    ID expédition : EXP-98564 • Camion 12
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Active Tabular Dataset
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    {activeDataset?.fileName || 'B2B_Enterprise_SaaS_Retention_Metrics.csv'}
                   </p>
                 </div>
               </div>
-
-              {/* 5 Gold Stars Rating */}
-              <div className="text-right">
-                <span className="text-[10px] text-slate-400 block font-medium">Évaluation</span>
-                <div className="flex items-center gap-0.5 text-amber-400 text-xs mt-0.5">
-                  {'★'.repeat(5)}
-                </div>
-              </div>
+              <StatusBadge variant="success">Verified Schema</StatusBadge>
             </div>
 
-            {/* 4-Item Metric Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {/* Colis à livrer */}
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-center">
-                <span className="text-[10px] text-slate-400 block font-medium">Colis à livrer</span>
-                <span className="text-xl font-extrabold text-rose-500 tabular-nums mt-0.5 block">48</span>
-                <span className="text-[9px] text-slate-400 block">Colis restants</span>
-              </div>
-
-              {/* Chargement en cours (68% Radial Ring) */}
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center">
-                <span className="text-[10px] text-slate-400 block font-medium mb-1">Chargement</span>
-                <div className="relative w-10 h-10 flex items-center justify-center">
-                  <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                    <circle cx="18" cy="18" r="14" fill="none" stroke="#E2E8F0" strokeWidth="3.5" />
-                    <circle
-                      cx="18"
-                      cy="18"
-                      r="14"
-                      fill="none"
-                      stroke="#F43F5E"
-                      strokeWidth="3.5"
-                      strokeDasharray="60 100"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <span className="absolute text-[10px] font-bold text-slate-800 dark:text-slate-100">68%</span>
-                </div>
-              </div>
-
-              {/* Date de livraison */}
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-center">
-                <span className="text-[10px] text-slate-400 block font-medium">Date de livraison</span>
-                <span className="text-sm font-bold text-slate-800 dark:text-slate-200 block mt-1">25 mai 2025</span>
-                <span className="text-[9px] text-slate-400 block">Planifié</span>
-              </div>
-
-              {/* Statut (En cours) */}
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-center">
-                <span className="text-[10px] text-slate-400 block font-medium">Statut</span>
-                <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 text-[10px] font-bold border border-emerald-200 dark:border-emerald-800">
-                  En cours
+            {/* Dataset Metrics Grid */}
+            <div className="grid grid-cols-3 gap-2.5 my-4">
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] text-slate-400 block">Total ARR Evaluated</span>
+                <span className="text-base font-extrabold text-slate-900 dark:text-white font-mono mt-0.5 block">
+                  ${(tabularMetrics.totalARR / 1000).toFixed(0)}k
                 </span>
-                <span className="text-[9px] text-slate-400 block mt-0.5">Centre de tri</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] text-slate-400 block">Mean NPS Score</span>
+                <span className="text-base font-extrabold text-emerald-500 font-mono mt-0.5 block">
+                  {tabularMetrics.avgNPS} / 100
+                </span>
+              </div>
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] text-slate-400 block">Mean Churn Risk</span>
+                <span className="text-base font-extrabold text-amber-500 font-mono mt-0.5 block">
+                  {tabularMetrics.avgChurn}%
+                </span>
+              </div>
+            </div>
+
+            {/* Quality Checks Assertions */}
+            <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+              <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Primary Key Uniqueness
+                </span>
+                <span className="font-mono text-[11px] text-slate-400">100% Unique</span>
+              </div>
+              <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Zero Nulls in Financials
+                </span>
+                <span className="font-mono text-[11px] text-slate-400">0 Nulls</span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  SHA-256 Ledger Anchor
+                </span>
+                <span className="font-mono text-[11px] text-slate-400 truncate max-w-[120px]">
+                  {activeDataset?.sha256.substring(0, 12)}...
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Bottom Billing Row */}
-          <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <span className="text-[10px] text-slate-400 block font-medium">Total à encaisser</span>
-              <span className="text-lg font-bold text-slate-900 dark:text-white">
-                {fleetTelemetry?.billingTotalEur?.toLocaleString('fr-FR') || '5 860'} €
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 text-xs font-bold border border-emerald-200">
-                Réglé
-              </span>
-              <button
-                type="button"
-                onClick={async () => {
-                  setIsGeneratingInv(true);
-                  await generateInvoice('SHP-FR-9921', fleetTelemetry?.billingTotalEur || 5860);
-                  setIsGeneratingInv(false);
-                }}
-                disabled={isGeneratingInv}
-                className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-              >
-                {isGeneratingInv ? "Émission..." : "Facture Numérique 📄"}
-              </button>
-            </div>
-          </div>
+          <button
+            onClick={() => setActiveView('data')}
+            className="mt-5 w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-rose-500 hover:text-white dark:hover:bg-rose-500 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer text-center"
+          >
+            Open Data Workspace &amp; Profiler →
+          </button>
         </div>
 
-        {/* Card B: Capacité du camion (78%) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs hover:shadow-sm transition-shadow flex flex-col justify-between">
+        {/* RIGHT: Document File Analysis & NLP Treatments */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Capacité du camion</h2>
-              <span
-                onClick={() => setActiveView('pipelines')}
-                className="text-xs text-rose-500 hover:underline cursor-pointer font-medium"
-              >
-                Plus d&apos;infos
-              </span>
-            </div>
-
-            {/* Truck Graphic Representation */}
-            <div className="my-3 py-2 flex items-center justify-center">
-              <div className="w-full max-w-xs h-32 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-center relative p-3">
-                <svg viewBox="0 0 200 90" className="w-48 h-24 drop-shadow-md" fill="none">
-                  {/* Truck cabin */}
-                  <rect x="15" y="30" width="35" height="42" rx="4" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth="2" />
-                  <rect x="20" y="35" width="22" height="18" rx="2" fill="#38BDF8" fillOpacity="0.4" stroke="#0284C7" strokeWidth="1" />
-                  <rect x="15" y="55" width="8" height="4" rx="1" fill="#F59E0B" />
-                  {/* Truck Cargo Body */}
-                  <rect x="52" y="16" width="125" height="56" rx="6" fill="#F43F5E" />
-                  {/* Cargo boxes inside cutout */}
-                  <rect x="56" y="20" width="117" height="48" rx="4" fill="#E11D48" />
-                  <rect x="62" y="44" width="22" height="20" rx="2" fill="#D97706" stroke="#B45309" strokeWidth="1" />
-                  <rect x="88" y="38" width="26" height="26" rx="2" fill="#D97706" stroke="#B45309" strokeWidth="1" />
-                  <rect x="118" y="42" width="24" height="22" rx="2" fill="#D97706" stroke="#B45309" strokeWidth="1" />
-                  {/* Chassis & Wheels */}
-                  <rect x="25" y="72" width="145" height="4" fill="#334155" />
-                  <circle cx="32" cy="74" r="9" fill="#1E293B" stroke="#64748B" strokeWidth="2" />
-                  <circle cx="32" cy="74" r="4" fill="#CBD5E1" />
-                  <circle cx="120" cy="74" r="9" fill="#1E293B" stroke="#64748B" strokeWidth="2" />
-                  <circle cx="120" cy="74" r="4" fill="#CBD5E1" />
-                  <circle cx="145" cy="74" r="9" fill="#1E293B" stroke="#64748B" strokeWidth="2" />
-                  <circle cx="145" cy="74" r="4" fill="#CBD5E1" />
-                </svg>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <SparklesIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Document Analysis &amp; NLP Treatments
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-mono truncate max-w-[220px]">
+                    {activeDocument?.fileName || 'Enterprise_Data_Governance.pdf'}
+                  </p>
+                </div>
               </div>
+              <StatusBadge variant="info">NLP Active</StatusBadge>
             </div>
 
-            {/* Capacity Gauge 78% */}
-            <div>
-              <div className="flex items-baseline justify-between mb-1.5">
-                <span className="text-2xl font-extrabold text-slate-900 dark:text-white tabular-nums">
-                  78 %
+            {treatmentMessage && (
+              <div className="mb-3 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-700 dark:text-emerald-300 animate-fade-in">
+                {treatmentMessage}
+              </div>
+            )}
+
+            {/* Document Metrics */}
+            <div className="grid grid-cols-3 gap-2.5 my-4">
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] text-slate-400 block">Words Analyzed</span>
+                <span className="text-base font-extrabold text-slate-900 dark:text-white font-mono mt-0.5 block">
+                  {activeDocument ? activeDocument.wordCount : 198}
                 </span>
-                <span className="text-xs text-slate-500 font-medium">Capacité utilisée</span>
               </div>
-              <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-rose-500 rounded-full" style={{ width: '78%' }} />
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] text-slate-400 block">Readability Index</span>
+                <span className="text-base font-extrabold text-indigo-500 font-mono mt-0.5 block">
+                  74.2 / 100
+                </span>
+              </div>
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] text-slate-400 block">PII Tokens Masked</span>
+                <span className="text-base font-extrabold text-rose-500 font-mono mt-0.5 block">
+                  14 Tokens
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Treatment Action Buttons */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                Trigger On-Demand Treatments
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  disabled={treatmentRunning}
+                  onClick={() => handleQuickTreatment('pii_redaction')}
+                  className="px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer text-center"
+                >
+                  🔒 Mask PII
+                </button>
+                <button
+                  disabled={treatmentRunning}
+                  onClick={() => handleQuickTreatment('entity_extraction')}
+                  className="px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer text-center"
+                >
+                  🏷️ Extract Entities
+                </button>
+                <button
+                  disabled={treatmentRunning}
+                  onClick={() => handleQuickTreatment('summarization')}
+                  className="px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer text-center"
+                >
+                  📝 Summarize
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Current vs Max Weight */}
-          <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-            <div>
-              <span className="text-slate-400 block font-medium">Charge actuelle</span>
-              <span className="text-base font-bold text-slate-800 dark:text-slate-100 tabular-nums">14,2 t</span>
-            </div>
-            <div className="text-right">
-              <span className="text-slate-400 block font-medium">Charge max.</span>
-              <span className="text-base font-bold text-slate-800 dark:text-slate-100 tabular-nums">18,0 t</span>
-            </div>
-          </div>
+          <button
+            onClick={() => setActiveView('analysis')}
+            className="mt-5 w-full py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-600 hover:text-white text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition-colors cursor-pointer text-center"
+          >
+            Open Full Document Treatment Studio →
+          </button>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* SECTION 3: Tendances des expéditions & Performance de livraison */}
+      {/* 5. TWO-COLUMN: Feature Correlation & Predictive ML Score     */}
       {/* ══════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Trend Chart: Tendances des expéditions */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs hover:shadow-sm transition-shadow">
+        {/* LEFT: Revenue & Active User Dynamics Trend */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              Tendances des expéditions
-            </h2>
-            <select
-              value={trendTimeframe}
-              onChange={(e) => setTrendTimeframe(e.target.value)}
-              className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border-none text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer"
-            >
-              <option value="7 derniers jours">7 derniers jours ▾</option>
-              <option value="30 derniers jours">30 derniers jours ▾</option>
-            </select>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Enterprise Revenue Dynamics
+              </h3>
+              <p className="text-xs text-slate-400">
+                ARR Distribution ($) across Ingested Client Accounts
+              </p>
+            </div>
+            <StatusBadge variant="info">Parametric</StatusBadge>
           </div>
 
-          {/* SVG Multi-point Red Trend Curve */}
-          <div className="py-2">
-            <svg viewBox="0 0 460 140" className="w-full h-36" fill="none">
+          {/* SVG Clean Trend Curve */}
+          <div className="w-full h-44 relative mt-2">
+            <svg viewBox="0 0 500 160" className="w-full h-full overflow-visible">
               <defs>
-                <linearGradient id="roseGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#F43F5E" stopOpacity="0.25" />
+                <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#F43F5E" stopOpacity="0.35" />
                   <stop offset="100%" stopColor="#F43F5E" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
-              {/* Grid Lines */}
-              <line x1="20" y1="20" x2="440" y2="20" stroke="#E2E8F0" strokeDasharray="3 3" />
-              <line x1="20" y1="55" x2="440" y2="55" stroke="#E2E8F0" strokeDasharray="3 3" />
-              <line x1="20" y1="90" x2="440" y2="90" stroke="#E2E8F0" strokeDasharray="3 3" />
-              <line x1="20" y1="120" x2="440" y2="120" stroke="#E2E8F0" />
+              {/* Background Grid Lines */}
+              <line x1="0" y1="30" x2="500" y2="30" stroke="currentColor" className="text-slate-100 dark:text-slate-800/80" strokeDasharray="3 3" />
+              <line x1="0" y1="75" x2="500" y2="75" stroke="currentColor" className="text-slate-100 dark:text-slate-800/80" strokeDasharray="3 3" />
+              <line x1="0" y1="120" x2="500" y2="120" stroke="currentColor" className="text-slate-100 dark:text-slate-800/80" strokeDasharray="3 3" />
 
-              {/* Y Axis Labels */}
-              <text x="12" y="24" fontSize="8" fill="#94A3B8" textAnchor="end">100</text>
-              <text x="12" y="59" fontSize="8" fill="#94A3B8" textAnchor="end">75</text>
-              <text x="12" y="94" fontSize="8" fill="#94A3B8" textAnchor="end">50</text>
-              <text x="12" y="124" fontSize="8" fill="#94A3B8" textAnchor="end">0</text>
-
-              {/* Area Under Curve */}
-              <path
-                d="M 35,95 C 75,75 110,80 150,78 C 185,75 220,50 255,50 C 290,50 325,75 360,65 C 395,55 425,30 435,25 L 435,120 L 35,120 Z"
-                fill="url(#roseGradient)"
+              {/* Area */}
+              <polygon
+                points="0,150 40,110 90,85 140,120 190,70 240,95 290,45 340,60 390,35 440,50 500,20 500,150"
+                fill="url(#trendGrad)"
               />
-
-              {/* Main Red Curve Line */}
-              <path
-                d="M 35,95 C 75,75 110,80 150,78 C 185,75 220,50 255,50 C 290,50 325,75 360,65 C 395,55 425,30 435,25"
+              {/* Line */}
+              <polyline
+                points="0,150 40,110 90,85 140,120 190,70 240,95 290,45 340,60 390,35 440,50 500,20"
+                fill="none"
                 stroke="#F43F5E"
                 strokeWidth="2.5"
                 strokeLinecap="round"
+                strokeLinejoin="round"
               />
-
-              {/* Multi-point circle markers */}
-              {[
-                { x: 35, y: 95 },
-                { x: 105, y: 78 },
-                { x: 175, y: 78 },
-                { x: 245, y: 50 },
-                { x: 315, y: 72 },
-                { x: 385, y: 58 },
-                { x: 435, y: 25 },
-              ].map((pt, i) => (
-                <circle key={i} cx={pt.x} cy={pt.y} r="4" fill="#F43F5E" stroke="#fff" strokeWidth="2" />
+              {/* Data points */}
+              {[[40,110],[90,85],[190,70],[290,45],[390,35],[500,20]].map(([x, y], idx) => (
+                <circle key={idx} cx={x} cy={y} r="4" fill="#FFFFFF" stroke="#F43F5E" strokeWidth="2.5" />
               ))}
             </svg>
-
-            {/* X-Axis Dates */}
-            <div className="flex justify-between px-6 pt-1 text-[10px] text-slate-400 font-medium">
-              <span>19 mai</span>
-              <span>20 mai</span>
-              <span>21 mai</span>
-              <span>22 mai</span>
-              <span>23 mai</span>
-              <span>24 mai</span>
-              <span>25 mai</span>
-            </div>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 font-mono">
+            <span>Standard Tier ($28k)</span>
+            <span>Growth Tier ($84k)</span>
+            <span>Enterprise Tier ($310k)</span>
           </div>
         </div>
 
-        {/* Solid Coral Performance Card: 94% (Matches Reference Exactly) */}
-        <div className="rounded-3xl bg-gradient-to-br from-rose-500 to-rose-600 text-white p-6 shadow-xl shadow-rose-950/20 flex flex-col justify-between">
+        {/* RIGHT: Predictive Model Performance Score */}
+        <div className="bg-gradient-to-br from-rose-600 to-rose-700 rounded-3xl p-5 sm:p-6 text-white shadow-lg flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-semibold tracking-wider uppercase opacity-90">
-                Performance de livraison
+              <span className="text-[10px] font-bold uppercase tracking-widest text-rose-100 bg-white/20 px-2.5 py-0.5 rounded-full inline-block">
+                Predictive Analytics Engine
               </span>
-              <select
-                value={perfTimeframe}
-                onChange={(e) => setPerfTimeframe(e.target.value)}
-                className="text-xs font-semibold px-3 py-1 rounded-full bg-white/20 text-white focus:outline-none cursor-pointer border-none"
-              >
-                <option value="Mois en cours" className="text-slate-900">Mois en cours ▾</option>
-                <option value="Année en cours" className="text-slate-900">Année en cours ▾</option>
-              </select>
+              <span className="text-xs font-semibold text-rose-100">LightGBM v2.4</span>
             </div>
 
-            <div className="mt-2">
-              <span className="text-5xl sm:text-6xl font-extrabold tracking-tight tabular-nums block">
-                94 %
-              </span>
-              <span className="text-sm font-semibold opacity-90 mt-1 block">
-                Livraisons à temps
-              </span>
+            <div className="my-2">
+              <span className="text-4xl sm:text-5xl font-extrabold tracking-tight">0.964</span>
+              <span className="text-rose-100 text-sm ml-2 font-medium">AUC-ROC Score</span>
             </div>
 
-            {/* White Sparkline / Wave */}
-            <div className="my-5">
-              <svg viewBox="0 0 300 45" className="w-full h-11" fill="none">
-                <path
-                  d="M 10,38 Q 45,15 80,28 T 150,15 T 220,30 T 290,10"
-                  stroke="#FFFFFF"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-                {[10, 80, 150, 220, 290].map((cx, i) => (
-                  <circle key={i} cx={cx} cy={i % 2 === 0 ? 30 - i * 3 : 18} r="3.5" fill="#FFFFFF" />
-                ))}
-              </svg>
-            </div>
+            <p className="text-xs text-rose-100/90 leading-relaxed mt-2">
+              Model asserts high calibration accuracy on B2B customer churn indicators. In-fold F1-score reaches 0.94 with 92% sensitivity.
+            </p>
           </div>
 
-          <div className="pt-3 border-t border-white/20 flex items-center justify-between">
-            <span className="text-xs font-medium opacity-90">Objectif : 90 %</span>
+          <div className="mt-6 pt-4 border-t border-white/20 flex items-center justify-between">
+            <div className="text-xs">
+              <span className="block text-rose-200">Validation Brier Score</span>
+              <span className="font-bold text-white font-mono text-sm">0.042 (Calibrated)</span>
+            </div>
             <button
-              onClick={() => setActiveView('analysis')}
-              className="px-4 py-2 rounded-full bg-white text-rose-600 text-xs font-bold hover:bg-rose-50 transition-colors shadow-xs"
+              onClick={() => setActiveView('models')}
+              className="px-4 py-2 rounded-xl bg-white text-rose-600 font-bold text-xs hover:bg-rose-50 transition-colors shadow-xs cursor-pointer"
             >
-              Voir le rapport
+              Inspect Model Details →
             </button>
           </div>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* SECTION 4: Répartition des envois, Carburant, Messages        */}
+      {/* 6. THREE-COLUMN: Format Distribution, Ingestion, & Audit Feed */}
       {/* ══════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Col 1: Répartition des envois (Donut Chart) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:shadow-sm transition-shadow">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3">
-            Répartition des envois
-          </h2>
+        {/* Col 1: Document Formats (Donut) */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs">
+          <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
+            Document File Distribution
+          </h4>
+          <p className="text-[11px] text-slate-400 mb-4">Ingested Unstructured File Types</p>
 
-          <div className="my-3 flex items-center justify-center">
-            <div className="relative w-32 h-32">
-              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                <circle cx="50" cy="50" r="38" fill="none" stroke="#F1F5F9" strokeWidth="11" />
-                {/* Livrés: 60% */}
-                <circle
-                  cx="50" cy="50" r="38" fill="none"
-                  stroke="#F43F5E" strokeWidth="11"
-                  strokeDasharray="143 239" strokeDashoffset="0"
-                  strokeLinecap="round"
-                />
-                {/* En cours: 25% */}
-                <circle
-                  cx="50" cy="50" r="38" fill="none"
-                  stroke="#FB923C" strokeWidth="11"
-                  strokeDasharray="60 239" strokeDashoffset="-145"
-                  strokeLinecap="round"
-                />
-                {/* En attente: 10% */}
-                <circle
-                  cx="50" cy="50" r="38" fill="none"
-                  stroke="#FBBF24" strokeWidth="11"
-                  strokeDasharray="24 239" strokeDashoffset="-207"
-                  strokeLinecap="round"
-                />
-                {/* Annulés: 5% */}
-                <circle
-                  cx="50" cy="50" r="38" fill="none"
-                  stroke="#475569" strokeWidth="11"
-                  strokeDasharray="12 239" strokeDashoffset="-233"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
+          <div className="flex items-center justify-center my-3">
+            <svg viewBox="0 0 100 100" className="w-28 h-28 transform -rotate-90">
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#E2E8F0" className="dark:stroke-slate-800" strokeWidth="12" />
+              {/* PDF Segment (45%) */}
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#F43F5E" strokeWidth="12" strokeDasharray="107 238" strokeDashoffset="0" />
+              {/* DOCX Segment (25%) */}
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#6366F1" strokeWidth="12" strokeDasharray="60 238" strokeDashoffset="-107" />
+              {/* TXT/MD Segment (18%) */}
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#10B981" strokeWidth="12" strokeDasharray="43 238" strokeDashoffset="-167" />
+              {/* JSON/CSV (12%) */}
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#F59E0B" strokeWidth="12" strokeDasharray="28 238" strokeDashoffset="-210" />
+            </svg>
           </div>
 
-          {/* Legend */}
-          <div className="space-y-1.5 text-xs pt-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                <span className="text-slate-600 dark:text-slate-400">Livrés</span>
-              </div>
-              <span className="font-bold text-slate-900 dark:text-white">60 %</span>
+          <div className="grid grid-cols-2 gap-2 text-[11px] mt-2">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-rose-500" />
+              <span className="text-slate-600 dark:text-slate-400">PDF (45%)</span>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-orange-400" />
-                <span className="text-slate-600 dark:text-slate-400">En cours</span>
-              </div>
-              <span className="font-bold text-slate-900 dark:text-white">25 %</span>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-indigo-500" />
+              <span className="text-slate-600 dark:text-slate-400">DOCX (25%)</span>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                <span className="text-slate-600 dark:text-slate-400">En attente</span>
-              </div>
-              <span className="font-bold text-slate-900 dark:text-white">10 %</span>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-slate-600 dark:text-slate-400">TXT/MD (18%)</span>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-600" />
-                <span className="text-slate-600 dark:text-slate-400">Annulés</span>
-              </div>
-              <span className="font-bold text-slate-900 dark:text-white">5 %</span>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="text-slate-600 dark:text-slate-400">JSON (12%)</span>
             </div>
           </div>
         </div>
 
-        {/* Col 2: Consommation de carburant (Bar Chart) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-              Consommation de carburant
-            </h2>
-            <span className="text-[10px] text-slate-400">7 derniers jours ▾</span>
-          </div>
+        {/* Col 2: Ingestion Sources Bar Chart */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs">
+          <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
+            Data Volume by Source
+          </h4>
+          <p className="text-[11px] text-slate-400 mb-4">Ingestion Channels (MB)</p>
 
-          <div className="mt-1 mb-3">
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-slate-900 dark:text-white">128 L</span>
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">-8%</span>
-            </div>
-            <span className="text-[10px] text-slate-400 block">vs période précédente</span>
-          </div>
-
-          {/* Vertical Red Bar Chart */}
-          <div className="h-28 flex items-end justify-between gap-2 pt-2 border-b border-slate-100 dark:border-slate-800">
-            {[
-              { day: '19/05', h: 55 },
-              { day: '20/05', h: 80 },
-              { day: '21/05', h: 48 },
-              { day: '22/05', h: 68 },
-              { day: '23/05', h: 62 },
-              { day: '24/05', h: 74 },
-              { day: '25/05', h: 52 },
-            ].map((bar, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center h-full justify-end">
-                <div
-                  className="w-full max-w-[18px] bg-rose-400 hover:bg-rose-500 rounded-t-sm transition-all duration-300"
-                  style={{ height: `${bar.h}%` }}
-                />
+          <div className="space-y-3 mt-4">
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-slate-600 dark:text-slate-300">Cloud DW (Snowflake/BigQuery)</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">640 MB</span>
               </div>
-            ))}
-          </div>
-
-          <div className="flex justify-between pt-2 text-[9px] text-slate-400 font-mono">
-            <span>19/05</span>
-            <span>21/05</span>
-            <span>23/05</span>
-            <span>25/05</span>
+              <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800">
+                <div className="h-full bg-rose-500 rounded-full w-[85%]" />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-slate-600 dark:text-slate-300">S3 / Azure Parquet Lake</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">380 MB</span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800">
+                <div className="h-full bg-indigo-500 rounded-full w-[60%]" />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-slate-600 dark:text-slate-300">Document File Intake (PDF/DOC)</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">142 MB</span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800">
+                <div className="h-full bg-emerald-500 rounded-full w-[35%]" />
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Col 3: Messages de l'équipe (Activity Feed) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white">Messages</h2>
-            <span
-              onClick={() => setActiveView('operations')}
-              className="text-[10px] text-slate-400 hover:underline cursor-pointer"
-            >
-              Voir tout
-            </span>
+        {/* Col 3: Recent Activity & Treatment Audit */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                Recent Operations Audit
+              </h4>
+              <button
+                onClick={() => setActiveView('operations')}
+                className="text-[11px] text-rose-500 font-semibold hover:underline cursor-pointer"
+              >
+                View All
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-2.5 text-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 mt-1 shrink-0" />
+                <div>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 block">
+                    Document PII Redacted
+                  </span>
+                  <span className="text-[10px] text-slate-400 block">
+                    14 sensitive identifiers masked in Enterprise_Data_Governance.pdf
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5 text-xs">
+                <span className="w-2 h-2 rounded-full bg-indigo-500 mt-1 shrink-0" />
+                <div>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 block">
+                    Schema Ingestion Verified
+                  </span>
+                  <span className="text-[10px] text-slate-400 block">
+                    B2B_Enterprise_SaaS_Retention_Metrics.csv (12 rows, 10 cols)
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5 text-xs">
+                <span className="w-2 h-2 rounded-full bg-rose-500 mt-1 shrink-0" />
+                <div>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 block">
+                    Model Weights Promoted
+                  </span>
+                  <span className="text-[10px] text-slate-400 block">
+                    LightGBM Churn Predictor v2.4 (AUC-ROC: 0.964)
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {/* Message 1 */}
-            <div className="flex items-start gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                EL
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Équipe logistique
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-slate-400">10:30</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                  </div>
-                </div>
-                <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                  Réunion quotidienne à 11h.
-                </p>
-              </div>
-            </div>
-
-            {/* Message 2 */}
-            <div className="flex items-start gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                SM
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Sophie Martin
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-slate-400">09:15</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                  </div>
-                </div>
-                <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                  Veuillez confirmer la livraison du colis #4582.
-                </p>
-              </div>
-            </div>
-
-            {/* Message 3 */}
-            <div className="flex items-start gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                TB
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Thomas Bernard
-                  </span>
-                  <span className="text-[10px] text-slate-400">Hier</span>
-                </div>
-                <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                  Nouveau planning disponible.
-                </p>
-              </div>
-            </div>
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Cryptographic Log</span>
+            <span className="font-mono text-emerald-500 font-semibold">✓ SHA-256 Validated</span>
           </div>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* SECTION 5: Full-Width Bottom CTA Banner                      */}
+      {/* 7. BOTTOM CTA BANNER: Launch Data & Document Workspace       */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="rounded-3xl bg-gradient-to-r from-rose-500 via-rose-500 to-orange-500 p-5 sm:p-6 text-white flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg shadow-rose-950/15">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center shrink-0">
-            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 8h-3V5a1 1 0 00-1-1H3a1 1 0 00-1 1v12a1 1 0 001 1h1a3 3 0 006 0h4a3 3 0 006 0h1a1 1 0 001-1v-6a3 3 0 00-3-3zm-12 11a1.5 1.5 0 111.5-1.5A1.5 1.5 0 017 19zm10 0a1.5 1.5 0 111.5-1.5 1.5 1.5 0 01-1.5 1.5zM19 11a1 1 0 011 1v1h-4v-3h2a1 1 0 011 1z"/>
-            </svg>
-          </div>
-          <div>
-            <h3 className="text-base font-extrabold">
-              Gardez le contrôle de vos livraisons
-            </h3>
-            <p className="text-xs opacity-90 mt-0.5">
-              Suivez, analysez et optimisez chaque expédition en temps réel.
-            </p>
-          </div>
+      <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white border border-slate-700/60 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h3 className="text-base sm:text-lg font-bold">
+            Ready to analyze tabular datasets and document dossiers?
+          </h3>
+          <p className="text-xs text-slate-300 max-w-xl">
+            Ingest CSVs, parse PDFs, mask sensitive PII, extract structured entities, and train predictive machine learning models in a single executive workbench.
+          </p>
         </div>
-
         <button
-          onClick={() => setActiveView('analysis')}
-          className="shrink-0 px-6 py-3 rounded-full bg-white text-rose-600 text-xs font-bold shadow-md hover:bg-rose-50 transition-all apple-pressable cursor-pointer"
+          onClick={() => setActiveView('data')}
+          className="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold transition-colors shadow-xs whitespace-nowrap cursor-pointer self-start sm:self-auto"
         >
-          Optimiser mes livraisons →
+          Open Data &amp; Document Studio →
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Root Page: View Router ───
-export default function RootPage() {
+export default function AppHomePage() {
   const { activeView } = useApp();
 
+  // Route between application sub-views
   if (activeView === 'projects') return <ProjectsPage />;
   if (activeView === 'data') return <DataWorkspacePage />;
   if (activeView === 'pipelines') return <PipelinesPage />;

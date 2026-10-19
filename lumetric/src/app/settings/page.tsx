@@ -87,9 +87,9 @@ const PERMISSIONS_MATRIX: PermissionEntry[] = [
 ];
 
 export default function SettingsPage() {
-  const { currentUser, setRole, currentWorkspace } = useApp();
+  const { currentUser, setRole, currentWorkspace, language, setLanguage } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'rbac' | 'tenant' | 'security'>('rbac');
+  const [activeTab, setActiveTab] = useState<'rbac' | 'tenant' | 'security' | 'language'>('language');
   const [roleNotice, setRoleNotice] = useState<string | null>(null);
   const [secrets, setSecrets] = useState<SecretPointer[]>(INITIAL_SECRETS);
   const [addSecretOpen, setAddSecretOpen] = useState(false);
@@ -226,9 +226,81 @@ export default function SettingsPage() {
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          Security & KMS Secret References
+          Security &amp; KMS Secret References
+        </button>
+        <button
+          onClick={() => setActiveTab('language')}
+          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
+            activeTab === 'language'
+              ? 'border-rose-500 text-rose-500'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span>🌐</span>
+          <span>Language &amp; Localization</span>
         </button>
       </div>
+
+      {/* TAB 0: LANGUAGE & LOCALIZATION */}
+      {activeTab === 'language' && (
+        <div className="space-y-6 animate-fade-in">
+          <Card className="space-y-4">
+            <CardHeader>
+              <div>
+                <CardTitle>Application Language &amp; Studio Locale</CardTitle>
+                <p className="text-xs text-[var(--lm-text-secondary)] mt-1">
+                  Select your primary language for navigation menus, analytical diagnostics, document treatments, and error feedback.
+                </p>
+              </div>
+              <StatusBadge variant="success">English is Default</StatusBadge>
+            </CardHeader>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
+              {[
+                { id: 'en', flag: '🇬🇧', title: 'English (Default)', native: 'English', desc: 'Standard international data science and engineering vocabulary across all studio workspaces.' },
+                { id: 'fr', flag: '🇫🇷', title: 'French', native: 'Français', desc: 'Interface et terminologie analytique traduites en français pour les équipes francophones.' },
+                { id: 'es', flag: '🇪🇸', title: 'Spanish', native: 'Español', desc: 'Estudio de datos e inteligencia documental traducido al español para equipos globales.' },
+                { id: 'de', flag: '🇩🇪', title: 'German', native: 'Deutsch', desc: 'Analytische Oberfläche und Dokumentenintelligenz auf Deutsch für Data Scientists.' },
+              ].map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => {
+                    setLanguage(item.id as any);
+                    setRoleNotice(`✓ Language updated to "${item.title}". Studio preference saved to device.`);
+                    setTimeout(() => setRoleNotice(null), 4000);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+                    language === item.id
+                      ? 'bg-rose-500/10 border-rose-500 text-[var(--lm-text-primary)] shadow-sm'
+                      : 'bg-[var(--lm-bg-secondary)] border-[var(--lm-border-default)] hover:border-slate-300 dark:hover:border-slate-700 text-[var(--lm-text-secondary)]'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xl">{item.flag}</span>
+                      {language === item.id && (
+                        <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px] uppercase tracking-wider">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="text-sm font-bold text-[var(--lm-text-primary)]">{item.title}</h4>
+                    <span className="text-xs font-medium text-rose-500 dark:text-rose-400 block mb-1.5">{item.native}</span>
+                    <p className="text-xs text-[var(--lm-text-secondary)] leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between">
+              <span>Persistence Mechanism:</span>
+              <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                localStorage.lumetric_language • Synchronized
+              </span>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* TAB 1: RBAC MATRIX */}
       {activeTab === 'rbac' && (

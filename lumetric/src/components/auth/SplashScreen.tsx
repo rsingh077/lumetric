@@ -10,7 +10,7 @@ interface SplashScreenProps {
 
 export function SplashScreen({ onComplete, serverStatus = 'connecting', serverLatency }: SplashScreenProps) {
   const [progress, setProgress] = useState(25);
-  const [phaseText, setPhaseText] = useState('Démarrage du moteur logistique Lumetric...');
+  const [phaseText, setPhaseText] = useState('Initializing Lumetric Data & Document Studio...');
   const [showBypass, setShowBypass] = useState(false);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
@@ -27,17 +27,17 @@ export function SplashScreen({ onComplete, serverStatus = 'connecting', serverLa
     // 1. Smooth rapid progression
     const t1 = setTimeout(() => {
       setProgress(55);
-      setPhaseText('Connexion au Cloud Zoho Catalyst...');
+      setPhaseText('Connecting to Zoho Catalyst Cloud...');
     }, 250);
 
     const t2 = setTimeout(() => {
       setProgress(85);
-      setPhaseText('Validation de session & synchronisation flotte...');
+      setPhaseText('Validating session & loading data workspace...');
     }, 600);
 
     const t3 = setTimeout(() => {
       setProgress(100);
-      setPhaseText('Prêt. Lancement de Lumetric Studio...');
+      setPhaseText('Ready. Launching Lumetric Studio...');
       setShowBypass(true);
     }, 950);
 
@@ -159,7 +159,7 @@ export function SplashScreen({ onComplete, serverStatus = 'connecting', serverLa
           textAlign: 'center',
         }}
       >
-        Executive Logistics &amp; Analytics
+        AI Data &amp; Document Studio
       </p>
 
       {/* Progress Bar Container */}
@@ -216,7 +216,7 @@ export function SplashScreen({ onComplete, serverStatus = 'connecting', serverLa
             opacity: showBypass ? 1 : 0.7,
           }}
         >
-          {showBypass ? 'Accéder au Studio →' : 'Chargement du Studio...'}
+          {showBypass ? 'Enter Studio →' : 'Launching Studio...'}
         </button>
       </div>
 

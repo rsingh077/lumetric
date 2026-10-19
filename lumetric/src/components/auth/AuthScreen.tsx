@@ -11,7 +11,7 @@ export function AuthScreen() {
     setIsAuthenticated,
     serverStatus,
     serverLatency,
-    reconnectServer
+    reconnectServer,
   } = useApp();
 
   const [mode, setMode] = useState<'signup' | 'signin'>('signup');
@@ -19,7 +19,7 @@ export function AuthScreen() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<UserRole>('owner');
-  const [organization, setOrganization] = useState('Flotte Logistique France');
+  const [organization, setOrganization] = useState('Lumetric Intelligence Lab');
 
   // Google quick sign in
   const [showGoogleInput, setShowGoogleInput] = useState(false);
@@ -31,10 +31,14 @@ export function AuthScreen() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // 1-Click Instant Bypass / Demo Access
-  const handleInstantBypass = (targetRole: UserRole = 'owner', name: string = 'Camille Dubois', userEmail: string = 'camille.dubois@gmail.com') => {
+  const handleInstantBypass = (
+    targetRole: UserRole = 'owner',
+    name: string = 'Dr. Alexander Vance',
+    userEmail: string = 'alex.vance@lumetric.io'
+  ) => {
     setIsLoading(true);
     setErrorMessage(null);
-    setSuccessMessage('Connexion instantanée validée...');
+    setSuccessMessage('Instant access validated...');
 
     const user = {
       id: `usr_${Date.now()}`,
@@ -58,63 +62,41 @@ export function AuthScreen() {
   };
 
   // Google / Gmail sign in
-  const handleGoogleSignIn = async (targetEmail?: string, targetName?: string) => {
-    const finalEmail = (targetEmail || googleEmail || email).trim().toLowerCase();
-    const finalName = (targetName || googleName || fullName || finalEmail.split('@')[0]).trim();
-
-    if (!finalEmail || !finalEmail.includes('@')) {
-      setErrorMessage('Veuillez renseigner une adresse Gmail ou Google valide.');
+  const handleGoogleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!googleEmail.trim()) {
+      setErrorMessage('Please enter your Google/Gmail address.');
       return;
     }
-
     setIsLoading(true);
     setErrorMessage(null);
-    setSuccessMessage(null);
 
-    try {
-      const res = await LumetricAuthService.loginWithGoogle({
-        email: finalEmail,
-        name: finalName,
-        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(finalEmail)}`
-      });
+    const displayName = googleName.trim() || googleEmail.split('@')[0];
+    const res = await LumetricAuthService.loginWithGoogle({
+      email: googleEmail.trim(),
+      name: displayName,
+      avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(displayName)}`
+    });
 
-      if (res.success && res.user) {
-        setSuccessMessage('Authentification Google confirmée ! Lancement du Studio...');
-        setCurrentUser({
-          id: res.user.id,
-          email: res.user.email,
-          name: res.user.name,
-          role: (res.user.role as UserRole) || 'owner',
-          createdAt: res.user.createdAt
-        });
-        setIsAuthenticated(true);
-      } else {
-        setErrorMessage(res.error || 'Échec de connexion Google. Vérifiez votre réseau.');
-      }
-    } catch (e: any) {
-      handleInstantBypass(role, finalName, finalEmail);
-    } finally {
-      setIsLoading(false);
-      setShowGoogleInput(false);
+    setIsLoading(false);
+    if (res.success && res.user) {
+      setSuccessMessage('Google authentication validated.');
+      setCurrentUser(res.user);
+      setIsAuthenticated(true);
+    } else {
+      setErrorMessage(res.error || 'Unable to authenticate with Google. You can use Instant Access.');
     }
   };
 
-  // Email / Password Sign Up (Account Creation)
-  const handleSignUp = async (e: React.FormEvent) => {
+  // Standard Email + Password Register
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanName = fullName.trim();
-
-    if (!cleanName) {
-      setErrorMessage('Veuillez renseigner votre nom complet.');
+    if (!email.trim() || !password) {
+      setErrorMessage('Email and password are required.');
       return;
     }
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setErrorMessage('Veuillez renseigner une adresse email valide.');
-      return;
-    }
-    if (!password || password.length < 4) {
-      setErrorMessage('Le mot de passe doit contenir au moins 4 caractères.');
+    if (password.length < 4) {
+      setErrorMessage('Password must be at least 4 characters long.');
       return;
     }
 
@@ -122,50 +104,44 @@ export function AuthScreen() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    try {
-      const res = await LumetricAuthService.register({
-        email: cleanEmail,
-        password,
-        name: cleanName,
-        organization: organization.trim(),
-        role
-      });
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = fullName.trim() || cleanEmail.split('@')[0];
 
-      if (res.success && res.user) {
-        setSuccessMessage('Compte créé avec succès dans le Datastore Catalyst !');
-        setCurrentUser({
-          id: res.user.id,
-          email: res.user.email,
-          name: res.user.name,
-          role: (res.user.role as UserRole) || role,
-          createdAt: res.user.createdAt
-        });
-        setTimeout(() => {
+    const res = await LumetricAuthService.register({
+      email: cleanEmail,
+      password,
+      name: cleanName,
+      organization: organization.trim() || 'Lumetric Intelligence Lab',
+      role
+    });
+
+    setIsLoading(false);
+
+    if (res.success && res.user) {
+      setSuccessMessage(res.message || 'Account created successfully.');
+      setCurrentUser(res.user);
+      setIsAuthenticated(true);
+    } else {
+      if (res.error?.includes('already exists') || (res as any).code === 'USER_EXISTS') {
+        const loginRes = await LumetricAuthService.login({ email: cleanEmail, password });
+        if (loginRes.success && loginRes.user) {
+          setSuccessMessage('Account authenticated successfully.');
+          setCurrentUser(loginRes.user);
           setIsAuthenticated(true);
-        }, 300);
-      } else {
-        // If account already exists, offer immediate sign-in
-        if (res.error && res.error.includes('already exists')) {
-          setErrorMessage('Ce compte existe déjà. Connectez-vous ou cliquez sur Continuer.');
-          setMode('signin');
-        } else {
-          setErrorMessage(res.error || 'Erreur lors de la création du compte. Réessayez.');
+          return;
         }
+        setErrorMessage('An account with this email already exists. Please verify your password or sign in.');
+      } else {
+        setErrorMessage(res.error || 'Server error creating account. You can use Instant Access.');
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Erreur de communication avec le serveur.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // Email / Password Sign In
-  const handleEmailSignIn = async (e: React.FormEvent) => {
+  // Standard Email + Password Login
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanEmail = email.trim().toLowerCase();
-
-    if (!cleanEmail || !password) {
-      setErrorMessage('Veuillez renseigner votre email et votre mot de passe.');
+    if (!email.trim() || !password) {
+      setErrorMessage('Email and password are required.');
       return;
     }
 
@@ -173,27 +149,16 @@ export function AuthScreen() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    try {
-      const res = await LumetricAuthService.login({ email: cleanEmail, password });
-      if (res.success && res.user) {
-        setSuccessMessage('Connexion réussie ! Chargement de votre espace...');
-        setCurrentUser({
-          id: res.user.id,
-          email: res.user.email,
-          name: res.user.name,
-          role: (res.user.role as UserRole) || 'owner',
-          createdAt: res.user.createdAt
-        });
-        setTimeout(() => {
-          setIsAuthenticated(true);
-        }, 300);
-      } else {
-        setErrorMessage(res.error || 'Identifiants invalides ou utilisateur non trouvé.');
-      }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Erreur de connexion au serveur.');
-    } finally {
-      setIsLoading(false);
+    const cleanEmail = email.trim().toLowerCase();
+    const res = await LumetricAuthService.login({ email: cleanEmail, password });
+    setIsLoading(false);
+
+    if (res.success && res.user) {
+      setSuccessMessage('Signed in successfully.');
+      setCurrentUser(res.user);
+      setIsAuthenticated(true);
+    } else {
+      setErrorMessage(res.error || 'Invalid credentials or user not found.');
     }
   };
 
@@ -215,7 +180,7 @@ export function AuthScreen() {
           </div>
           <div>
             <span className="font-bold text-base tracking-tight text-white block leading-tight">LUMETRIC</span>
-            <span className="text-[10px] text-rose-400 font-mono tracking-wider uppercase">Logistique &amp; Flotte</span>
+            <span className="text-[10px] text-rose-400 font-mono tracking-wider uppercase">Data &amp; Document Studio</span>
           </div>
         </div>
 
@@ -223,14 +188,14 @@ export function AuthScreen() {
         <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
           <span className={`w-2 h-2 rounded-full ${serverStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
           <span className="text-slate-300 font-medium text-[11px]">
-            {serverStatus === 'connected' ? 'En ligne' : 'Connexion...'}
+            {serverStatus === 'connected' ? 'Cloud Online' : 'Connecting...'}
           </span>
           {serverLatency && (
             <span className="text-slate-400 font-mono text-[10px]">({serverLatency}ms)</span>
           )}
           <button
             onClick={() => reconnectServer()}
-            title="Tester la connexion"
+            title="Ping Server"
             className="text-[11px] text-rose-400 hover:text-rose-300 ml-1 cursor-pointer"
           >
             ↻
@@ -245,24 +210,24 @@ export function AuthScreen() {
           {/* Welcome heading */}
           <div className="text-center mb-4">
             <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
-              {mode === 'signup' ? 'Créer votre compte' : 'Connexion au Studio'}
+              {mode === 'signup' ? 'Create Your Account' : 'Sign in to Studio'}
             </h2>
             <p className="mt-1 text-xs text-slate-400">
               {mode === 'signup'
-                ? 'Enregistrez votre profil dans la base sécurisée Zoho Catalyst'
-                : 'Accédez à vos tournées, alertes de flotte & facturation'}
+                ? 'Register your profile in the secure Zoho Catalyst Cloud'
+                : 'Access your datasets, document treatments & predictive models'}
             </p>
           </div>
 
-          {/* 1-TAP INSTANT ACCESS BUTTON (Zero-Friction Emergency Access) */}
+          {/* 1-TAP INSTANT ACCESS BUTTON (Zero-Friction Access) */}
           <div className="mb-4">
             <button
               type="button"
-              onClick={() => handleInstantBypass('owner', 'Camille Dubois', 'camille.dubois@gmail.com')}
+              onClick={() => handleInstantBypass('owner', 'Dr. Alexander Vance', 'alex.vance@lumetric.io')}
               className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-rose-600 via-rose-500 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-950/60 active:scale-[0.98] transition-all cursor-pointer"
             >
               <span>⚡</span>
-              <span>Accès Immédiat (Camille Dubois • Direction)</span>
+              <span>Instant Access (Dr. Alexander Vance • Lead Data Scientist)</span>
             </button>
           </div>
 
@@ -296,264 +261,201 @@ export function AuthScreen() {
                   <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
                   <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
                 </svg>
-                <span>Continuer avec Google / Gmail</span>
+                <span>Continue with Google</span>
               </button>
             ) : (
-              <div className="p-3 bg-slate-900/90 rounded-2xl border border-rose-500/30 space-y-2 animate-in fade-in">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-rose-300">Connexion rapide Gmail :</span>
+              <form onSubmit={handleGoogleSubmit} className="space-y-2 p-3 bg-white/5 border border-white/10 rounded-2xl animate-in fade-in">
+                <span className="text-xs font-semibold text-slate-200 block">Google / Gmail Authentication</span>
+                <input
+                  type="email"
+                  required
+                  placeholder="name@gmail.com"
+                  value={googleEmail}
+                  onChange={(e) => setGoogleEmail(e.target.value)}
+                  style={{ fontSize: '16px' }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="flex-1 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 font-bold text-xs text-white cursor-pointer disabled:opacity-50"
+                  >
+                    Validate Google Account
+                  </button>
                   <button
                     type="button"
                     onClick={() => setShowGoogleInput(false)}
-                    className="text-xs text-slate-400 hover:text-white"
+                    className="px-3 py-2 rounded-xl bg-slate-800 text-xs text-slate-400 hover:text-white cursor-pointer"
                   >
-                    Fermer
+                    Cancel
                   </button>
                 </div>
-                <input
-                  type="email"
-                  value={googleEmail}
-                  onChange={(e) => setGoogleEmail(e.target.value)}
-                  placeholder="votre.adresse@gmail.com"
-                  style={{ fontSize: '16px' }}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/20 text-white text-sm focus:outline-none focus:border-rose-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleGoogleSignIn()}
-                  disabled={isLoading}
-                  className="w-full py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs"
-                >
-                  Valider avec Google →
-                </button>
-              </div>
+              </form>
             )}
-
-            <div className="flex items-center gap-3 py-1">
-              <div className="flex-1 h-px bg-white/10" />
-              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">ou formulaire classique</span>
-              <div className="flex-1 h-px bg-white/10" />
-            </div>
           </div>
 
-          {/* Form Mode Toggle Tabs */}
-          <div className="flex rounded-xl bg-slate-900 p-1 mb-4 border border-white/10">
-            <button
-              type="button"
-              onClick={() => { setMode('signup'); setErrorMessage(null); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                mode === 'signup'
-                  ? 'bg-rose-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Créer un compte
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode('signin'); setErrorMessage(null); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                mode === 'signin'
-                  ? 'bg-rose-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Se connecter
-            </button>
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-white/10"></div>
+            <span className="flex-shrink mx-3 text-[11px] text-slate-400 uppercase tracking-wider">or email access</span>
+            <div className="flex-grow border-t border-white/10"></div>
           </div>
 
-          {/* FORM: Create Account Mode */}
-          {mode === 'signup' && (
-            <form onSubmit={handleSignUp} className="space-y-3">
+          {/* Form: Register or Sign In */}
+          <form onSubmit={mode === 'signup' ? handleRegister : handleLogin} className="space-y-3.5 mt-2">
+            {mode === 'signup' && (
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Nom complet
+                  Full Name
                 </label>
                 <input
                   type="text"
+                  required
+                  placeholder="e.g. Dr. Alexander Vance"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Camille Dubois"
                   style={{ fontSize: '16px' }}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white text-sm focus:outline-none focus:border-rose-500 transition-colors placeholder:text-slate-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F19] border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all"
                 />
               </div>
+            )}
 
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Adresse Email / Gmail
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="camille.dubois@gmail.com"
-                  style={{ fontSize: '16px' }}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white text-sm focus:outline-none focus:border-rose-500 transition-colors placeholder:text-slate-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Mot de passe (min. 4 caractères)
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  style={{ fontSize: '16px' }}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white text-sm focus:outline-none focus:border-rose-500 transition-colors placeholder:text-slate-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Rôle de gouvernance
-                </label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as UserRole)}
-                  style={{ fontSize: '16px' }}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white text-xs focus:outline-none focus:border-rose-500"
-                >
-                  <option value="owner">Directeur / Owner (Accès Complet Flotte &amp; Finances)</option>
-                  <option value="administrator">Administrateur (Gestion Chauffeurs &amp; Alertes)</option>
-                  <option value="builder">Ingénieur Données (Pipelines &amp; Analyses)</option>
-                  <option value="reviewer">Analyste Tournées (Supervision &amp; Délais)</option>
-                  <option value="viewer">Opérateur / Chauffeur (Lecture Seule)</option>
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full mt-3 py-3 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-sm shadow-lg shadow-rose-950/50 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99] transition-all"
-              >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <span>Création du profil en cours...</span>
-                  </>
-                ) : (
-                  <span>Créer mon compte &amp; Accéder au Studio</span>
-                )}
-              </button>
-            </form>
-          )}
-
-          {/* FORM: Sign In Mode */}
-          {mode === 'signin' && (
-            <form onSubmit={handleEmailSignIn} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Adresse Email / Gmail
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="camille.dubois@gmail.com"
-                  style={{ fontSize: '16px' }}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white text-sm focus:outline-none focus:border-rose-500 transition-colors placeholder:text-slate-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-medium text-slate-300">Mot de passe</label>
-                  <button
-                    type="button"
-                    onClick={() => handleInstantBypass('owner', 'Camille Dubois', 'camille.dubois@gmail.com')}
-                    className="text-[11px] text-rose-400 hover:underline"
-                  >
-                    Mot de passe oublié ?
-                  </button>
-                </div>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  style={{ fontSize: '16px' }}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white text-sm focus:outline-none focus:border-rose-500 transition-colors placeholder:text-slate-500"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full mt-3 py-3 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-sm shadow-lg shadow-rose-950/50 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99] transition-all"
-              >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <span>Connexion au serveur...</span>
-                  </>
-                ) : (
-                  <span>Se connecter &amp; Ouvrir le Studio</span>
-                )}
-              </button>
-            </form>
-          )}
-
-          {/* Quick 1-Tap Team Profiles */}
-          <div className="mt-5 pt-4 border-t border-white/10">
-            <span className="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-widest text-center">
-              Profils de Test Disponibles (1-Clic)
-            </span>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleInstantBypass('owner', 'Camille Dubois', 'camille.dubois@gmail.com')}
-                className="p-2 rounded-xl bg-slate-900/90 hover:bg-rose-950/50 border border-white/10 hover:border-rose-500/50 text-center transition-all cursor-pointer group"
-              >
-                <div className="w-7 h-7 mx-auto rounded-full bg-rose-600/25 text-rose-400 font-bold text-xs flex items-center justify-center mb-1 group-hover:scale-105">
-                  CD
-                </div>
-                <div className="text-[11px] font-semibold text-white truncate">Camille</div>
-                <div className="text-[9px] text-rose-400 font-mono">Direction</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleInstantBypass('builder', 'Alex Chen', 'alex.chen@gmail.com')}
-                className="p-2 rounded-xl bg-slate-900/90 hover:bg-indigo-950/50 border border-white/10 hover:border-indigo-500/50 text-center transition-all cursor-pointer group"
-              >
-                <div className="w-7 h-7 mx-auto rounded-full bg-indigo-600/25 text-indigo-400 font-bold text-xs flex items-center justify-center mb-1 group-hover:scale-105">
-                  AC
-                </div>
-                <div className="text-[11px] font-semibold text-white truncate">Alex</div>
-                <div className="text-[9px] text-indigo-400 font-mono">Ingénieur</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleInstantBypass('administrator', 'Sarah Lin', 'sarah.lin@gmail.com')}
-                className="p-2 rounded-xl bg-slate-900/90 hover:bg-emerald-950/50 border border-white/10 hover:border-emerald-500/50 text-center transition-all cursor-pointer group"
-              >
-                <div className="w-7 h-7 mx-auto rounded-full bg-emerald-600/25 text-emerald-400 font-bold text-xs flex items-center justify-center mb-1 group-hover:scale-105">
-                  SL
-                </div>
-                <div className="text-[11px] font-semibold text-white truncate">Sarah</div>
-                <div className="text-[9px] text-emerald-400 font-mono">Admin</div>
-              </button>
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                Work Email Address
+              </label>
+              <input
+                type="email"
+                required
+                placeholder="name@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={{ fontSize: '16px' }}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F19] border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all"
+              />
             </div>
-          </div>
 
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                Password {mode === 'signup' && <span className="text-slate-400 text-[10px]">(min 4 characters)</span>}
+              </label>
+              <input
+                type="password"
+                required
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ fontSize: '16px' }}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F19] border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all"
+              />
+            </div>
+
+            {mode === 'signup' && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Data Science &amp; Governance Role
+                  </label>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as UserRole)}
+                    style={{ fontSize: '16px' }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F19] border border-white/15 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all cursor-pointer"
+                  >
+                    <option value="owner">Lead Data Scientist (Owner)</option>
+                    <option value="administrator">Data Platform Engineer (Administrator)</option>
+                    <option value="builder">Machine Learning Engineer (Builder)</option>
+                    <option value="reviewer">Model Risk &amp; Compliance (Reviewer)</option>
+                    <option value="viewer">Executive Stakeholder (Viewer)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Organization / Lab Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Lumetric Intelligence Lab"
+                    value={organization}
+                    onChange={(e) => setOrganization(e.target.value)}
+                    style={{ fontSize: '16px' }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F19] border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all"
+                  />
+                </div>
+              </>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full mt-2 h-11 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-rose-950/50 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <span>{mode === 'signup' ? 'Register & Enter Studio →' : 'Sign in to Studio →'}</span>
+              )}
+            </button>
+          </form>
+
+          {/* Toggle between Signup and Signin */}
+          <div className="mt-4 pt-3 border-t border-white/10 text-center">
+            {mode === 'signup' ? (
+              <p className="text-xs text-slate-400">
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => { setMode('signin'); setErrorMessage(null); }}
+                  className="text-rose-400 hover:text-rose-300 font-semibold cursor-pointer underline ml-1"
+                >
+                  Sign in here
+                </button>
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400">
+                Need an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => { setMode('signup'); setErrorMessage(null); }}
+                  className="text-rose-400 hover:text-rose-300 font-semibold cursor-pointer underline ml-1"
+                >
+                  Create one now
+                </button>
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Demo Persona Badges */}
+        <div className="mt-4 text-center">
+          <span className="text-[11px] text-slate-400 block mb-2 font-medium">Quick Demo Personas (1-Click Switch):</span>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {[
+              { label: 'Lead Data Scientist', role: 'owner', name: 'Dr. Alexander Vance', email: 'alex.vance@lumetric.io' },
+              { label: 'ML Engineer', role: 'builder', name: 'Marcus Brody', email: 'dev.marcus@lumetric.io' },
+              { label: 'Platform Engineer', role: 'administrator', name: 'Sarah Lin', email: 'sarah.lin@lumetric.io' },
+              { label: 'Executive Viewer', role: 'viewer', name: 'James Harrison', email: 'director.harrison@lumetric.io' },
+            ].map((p) => (
+              <button
+                key={p.role}
+                type="button"
+                onClick={() => handleInstantBypass(p.role as UserRole, p.name, p.email)}
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-slate-300 hover:text-white transition-colors cursor-pointer"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
       </main>
 
-      {/* Footer Info */}
-      <footer className="w-full max-w-md mx-auto text-center text-[11px] text-slate-500 z-10 py-2">
-        <p>Zoho Catalyst Cloud Datastore • Chiffrement SHA-256 / bcrypt</p>
-        <p className="mt-0.5">Lumetric v2.0.2 Enterprise • Tous droits réservés</p>
+      {/* Footer */}
+      <footer className="w-full max-w-md mx-auto text-center py-2 text-[11px] text-slate-400 z-10">
+        <span>Lumetric Data &amp; Document Studio • Version 2.0.2 • Zoho Catalyst Cloud</span>
       </footer>
     </div>
   );
