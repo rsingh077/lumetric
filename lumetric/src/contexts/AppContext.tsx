@@ -16,7 +16,12 @@ interface NotificationItem {
 interface AppContextType {
   // User & Roles
   currentUser: User;
+  setCurrentUser: React.Dispatch<React.SetStateAction<User>>;
   setRole: (role: UserRole) => void;
+  isAuthenticated: boolean;
+  setIsAuthenticated: (authenticated: boolean) => void;
+  isSplashLoading: boolean;
+  setIsSplashLoading: (loading: boolean) => void;
   
   // Workspaces
   workspaces: Workspace[];
@@ -211,7 +216,36 @@ const initialNotifications: NotificationItem[] = [
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<User>(defaultUser);
+  // Splash & Authentication Life Cycle
+  const [isSplashLoading, setIsSplashLoading] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return LumetricAuthService.isAuthenticated();
+    }
+    return false;
+  });
+
+  const [currentUser, setCurrentUser] = useState<User>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = LumetricAuthService.getStoredUser();
+      if (stored && stored.email) {
+        return {
+          id: stored.id,
+          name: stored.name || 'Camille Dubois',
+          email: stored.email,
+          role: (stored.role as UserRole) || 'owner',
+          createdAt: stored.createdAt || new Date().toISOString()
+        };
+      }
+    }
+    return {
+      id: 'usr-camille-001',
+      email: 'camille.dubois@gmail.com',
+      name: 'Camille Dubois',
+      role: 'owner',
+      createdAt: '2026-10-15T08:00:00Z'
+    };
+  });
   const [workspaces, setWorkspaces] = useState<Workspace[]>(initialWorkspaces);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace>(initialWorkspaces[0]);
   const [projects, setProjects] = useState<Project[]>(initialProjects);
@@ -280,21 +314,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     await LumetricAuthService.logout();
     setCurrentUser({
-      id: 'guest',
+      id: 'usr_guest',
       email: '',
       name: 'Guest User',
       role: 'viewer',
       createdAt: new Date().toISOString()
     });
+    setIsAuthenticated(false);
     setAuthModalMode('login');
-    setAuthModalOpen(true);
+    setAuthModalOpen(false);
   };
 
   const loginAsDemoRole = (role: UserRole) => {
     const roleProfiles: Record<UserRole, { name: string; email: string }> = {
-      owner: { name: 'Justin Alex', email: 'justin.alex@lumetric.dev' },
-      administrator: { name: 'Alex Chen', email: 'admin@lumetric.dev' },
-      builder: { name: 'Sarah Lin', email: 'builder@lumetric.dev' },
+      owner: { name: 'Camille Dubois', email: 'camille.dubois@gmail.com' },
+      administrator: { name: 'Alex Chen', email: 'alex.chen@gmail.com' },
+      builder: { name: 'Sarah Lin', email: 'sarah.lin@gmail.com' },
       reviewer: { name: 'David Vance', email: 'reviewer@lumetric.dev' },
       viewer: { name: 'Emma Watson', email: 'viewer@lumetric.dev' },
     };
@@ -314,6 +349,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       role: user.role,
       createdAt: user.createdAt,
     });
+    setIsAuthenticated(true);
     setAuthModalOpen(false);
   };
 
@@ -579,7 +615,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider
       value={{
         currentUser,
+        setCurrentUser,
         setRole,
+        isAuthenticated,
+        setIsAuthenticated,
+        isSplashLoading,
+        setIsSplashLoading,
         workspaces,
         currentWorkspace,
         switchWorkspace,

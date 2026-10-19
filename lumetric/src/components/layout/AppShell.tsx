@@ -5,15 +5,41 @@ import { useApp } from '@/contexts/AppContext';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { MobileBottomNav } from './MobileBottomNav';
+import { SplashScreen } from '@/components/auth/SplashScreen';
+import { AuthScreen } from '@/components/auth/AuthScreen';
 import { initMobileApp } from '@/utils/mobile';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { sidebarCollapsed } = useApp();
+  const {
+    sidebarCollapsed,
+    isSplashLoading,
+    setIsSplashLoading,
+    isAuthenticated,
+    serverStatus,
+    serverLatency
+  } = useApp();
 
   useEffect(() => {
     initMobileApp();
   }, []);
 
+  // 1. Initial Loading / Splash Screen with Server Handshake
+  if (isSplashLoading) {
+    return (
+      <SplashScreen
+        onComplete={() => setIsSplashLoading(false)}
+        serverStatus={serverStatus}
+        serverLatency={serverLatency}
+      />
+    );
+  }
+
+  // 2. Authentication Screen (Google / Gmail Login or Sign Up)
+  if (!isAuthenticated) {
+    return <AuthScreen />;
+  }
+
+  // 3. Fully Authenticated Main Application
   return (
     <div className="min-h-screen bg-[var(--lm-bg-primary)] text-[var(--lm-text-primary)]">
       <Sidebar />
@@ -31,4 +57,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-

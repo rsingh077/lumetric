@@ -143,6 +143,38 @@ export class LumetricAuthService {
     }
   }
 
+  public static async loginWithGoogle(payload: {
+    email: string;
+    name?: string;
+    avatarUrl?: string;
+    googleId?: string;
+  }): Promise<AuthResponse> {
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data: AuthResponse = await res.json();
+      if (data.success && data.token && data.user) {
+        this.setSession(data.token, data.user);
+      }
+      return data;
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.message || 'Network error connecting to Catalyst Server during Google sign-in'
+      };
+    }
+  }
+
+  public static isAuthenticated(): boolean {
+    if (typeof window === 'undefined') return false;
+    const token = this.getStoredToken();
+    const user = this.getStoredUser();
+    return Boolean(token && user && user.email);
+  }
+
   public static async logout(): Promise<void> {
     const token = this.getStoredToken();
     if (token) {

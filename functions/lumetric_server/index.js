@@ -503,6 +503,94 @@ app.post('/api/auth/login', rateLimiter({ windowMs: 5 * 60 * 1000, max: 20, mess
   }
 });
 
+// 3b. Authentication: Google OAuth / Gmail Login & Auto-Registration
+app.post('/api/auth/google', rateLimiter({ windowMs: 5 * 60 * 1000, max: 30 }), async (req, res) => {
+  try {
+    const { email, name, avatarUrl, googleId } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Google email address is required.'
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email address format.'
+      });
+    }
+
+    let user = await getUserFromStore(req, normalizedEmail);
+
+    if (!user) {
+      // Auto-provision new account in database
+      const salt = await bcrypt.genSalt(10);
+      const randomPassword = `gauth_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const passwordHash = await bcrypt.hash(randomPassword, salt);
+
+      const derivedName = name && name.trim().length > 0
+        ? name.trim()
+        : normalizedEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+      user = {
+        id: `usr_g_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        email: normalizedEmail,
+        passwordHash,
+        name: derivedName,
+        role: 'builder',
+        organization: 'Enterprise Analytics Team',
+        avatarUrl: avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(normalizedEmail)}`,
+        authProvider: 'google',
+        googleId: googleId || `gid_${Date.now()}`,
+        mfaEnabled: false,
+        mfaSecret: '',
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+        settings: {
+          theme: 'system',
+          currency: 'USD',
+          emailNotifications: true,
+          hapticsEnabled: true
+        }
+      };
+
+      await saveUserToStore(req, user);
+      logAuditEvent(normalizedEmail, 'GOOGLE_REGISTER_SUCCESS', 'Authentication', `New Gmail account provisioned via Google Auth: ${normalizedEmail}`);
+    } else {
+      user.lastLoginAt = new Date().toISOString();
+      if (avatarUrl && !user.avatarUrl) user.avatarUrl = avatarUrl;
+      if (name && (!user.name || user.name === 'User')) user.name = name;
+      await saveUserToStore(req, user);
+      logAuditEvent(normalizedEmail, 'GOOGLE_LOGIN_SUCCESS', 'Authentication', `Logged in via Google Auth: ${normalizedEmail}`);
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    const { passwordHash: _, mfaSecret: __, tempMfaSecret: ___, ...userSafe } = user;
+
+    return res.json({
+      success: true,
+      message: 'Google authentication verified and session established.',
+      token,
+      user: userSafe
+    });
+  } catch (err) {
+    console.error('Google auth error:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error processing Google authentication.'
+    });
+  }
+});
+
 // 4. Two-Factor Authentication: Generate Setup QR
 app.post('/api/auth/2fa/setup', authenticateToken, async (req, res) => {
   try {

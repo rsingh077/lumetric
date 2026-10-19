@@ -50,29 +50,29 @@ jobs:
       - name: Copy APK to Root for Direct Repo Download
         run: |
           cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric.apk
+          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v1.6.0.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumetric-v1.3.0-debug-apk
-          path: Lumetric.apk
+          name: lumetric-v1.6.0-debug-apk
+          path: Lumetric-v1.6.0.apk
 
-      - name: Create or Update GitHub Release v1.3.0
+      - name: Create or Update GitHub Release v1.6.0
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v1.3.0
-          name: "Lumetric v1.3.0 — Enterprise 2FA, Cloud Ingestion & SOC-2 Audit Ledger"
+          tag_name: v1.6.0
+          name: "Lumetric v1.6.0 — Loading Splash, Google/Gmail Server Auth & Executive Dashboard"
           body: |
-            ### 🚀 Lumetric Mobile v1.3.0 Enterprise Release
-            - **Two-Factor Authentication (2FA/TOTP)**: Secure authenticator app verification with dynamic QR codes and manual secret keys.
-            - **Cloud Data Connectors**: Ingestion pipelines connecting Snowflake, AWS S3 Parquet, and Google BigQuery.
-            - **Cryptographic Audit Trail (SOC-2 Compliance)**: Immutable, tamper-evident action ledger hashed with SHA-256.
-            - **Crystal / Catalyst Data Store**: Persistent storage for tenant profiles, credentials, settings, and role grants.
-            - **Admin Role Dashboard**: Real-time permission elevation (`OWNER`, `ADMIN`, `BUILDER`, `REVIEWER`, `VIEWER`).
-            - **Sliding-Window IP Rate Limiter**: Protection against brute-force and credential stuffing attacks.
-            
-            **Direct Download**: Download `Lumetric.apk` attached below or from repository root.
-          files: Lumetric.apk
+            ### 🚀 Lumetric Mobile v1.6.0 Enterprise Release
+            - **Loading / Splash Icon Screen**: Animated geometric 3D prism logo with live server handshake status.
+            - **Dedicated Google / Gmail Sign-In & Registration**: Real server-validated authentication with credentials stored in Zoho Catalyst Crystal Datastore.
+            - **Executive Dashboard Layout**: Faithful "Bonjour, Camille" UI overhaul with coral/rose accents, route progression (72%), entity status (Julien Morel / 78% capacity), and delivery performance (94%).
+            - **Complete App Experience**: Interactive from Home through Data, Analysis, Models, Dashboards, and Settings with instant profile/session management.
+            - **Direct Download**: Download `Lumetric-v1.6.0.apk` below.
+          files: |
+            Lumetric.apk
+            Lumetric-v1.6.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
