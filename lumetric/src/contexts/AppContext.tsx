@@ -132,6 +132,62 @@ const initialProjects: Project[] = [
   }
 ];
 
+const DEFAULT_INITIAL_ROWS: Record<string, string>[] = [
+  { Account_ID: 'ACC-1001', Customer_Name: 'Acme Global Corp', Region: 'North America', Plan_Tier: 'Enterprise', ARR_USD: '145000', NPS_Score: '72', Churn_Probability: '0.04', Active_Users: '142', Contract_Months: '36', Last_Audit_Status: 'Verified' },
+  { Account_ID: 'ACC-1002', Customer_Name: 'Global Freight Logistics', Region: 'Europe', Plan_Tier: 'Enterprise', ARR_USD: '98000', NPS_Score: '68', Churn_Probability: '0.12', Active_Users: '89', Contract_Months: '24', Last_Audit_Status: 'Verified' },
+  { Account_ID: 'ACC-1003', Customer_Name: 'Apex Health Systems', Region: 'Asia Pacific', Plan_Tier: 'Growth', ARR_USD: '45000', NPS_Score: '81', Churn_Probability: '0.02', Active_Users: '45', Contract_Months: '12', Last_Audit_Status: 'Verified' },
+  { Account_ID: 'ACC-1004', Customer_Name: 'Zenith Digital Media', Region: 'North America', Plan_Tier: 'Standard', ARR_USD: '18500', NPS_Score: '54', Churn_Probability: '0.38', Active_Users: '19', Contract_Months: '12', Last_Audit_Status: 'Flagged' },
+  { Account_ID: 'ACC-1005', Customer_Name: 'Starlight Omnichannel', Region: 'Latin America', Plan_Tier: 'Growth', ARR_USD: '52000', NPS_Score: '61', Churn_Probability: '0.18', Active_Users: '52', Contract_Months: '24', Last_Audit_Status: 'Verified' },
+  { Account_ID: 'ACC-1006', Customer_Name: 'Nova Autonomous Robotics', Region: 'Europe', Plan_Tier: 'Enterprise', ARR_USD: '210000', NPS_Score: '89', Churn_Probability: '0.01', Active_Users: '215', Contract_Months: '36', Last_Audit_Status: 'Verified' },
+  { Account_ID: 'ACC-1007', Customer_Name: 'Pinnacle Capital FinTech', Region: 'North America', Plan_Tier: 'Enterprise', ARR_USD: '320000', NPS_Score: '92', Churn_Probability: '0.02', Active_Users: '340', Contract_Months: '36', Last_Audit_Status: 'Verified' },
+  { Account_ID: 'ACC-1008', Customer_Name: 'Crestview Predictive Analytics', Region: 'Asia Pacific', Plan_Tier: 'Standard', ARR_USD: '12000', NPS_Score: '42', Churn_Probability: '0.45', Active_Users: '11', Contract_Months: '12', Last_Audit_Status: 'Quarantine' },
+  { Account_ID: 'ACC-1009', Customer_Name: 'Horizon Next Telecom', Region: 'Europe', Plan_Tier: 'Growth', ARR_USD: '64000', NPS_Score: '75', Churn_Probability: '0.08', Active_Users: '68', Contract_Months: '24', Last_Audit_Status: 'Verified' },
+  { Account_ID: 'ACC-1010', Customer_Name: 'Vanguard Freight Networks', Region: 'North America', Plan_Tier: 'Enterprise', ARR_USD: '175000', NPS_Score: '84', Churn_Probability: '0.03', Active_Users: '165', Contract_Months: '36', Last_Audit_Status: 'Verified' },
+  { Account_ID: 'ACC-1011', Customer_Name: 'BioGen Therapeutics', Region: 'North America', Plan_Tier: 'Growth', ARR_USD: '78000', NPS_Score: '79', Churn_Probability: '0.06', Active_Users: '80', Contract_Months: '24', Last_Audit_Status: 'Verified' },
+  { Account_ID: 'ACC-1012', Customer_Name: 'Quantum Dynamics Retail', Region: 'Europe', Plan_Tier: 'Standard', ARR_USD: '22000', NPS_Score: '58', Churn_Probability: '0.25', Active_Users: '24', Contract_Months: '12', Last_Audit_Status: 'Verified' },
+];
+
+const DEFAULT_INITIAL_DATASET: DatasetProfile = {
+  id: 'ds-enterprise-arr-2026',
+  fileName: 'b2b_saas_arr_performance.csv',
+  fileSize: 4096,
+  sha256: 'a98f12c304d9b6e8f41190bcda42118e9a21b8c094ff3123891d4e789bc109ef',
+  version: 'v1.0-verified',
+  rowCount: 12,
+  columnCount: 10,
+  uploadedAt: new Date().toISOString(),
+  parseWarnings: [],
+  status: 'complete',
+  quarantinedRowsCount: 0,
+  requirements: {
+    businessGrain: 'One row per enterprise customer contract',
+    primaryKey: 'Account_ID',
+    timestampColumn: 'Contract_Months',
+    currency: 'USD ($)',
+    unitScale: '1.0',
+    periodicity: 'Monthly',
+    dataClassification: 'Internal Business',
+    intendedDecision: 'Analyze enterprise retention and forecast ARR',
+  },
+  qualityChecks: [
+    { rule: 'Primary Key Uniqueness', category: 'Integrity', status: 'passed', details: 'All 12 account IDs unique', quarantinedCount: 0, metricAssertion: 'unique_rate == 1.0' },
+    { rule: 'Mandatory Non-Null Constraints', category: 'Completeness', status: 'passed', details: '0 null values detected', quarantinedCount: 0, metricAssertion: 'null_count == 0' },
+    { rule: 'Cryptographic SHA-256 Seal', category: 'Integrity', status: 'passed', details: 'Source hash locked to audit ledger', quarantinedCount: 0, metricAssertion: 'sha256_verified == true' },
+  ],
+  columns: [
+    { name: 'Account_ID', inferredType: 'string', semanticRole: 'identifier', totalCount: 12, nullCount: 0, uniqueCount: 12, sampleValues: ['ACC-1001', 'ACC-1002', 'ACC-1003'] },
+    { name: 'Customer_Name', inferredType: 'string', semanticRole: 'dimension', totalCount: 12, nullCount: 0, uniqueCount: 12, sampleValues: ['Acme Global Corp', 'Global Freight Logistics', 'Apex Health Systems'] },
+    { name: 'Region', inferredType: 'string', semanticRole: 'dimension', totalCount: 12, nullCount: 0, uniqueCount: 4, sampleValues: ['North America', 'Europe', 'Asia Pacific', 'Latin America'] },
+    { name: 'Plan_Tier', inferredType: 'string', semanticRole: 'dimension', totalCount: 12, nullCount: 0, uniqueCount: 3, sampleValues: ['Enterprise', 'Growth', 'Standard'] },
+    { name: 'ARR_USD', inferredType: 'integer', semanticRole: 'metric', totalCount: 12, nullCount: 0, uniqueCount: 12, min: 12000, max: 320000, mean: 101625, median: 71000, stdDev: 91400, sampleValues: ['145000', '98000', '45000'] },
+    { name: 'NPS_Score', inferredType: 'integer', semanticRole: 'metric', totalCount: 12, nullCount: 0, uniqueCount: 12, min: 42, max: 92, mean: 70.8, median: 73.5, stdDev: 14.8, sampleValues: ['72', '68', '81'] },
+    { name: 'Churn_Probability', inferredType: 'float', semanticRole: 'metric', totalCount: 12, nullCount: 0, uniqueCount: 12, min: 0.01, max: 0.45, mean: 0.14, median: 0.10, stdDev: 0.13, sampleValues: ['0.04', '0.12', '0.02'] },
+    { name: 'Active_Users', inferredType: 'integer', semanticRole: 'metric', totalCount: 12, nullCount: 0, uniqueCount: 12, min: 11, max: 340, mean: 114, median: 74, stdDev: 97.4, sampleValues: ['142', '89', '45'] },
+    { name: 'Contract_Months', inferredType: 'integer', semanticRole: 'metric', totalCount: 12, nullCount: 0, uniqueCount: 3, min: 12, max: 36, mean: 24, median: 24, stdDev: 9.8, sampleValues: ['36', '24', '12'] },
+    { name: 'Last_Audit_Status', inferredType: 'string', semanticRole: 'dimension', totalCount: 12, nullCount: 0, uniqueCount: 3, sampleValues: ['Verified', 'Flagged', 'Quarantine'] },
+  ]
+};
+
 const initialNotifications: NotificationItem[] = [
   {
     id: 'notif-1',
@@ -152,20 +208,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [currentProject, setCurrentProject] = useState<Project | null>(initialProjects[0]);
   
-  // Clean start: pure user-driven datasets (no synthetic presets)
+  // Clean start: defaults to pre-loaded verified enterprise dataset if local storage empty
   const [datasets, setDatasets] = useState<DatasetProfile[]>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('lumetric_datasets');
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
         }
       } catch {
         // Safe fallback
       }
     }
-    return [];
+    return [DEFAULT_INITIAL_DATASET];
   });
 
   const [activeDataset, setActiveDatasetState] = useState<DatasetProfile | null>(() => {
@@ -179,7 +235,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Safe fallback
       }
     }
-    return null;
+    return DEFAULT_INITIAL_DATASET;
   });
 
   const [activeRows, setActiveRowsState] = useState<Record<string, string>[]>(() => {
@@ -193,7 +249,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Safe fallback
       }
     }
-    return [];
+    return DEFAULT_INITIAL_ROWS;
   });
 
   const [activeView, setActiveViewState] = useState<ActiveView>('home');

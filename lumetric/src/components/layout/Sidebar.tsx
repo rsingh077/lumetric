@@ -24,85 +24,48 @@ import {
 } from '@/components/icons';
 import { UserRole, ActiveView } from '@/types';
 
-interface NavEntry {
-  id: string;
+interface NavItem {
+  id: ActiveView;
   label: string;
   href: string;
   icon: (props: { className?: string }) => React.JSX.Element;
-  badge?: string;
-  appleColor: string;
 }
 
-const navItems: NavEntry[] = [
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const navSections: NavSection[] = [
   {
-    id: 'home',
-    label: 'Home',
-    href: '/',
-    icon: HomeIcon,
-    appleColor: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+    title: 'Workspace',
+    items: [
+      { id: 'home', label: 'Studio Overview', href: '/', icon: HomeIcon },
+      { id: 'projects', label: 'Projects & Goals', href: '/projects', icon: FolderIcon },
+    ],
   },
   {
-    id: 'projects',
-    label: 'Projects',
-    href: '/projects',
-    icon: FolderIcon,
-    appleColor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    title: 'Data Engine',
+    items: [
+      { id: 'data', label: 'Data Workspace', href: '/data', icon: DatabaseIcon },
+      { id: 'pipelines', label: 'DAG Pipelines', href: '/pipelines', icon: GitBranchIcon },
+    ],
   },
   {
-    id: 'data',
-    label: 'Data',
-    href: '/data',
-    icon: DatabaseIcon,
-    appleColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    title: 'Intelligence & BI',
+    items: [
+      { id: 'analysis', label: 'Statistical Analysis', href: '/analysis', icon: BarChart3Icon },
+      { id: 'models', label: 'Model Registry', href: '/models', icon: BrainIcon },
+      { id: 'dashboards', label: 'Dashboards', href: '/dashboards', icon: LayoutDashboardIcon },
+      { id: 'stories', label: 'Visual Stories', href: '/stories', icon: BookOpenIcon },
+    ],
   },
   {
-    id: 'pipelines',
-    label: 'Pipelines',
-    href: '/pipelines',
-    icon: GitBranchIcon,
-    appleColor: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
-  },
-  {
-    id: 'analysis',
-    label: 'Analysis',
-    href: '/analysis',
-    icon: BarChart3Icon,
-    appleColor: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
-  },
-  {
-    id: 'models',
-    label: 'Models',
-    href: '/models',
-    icon: BrainIcon,
-    appleColor: 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400',
-  },
-  {
-    id: 'dashboards',
-    label: 'Dashboards',
-    href: '/dashboards',
-    icon: LayoutDashboardIcon,
-    appleColor: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  },
-  {
-    id: 'stories',
-    label: 'Stories',
-    href: '/stories',
-    icon: BookOpenIcon,
-    appleColor: 'bg-pink-500/10 text-pink-600 dark:text-pink-400',
-  },
-  {
-    id: 'operations',
-    label: 'Operations',
-    href: '/operations',
-    icon: ActivityIcon,
-    appleColor: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
-  },
-  {
-    id: 'settings',
-    label: 'Settings',
-    href: '/settings',
-    icon: SettingsIcon,
-    appleColor: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400',
+    title: 'System & Admin',
+    items: [
+      { id: 'operations', label: 'Operations & SLAs', href: '/operations', icon: ActivityIcon },
+      { id: 'settings', label: 'Governance & RBAC', href: '/settings', icon: SettingsIcon },
+    ],
   },
 ];
 
@@ -165,8 +128,8 @@ export function Sidebar() {
         aria-label="Main Navigation"
       >
         {/* Brand & Workspace Header */}
-        <div className="flex flex-col border-b border-[var(--lm-border-default)] p-3.5 bg-[var(--lm-bg-primary)]/50 backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-2 h-11 px-1">
+        <div className="flex flex-col border-b border-[var(--lm-border-default)] p-3 bg-[var(--lm-bg-primary)]">
+          <div className="flex items-center justify-between gap-2 h-10 px-1">
             <a
               href="#"
               onClick={(e) => {
@@ -175,22 +138,19 @@ export function Sidebar() {
               }}
               className="flex items-center gap-2.5 overflow-hidden group cursor-pointer"
             >
-              <div className="transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-108 shrink-0">
-                <BrandMascotIcon className="w-8 h-8 drop-shadow-sm" />
-              </div>
+              <BrandMascotIcon className="w-6 h-6 shrink-0" />
               {!sidebarCollapsed && (
                 <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="font-bold text-sm tracking-tight text-[var(--lm-text-primary)]">
                       Lumetric
                     </span>
-                    <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                      <SparklesIcon className="w-2.5 h-2.5 text-blue-500" />
-                      Studio
+                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700">
+                      STUDIO
                     </span>
                   </div>
-                  <span className="text-[10px] text-[var(--lm-text-tertiary)] font-mono tracking-wider">
-                    v0.1.0 • verified
+                  <span className="text-[10px] text-[var(--lm-text-tertiary)] font-mono">
+                    Decision Engine
                   </span>
                 </div>
               )}
@@ -199,7 +159,7 @@ export function Sidebar() {
             {/* Desktop collapse button */}
             <button
               onClick={toggleSidebar}
-              className="hidden lg:flex p-1.5 rounded-xl text-[var(--lm-text-tertiary)] hover:text-[var(--lm-text-primary)] hover:bg-[var(--lm-bg-tertiary)] transition-colors duration-200 apple-pressable"
+              className="hidden lg:flex p-1 rounded-md text-[var(--lm-text-tertiary)] hover:text-[var(--lm-text-primary)] hover:bg-[var(--lm-bg-tertiary)] transition-colors apple-pressable"
               title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
@@ -278,72 +238,71 @@ export function Sidebar() {
           )}
         </div>
 
-        {/* Navigation Items (Apple Smooth Pill Navigation) */}
-        <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-1" aria-label="Sections">
-          {navItems.map((item) => {
-            const isActive = activeView === item.id;
-            const IconComponent = item.icon;
-
-            return (
-              <a
-                key={item.id}
-                href={`#${item.id === 'home' ? '' : item.id}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setActiveView(item.id as ActiveView);
-                }}
-                className={`group relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 apple-pressable cursor-pointer ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-sm font-semibold'
-                    : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] hover:bg-[var(--lm-bg-tertiary)]/60'
-                } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
-                title={sidebarCollapsed ? item.label : undefined}
-              >
-                {/* Icon Container */}
-                <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-150 ${
-                    isActive
-                      ? 'bg-white/20 text-white'
-                      : `${item.appleColor}`
-                  } ${sidebarCollapsed ? 'mx-auto' : ''}`}
-                >
-                  <IconComponent className="w-4 h-4" />
+        {/* Grouped Enterprise Navigation */}
+        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4" aria-label="Sections">
+          {navSections.map((sec) => (
+            <div key={sec.title} className="space-y-0.5">
+              {!sidebarCollapsed && (
+                <div className="px-2.5 py-1 text-[10px] font-semibold tracking-wider text-[var(--lm-text-tertiary)] uppercase font-mono">
+                  {sec.title}
                 </div>
-
-                {!sidebarCollapsed && (
-                  <span className="truncate flex-1 tracking-tight">{item.label}</span>
-                )}
-
-                {/* Subtle active indicator dot */}
-                {!sidebarCollapsed && isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                )}
-              </a>
-            );
-          })}
+              )}
+              {sec.items.map((item) => {
+                const isActive = activeView === item.id;
+                const IconComponent = item.icon;
+                return (
+                  <a
+                    key={item.id}
+                    href={`#${item.id === 'home' ? '' : item.id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setActiveView(item.id);
+                    }}
+                    className={`group relative flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer ${
+                      isActive
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                    } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
+                    title={sidebarCollapsed ? item.label : undefined}
+                  >
+                    <IconComponent
+                      className={`w-4 h-4 shrink-0 transition-colors ${
+                        isActive
+                          ? 'text-white dark:text-slate-900'
+                          : 'text-slate-500 group-hover:text-slate-900 dark:text-slate-400 dark:group-hover:text-white'
+                      }`}
+                    />
+                    {!sidebarCollapsed && (
+                      <span className="truncate flex-1 tracking-tight">{item.label}</span>
+                    )}
+                  </a>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
-        {/* User & Role Simulation Section */}
-        <div className="border-t border-[var(--lm-border-default)] p-3 bg-[var(--lm-bg-primary)]/50 backdrop-blur-xl">
+        {/* User Profile & Role Simulation */}
+        <div className="border-t border-[var(--lm-border-default)] p-2.5 bg-[var(--lm-bg-primary)]">
           <div className="relative">
             <button
               onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-              className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-[var(--lm-bg-tertiary)]/80 transition-colors text-left apple-pressable"
+              className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
               title="Switch user role to test permissions"
             >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+              <div className="w-7 h-7 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center font-semibold text-xs shrink-0">
                 {currentUser.name.charAt(0)}
               </div>
               {!sidebarCollapsed && (
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-semibold text-[var(--lm-text-primary)] truncate">
+                  <div className="text-xs font-semibold text-[var(--lm-text-primary)] truncate leading-tight">
                     {currentUser.name}
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-[var(--lm-text-secondary)] rounded-md font-semibold">
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[9px] uppercase font-mono px-1 py-0.2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded font-semibold">
                       {currentUser.role}
                     </span>
-                    <span className="text-[10px] text-[var(--lm-text-tertiary)]">Switch ▾</span>
+                    <span className="text-[10px] text-slate-400">Switch ▾</span>
                   </div>
                 </div>
               )}

@@ -6,50 +6,44 @@ interface IconProps {
   className?: string;
 }
 
-// Cute mascot brand icon: glowing prism star with sparkle
+// Handcrafted Precision Lumetric Geometric Prism Logo
 export function BrandMascotIcon({ className = 'w-6 h-6' }: IconProps) {
   return (
     <svg
-      viewBox="0 0 32 32"
+      viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
+      width="24"
+      height="24"
       aria-hidden="true"
     >
-      <defs>
-        <linearGradient id="mascotGrad" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#6366F1" />
-          <stop offset="0.5" stopColor="#EC4899" />
-          <stop offset="1" stopColor="#3B82F6" />
-        </linearGradient>
-        <linearGradient id="sparkleGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop stopColor="#FDE047" />
-          <stop offset="1" stopColor="#F59E0B" />
-        </linearGradient>
-      </defs>
-      {/* Soft rounded squircle */}
-      <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#mascotGrad)" />
-      {/* Cute shiny prism gem */}
       <path
-        d="M16 6L23 13L16 26L9 13L16 6Z"
-        fill="white"
-        fillOpacity="0.95"
+        d="M12 2L2 7L12 12L22 7L12 2Z"
+        fill="#2563EB"
+        stroke="#1D4ED8"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
       />
       <path
-        d="M16 6L23 13L16 17L9 13L16 6Z"
-        fill="white"
-        fillOpacity="0.4"
+        d="M2 17L12 22L22 17"
+        stroke="#2563EB"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
-      {/* Cute sparkle star */}
       <path
-        d="M24 4C24 6.5 26.5 7 26.5 7C26.5 7 24 7.5 24 10C24 7.5 21.5 7 21.5 7C21.5 7 24 6.5 24 4Z"
-        fill="url(#sparkleGrad)"
+        d="M2 12L12 17L22 12"
+        stroke="#3B82F6"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
 }
 
-// Cute Home Icon: rounded cottage with smiling door and curved chimney smoke
+// Enterprise Home Icon
 export function HomeIcon({ className = 'w-5 h-5' }: IconProps) {
   return (
     <svg
@@ -57,20 +51,21 @@ export function HomeIcon({ className = 'w-5 h-5' }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
+      width="20"
+      height="20"
       className={className}
       aria-hidden="true"
     >
-      <path d="M3.5 10.5L10.7 4.2C11.4 3.6 12.6 3.6 13.3 4.2L20.5 10.5C21 10.9 21.3 11.6 21.3 12.2V18.5C21.3 19.9 20.2 21 18.8 21H5.2C3.8 21 2.7 19.9 2.7 18.5V12.2C2.7 11.6 3 10.9 3.5 10.5Z" />
-      <path d="M9.5 21V15C9.5 13.9 10.4 13 11.5 13H12.5C13.6 13 14.5 13.9 14.5 15V21" />
-      <path d="M18 7.5V4.5H15.5" />
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
   );
 }
 
-// Cute Folder Icon: rounded tabs with playful paper clip
+// Enterprise Folder Icon
 export function FolderIcon({ className = 'w-5 h-5' }: IconProps) {
   return (
     <svg
@@ -78,19 +73,20 @@ export function FolderIcon({ className = 'w-5 h-5' }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
+      width="20"
+      height="20"
       className={className}
       aria-hidden="true"
     >
-      <path d="M3.5 6.5C3.5 5.4 4.4 4.5 5.5 4.5H9.2C9.8 4.5 10.4 4.8 10.8 5.2L12.3 6.8C12.7 7.2 13.3 7.5 13.9 7.5H18.5C19.6 7.5 20.5 8.4 20.5 9.5V17.5C20.5 18.6 19.6 19.5 18.5 19.5H5.5C4.4 19.5 3.5 18.6 3.5 17.5V6.5Z" />
-      <line x1="8" y1="13.5" x2="16" y2="13.5" strokeDasharray="1 0" />
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
 
-// Cute Database Icon: rounded cylindrical storage disks with friendly pill highlights
+// Enterprise Database Icon
 export function DatabaseIcon({ className = 'w-5 h-5' }: IconProps) {
   return (
     <svg
@@ -98,22 +94,22 @@ export function DatabaseIcon({ className = 'w-5 h-5' }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
+      width="20"
+      height="20"
       className={className}
       aria-hidden="true"
     >
-      <ellipse cx="12" cy="5.5" rx="8" ry="3" />
-      <path d="M4 5.5V11.5C4 13.1 7.6 14.5 12 14.5C16.4 14.5 20 13.1 20 11.5V5.5" />
-      <path d="M4 11.5V17.5C4 19.1 7.6 20.5 12 20.5C16.4 20.5 20 19.1 20 17.5V11.5" />
-      <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
-      <circle cx="8" cy="17.5" r="0.75" fill="currentColor" />
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
     </svg>
   );
 }
 
-// Cute GitBranch Icon: candy nodes connecting in a friendly loop
+// Enterprise GitBranch Icon
 export function GitBranchIcon({ className = 'w-5 h-5' }: IconProps) {
   return (
     <svg
@@ -121,22 +117,23 @@ export function GitBranchIcon({ className = 'w-5 h-5' }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
+      width="20"
+      height="20"
       className={className}
       aria-hidden="true"
     >
-      <circle cx="6" cy="6" r="2.75" />
-      <circle cx="6" cy="18" r="2.75" />
-      <circle cx="18" cy="9" r="2.75" />
-      <path d="M6 8.75V15.25" />
-      <path d="M18 11.75V13C18 15.2 16.2 17 14 17H8.75" />
+      <line x1="6" y1="3" x2="6" y2="15" />
+      <circle cx="18" cy="6" r="3" />
+      <circle cx="6" cy="18" r="3" />
+      <path d="M18 9a9 9 0 0 1-9 9" />
     </svg>
   );
 }
 
-// Cute BarChart3 Icon: rounded step bars with happy upward trend
+// Enterprise BarChart3 Icon
 export function BarChart3Icon({ className = 'w-5 h-5' }: IconProps) {
   return (
     <svg
@@ -144,21 +141,22 @@ export function BarChart3Icon({ className = 'w-5 h-5' }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
+      width="20"
+      height="20"
       className={className}
       aria-hidden="true"
     >
-      <rect x="3.5" y="14" width="3.5" height="7" rx="1.5" />
-      <rect x="10.25" y="9" width="3.5" height="12" rx="1.5" />
-      <rect x="17" y="4" width="3.5" height="17" rx="1.5" />
-      <path d="M4 11L10 6L15 9L20.5 3" strokeWidth={1.75} strokeDasharray="0.5 2" />
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
     </svg>
   );
 }
 
-// Cute Brain / AI Model Icon: cute rounded thinking lobe with spark
+// Enterprise Brain / Model Registry Icon
 export function BrainIcon({ className = 'w-5 h-5' }: IconProps) {
   return (
     <svg
@@ -166,22 +164,21 @@ export function BrainIcon({ className = 'w-5 h-5' }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
+      width="20"
+      height="20"
       className={className}
       aria-hidden="true"
     >
-      <path d="M9.5 4.5C8 4.5 6.5 5.5 6.5 7.5C5 7.5 4 9 4 10.5C4 12 5 13 6 13.5C5 14.5 5 16 6 17C7 18 8 18.5 9.5 18.5H10" />
-      <path d="M14.5 4.5C16 4.5 17.5 5.5 17.5 7.5C19 7.5 20 9 20 10.5C20 12 19 13 18 13.5C19 14.5 19 16 18 17C17 18 16 18.5 14.5 18.5H14" />
-      <path d="M10 4.5H14" />
-      <path d="M12 4.5V19.5" />
-      <circle cx="12" cy="11.5" r="1.5" fill="currentColor" />
+      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-5.04z" />
+      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-5.04z" />
     </svg>
   );
 }
 
-// Cute Dashboard Icon: sweet rounded tiles with varied proportions
+// Enterprise Dashboard Icon
 export function LayoutDashboardIcon({ className = 'w-5 h-5' }: IconProps) {
   return (
     <svg
@@ -189,21 +186,23 @@ export function LayoutDashboardIcon({ className = 'w-5 h-5' }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
+      width="20"
+      height="20"
       className={className}
       aria-hidden="true"
     >
-      <rect x="3.5" y="3.5" width="7.5" height="9" rx="2.5" />
-      <rect x="13" y="3.5" width="7.5" height="5.5" rx="2" />
-      <rect x="13" y="11" width="7.5" height="9.5" rx="2.5" />
-      <rect x="3.5" y="14.5" width="7.5" height="6" rx="2" />
+      <rect x="3" y="3" width="7" height="9" rx="1.5" />
+      <rect x="14" y="3" width="7" height="5" rx="1.5" />
+      <rect x="14" y="12" width="7" height="9" rx="1.5" />
+      <rect x="3" y="16" width="7" height="5" rx="1.5" />
     </svg>
   );
 }
 
-// Cute Stories Book Icon: friendly open book with cute ribbon
+// Enterprise Documentation & Story Icon
 export function BookOpenIcon({ className = 'w-5 h-5' }: IconProps) {
   return (
     <svg
@@ -211,20 +210,21 @@ export function BookOpenIcon({ className = 'w-5 h-5' }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
+      width="20"
+      height="20"
       className={className}
       aria-hidden="true"
     >
-      <path d="M3 6.5C4.5 5.5 7.5 5 12 6.5C16.5 5 19.5 5.5 21 6.5V19C19.5 18 16.5 17.5 12 19C7.5 17.5 4.5 18 3 19V6.5Z" />
-      <path d="M12 6.5V19" />
-      <path d="M12 9.5C14 8.5 16 8.5 18 9" />
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
     </svg>
   );
 }
 
-// Cute Activity / Operations Icon: smiling heartbeat curve
+// Enterprise Operations & Telemetry Icon
 export function ActivityIcon({ className = 'w-5 h-5' }: IconProps) {
   return (
     <svg
@@ -232,19 +232,20 @@ export function ActivityIcon({ className = 'w-5 h-5' }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
+      width="20"
+      height="20"
       className={className}
       aria-hidden="true"
     >
-      <path d="M3 12H6.5L8.5 6.5L12.5 18.5L15.5 9.5L17.5 13.5H21" />
-      <circle cx="12.5" cy="18.5" r="1.25" fill="currentColor" />
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
     </svg>
   );
 }
 
-// Cute Settings Icon: friendly flower gear with soft rounded teeth
+// Enterprise Governance & Settings Icon
 export function SettingsIcon({ className = 'w-5 h-5' }: IconProps) {
   return (
     <svg
@@ -252,14 +253,16 @@ export function SettingsIcon({ className = 'w-5 h-5' }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
+      width="20"
+      height="20"
       className={className}
       aria-hidden="true"
     >
-      <circle cx="12" cy="12" r="3.25" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   );
 }

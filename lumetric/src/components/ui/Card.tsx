@@ -17,9 +17,9 @@ const paddingClasses = {
 export function Card({ children, className = '', padding = 'md', hover = false }: CardProps) {
   return (
     <div
-      className={`relative rounded-2xl bg-[var(--lm-bg-elevated)] backdrop-blur-xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] ${paddingClasses[padding]} ${
+      className={`relative rounded-lg bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] shadow-xs ${paddingClasses[padding]} ${
         hover
-          ? 'apple-card-hover cursor-pointer'
+          ? 'hover:border-slate-400 dark:hover:border-slate-600 hover:shadow-sm transition-all duration-150 cursor-pointer'
           : ''
       } ${className}`}
     >
