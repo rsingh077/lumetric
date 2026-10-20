@@ -19,6 +19,7 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   PlusIcon,
+  LogOutIcon,
 } from '@/components/icons';
 import { UserRole, ActiveView } from '@/types';
 
@@ -70,6 +71,7 @@ export function Sidebar() {
     createWorkspace,
     currentUser,
     setRole,
+    logout,
     mobileMenuOpen,
     setMobileMenuOpen,
     serverStatus,
@@ -416,17 +418,38 @@ export function Sidebar() {
                     {currentUser.role === r && <span className="text-[10px] font-mono">✓</span>}
                   </button>
                 ))}
+                <div className="pt-1.5 mt-1 border-t border-[var(--lm-border-default)]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRoleDropdownOpen(false);
+                      logout();
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <LogOutIcon className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
 
-          {!sidebarCollapsed && (
-            <div className="mt-2 pt-2 border-t border-[var(--lm-border-default)] flex items-center justify-between text-[10px] text-[var(--lm-text-tertiary)]">
-              <span>Catalyst Cloud Live</span>
+          {!sidebarCollapsed ? (
+            <div className="mt-2 pt-2 border-t border-[var(--lm-border-default)] flex items-center justify-between text-[10px]">
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="inline-flex items-center gap-1.5 text-rose-600 dark:text-rose-400 hover:text-rose-700 font-semibold cursor-pointer active:scale-95 transition-transform"
+                title="Sign out of Lumetric"
+              >
+                <LogOutIcon className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
+              </button>
               <button
                 type="button"
                 onClick={() => reconnectServer()}
-                className="inline-flex items-center gap-1.5 font-medium hover:opacity-80 transition-opacity apple-pressable cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-[var(--lm-text-tertiary)] hover:opacity-80 transition-opacity cursor-pointer font-mono"
                 title="Ping Catalyst Server"
               >
                 <span
@@ -451,8 +474,19 @@ export function Sidebar() {
                     ? `Live (${serverLatency !== null ? `${serverLatency}ms` : '20ms'})`
                     : serverStatus === 'connecting'
                     ? 'Pinging...'
-                    : 'Reconnect'}
+                    : 'Offline'}
                 </span>
+              </button>
+            </div>
+          ) : (
+            <div className="mt-2 pt-2 border-t border-[var(--lm-border-default)] flex justify-center">
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="p-1 rounded-md text-rose-500 hover:bg-rose-500/10 cursor-pointer transition-colors"
+                title="Sign Out"
+              >
+                <LogOutIcon className="w-4 h-4" />
               </button>
             </div>
           )}

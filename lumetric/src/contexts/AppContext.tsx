@@ -643,8 +643,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
     } catch {
-      setServerStatus('connected'); // Offline local mock mode
-      setServerLatency(18);
+      setServerStatus('disconnected');
+      setServerLatency(null);
       setLastServerSync(new Date().toLocaleTimeString());
       return false;
     }

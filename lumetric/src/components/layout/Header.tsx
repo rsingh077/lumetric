@@ -14,6 +14,7 @@ import {
   ChevronDownIcon,
   PlusIcon,
   XIcon,
+  LogOutIcon,
 } from '@/components/icons';
 
 interface SearchResultItem {
@@ -49,6 +50,7 @@ export function Header() {
     authModalOpen,
     setAuthModalOpen,
     authModalMode,
+    logout,
   } = useApp();
 
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
@@ -516,25 +518,35 @@ export function Header() {
             )}
           </div>
 
-          {/* User Profile Avatar with Live Auth Modal */}
-          <button
-            onClick={() => setAuthModalOpen(true)}
-            className="flex items-center gap-2 pl-2 border-l border-[var(--lm-border-default)] hover:opacity-85 transition-opacity text-left cursor-pointer"
-            title="Manage Catalyst Cloud Profile & Authentication"
-          >
-            <div className="w-7 h-7 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center font-semibold text-xs shrink-0">
-              {currentUser.name.charAt(0)}
-            </div>
-            <div className="hidden xl:flex flex-col text-left">
-              <span className="text-xs font-semibold leading-tight text-[var(--lm-text-primary)] tracking-tight">
-                {currentUser.name}
-              </span>
-              <span className="text-[9.5px] text-[var(--lm-text-tertiary)] uppercase font-mono font-medium flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                {currentUser.role}
-              </span>
-            </div>
-          </button>
+          {/* User Profile Avatar with Live Auth Modal & Quick Logout */}
+          <div className="flex items-center gap-1.5 pl-2 border-l border-[var(--lm-border-default)]">
+            <button
+              onClick={() => setAuthModalOpen(true)}
+              className="flex items-center gap-2 hover:opacity-85 transition-opacity text-left cursor-pointer"
+              title="Manage Catalyst Cloud Profile & Authentication"
+            >
+              <div className="w-7 h-7 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center font-semibold text-xs shrink-0">
+                {(currentUser.name || 'U').charAt(0)}
+              </div>
+              <div className="hidden xl:flex flex-col text-left">
+                <span className="text-xs font-semibold leading-tight text-[var(--lm-text-primary)] tracking-tight">
+                  {currentUser.name}
+                </span>
+                <span className="text-[9.5px] text-[var(--lm-text-tertiary)] uppercase font-mono font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  {currentUser.role}
+                </span>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+              title="Sign Out of Lumetric"
+            >
+              <LogOutIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </header>
 

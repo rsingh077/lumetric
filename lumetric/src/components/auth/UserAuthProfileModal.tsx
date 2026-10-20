@@ -52,8 +52,29 @@ export function UserAuthProfileModal({
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
 
+  // Live DataStore verification state
+  const [dataStoreStatus, setDataStoreStatus] = useState<{
+    loaded: boolean;
+    tableExists: boolean;
+    error?: string;
+  }>({ loaded: false, tableExists: false });
+
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      LumetricAuthService.checkDataStoreStatus().then((res) => {
+        setDataStoreStatus({
+          loaded: true,
+          tableExists: Boolean(res.tableExists),
+          error: res.error
+        });
+      }).catch(() => {
+        setDataStoreStatus({ loaded: true, tableExists: false });
+      });
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const existing = LumetricAuthService.getStoredUser();
@@ -287,10 +308,11 @@ export function UserAuthProfileModal({
   };
 
   const handleLogout = async () => {
-    await LumetricAuthService.logout();
+    setLoading(true);
+    await logout();
     setAuthUser(null);
-    setMode('login');
-    setFeedback({ type: 'success', message: 'Logged out successfully.' });
+    setLoading(false);
+    onClose();
   };
 
   return (
@@ -425,7 +447,15 @@ export function UserAuthProfileModal({
               <div className="p-4 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-[var(--lm-text-secondary)]">Database Persistence</span>
-                  <StatusBadge variant="success" dot>Crystal Data Store Synced</StatusBadge>
+                  {dataStoreStatus.loaded ? (
+                    dataStoreStatus.tableExists ? (
+                      <StatusBadge variant="success" dot>Catalyst DataStore Active</StatusBadge>
+                    ) : (
+                      <StatusBadge variant="warning" dot>Table &apos;Users&apos; Pending in Console</StatusBadge>
+                    )
+                  ) : (
+                    <StatusBadge variant="neutral">Verifying DataStore...</StatusBadge>
+                  )}
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[var(--lm-text-secondary)]">Account ID</span>
@@ -438,6 +468,18 @@ export function UserAuthProfileModal({
                   </span>
                 </div>
               </div>
+
+              {!dataStoreStatus.tableExists && dataStoreStatus.loaded && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-900 dark:text-amber-200 space-y-1.5 animate-fade-in">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                    <span>⚠️</span>
+                    <span>Zoho Catalyst Console Table Setup:</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+                    Zoho Catalyst does not support creating tables via code. To view your data inside Zoho Catalyst Console, create the table <strong>Users</strong> in project <strong>Project-Rainfall</strong> under <strong>Cloud Scale &gt; Data Store</strong> with columns: <code className="font-mono text-[10px] bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded">email, passwordHash, name, role, organization, avatarUrl, mfaEnabled, mfaSecret, lastLoginAt, settings</code>.
+                  </p>
+                </div>
+              )}
 
               {/* 2FA Authenticator Section */}
               <div className="p-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 space-y-3">

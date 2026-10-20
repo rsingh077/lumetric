@@ -138,29 +138,11 @@ export class LumetricAuthService {
       }
       return data;
     } catch (err: any) {
-      // Offline fallback: if network is down or timed out, allow local creation
-      const isNetworkIssue = err.name === 'AbortError' || (typeof navigator !== 'undefined' && !navigator.onLine);
-      if (isNetworkIssue) {
-        const localUser: AuthUser = {
-          id: `usr_local_${Date.now()}`,
-          email: cleanPayload.email,
-          name: cleanPayload.name || 'Executive User',
-          role: (cleanPayload.role as any) || 'owner',
-          organization: cleanPayload.organization,
-          createdAt: new Date().toISOString()
-        };
-        const localToken = `local_token_${Date.now()}`;
-        this.setSession(localToken, localUser);
-        return {
-          success: true,
-          message: 'Offline Mode: Profile created locally.',
-          token: localToken,
-          user: localUser
-        };
-      }
       return {
         success: false,
-        error: err.name === 'AbortError' ? 'Server connection timed out. Please try again.' : err.message || 'Network error connecting to Catalyst Server'
+        error: err.name === 'AbortError'
+          ? 'Server connection timed out. Please check your network connection.'
+          : err.message || 'Cannot reach Zoho Catalyst Cloud server.'
       };
     }
   }
@@ -233,21 +215,28 @@ export class LumetricAuthService {
       }
       return data;
     } catch (err: any) {
-      // Local fallback for quick Google sign in
-      const fallbackUser: AuthUser = {
-        id: `usr_google_${Date.now()}`,
-        email: cleanEmail,
-        name: payload.name || cleanEmail.split('@')[0],
-        role: 'owner',
-        createdAt: new Date().toISOString()
-      };
-      const fallbackToken = `token_google_${Date.now()}`;
-      this.setSession(fallbackToken, fallbackUser);
       return {
-        success: true,
-        token: fallbackToken,
-        user: fallbackUser
+        success: false,
+        error: err.name === 'AbortError'
+          ? 'Google authentication timed out. Please try again.'
+          : err.message || 'Cannot reach Zoho Catalyst Cloud server for Google Auth.'
       };
+    }
+  }
+
+  public static async checkDataStoreStatus(): Promise<{
+    success: boolean;
+    connected: boolean;
+    tableExists: boolean;
+    tables?: string[];
+    totalTables?: number;
+    error?: string;
+  }> {
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/datastore/status`);
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, connected: false, tableExists: false, error: err.message };
     }
   }
 

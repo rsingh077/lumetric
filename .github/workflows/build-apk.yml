@@ -47,41 +47,42 @@ jobs:
       - name: Copy APK to Root for Direct Repo Download
         run: |
           cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric.apk
-          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.2.1.apk
+          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.2.2.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumetric-v2.2.1-debug-apk
-          path: Lumetric-v2.2.1.apk
+          name: lumetric-v2.2.2-debug-apk
+          path: Lumetric-v2.2.2.apk
 
-      - name: Create or Update GitHub Release v2.2.1
+      - name: Create or Update GitHub Release v2.2.2
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v2.2.1
-          name: "Lumetric v2.2.1 — Database Profile Persistence, Bcrypt 12 Security Hardening & Zero Secrets Policy"
+          tag_name: v2.2.2
+          name: "Lumetric v2.2.2 — Real Auth Enforcement, Instant Logout Fix, and Catalyst DataStore Verification"
           body: |
-            ### 🚀 Lumetric Mobile v2.2.1 Release
+            ### 🚀 Lumetric Mobile v2.2.2 Release
 
-            #### 🛡️ Database Profile Persistence & Authentication
-            - **Zoho Catalyst DataStore Persistence**: Real user profile creation and updates are persisted to the database (`Users` table) and cross-synced between web and Android mobile APK.
-            - **Zero Hardcoded Passwords**: All mock test credentials, autofill shortcuts, and preloaded admin accounts completely removed from client UI and server runtime.
-            - **High-Security Hashing**: Upgraded password hashing to 12-round salted Bcrypt (`bcrypt.genSalt(12)`).
-            - **Strict Password Policy**: Minimum 8 characters with letter and number/special character complexity checks enforced.
-            - **Password Change Endpoint**: Added authenticated `/api/user/change-password` allowing secure password updates directly from the user profile modal.
+            #### 🚪 Instant Session Logout Resolution
+            - **Fixed Persistent Session Bug**: Profile modal "Sign Out" now properly triggers `AppContext.logout()`, immediately transitioning the application back to the login screen.
+            - **Sidebar & Header Sign Out**: Added direct single-click "Sign Out" buttons in the sidebar footer and header user bar.
+            - **Session Invalidation**: Clears tokens and cached state on logout across web and mobile.
 
-            #### 🔒 Enterprise Security Hardening & Leak Prevention
-            - **Security Headers Middleware**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`, and `Cache-Control: no-store`.
-            - **ZCQL Sanitization**: Escaped single quotes across all database queries to prevent injection vulnerabilities.
-            - **Repository Protection**: Strengthened `.gitignore` rules across root and subdirectories to block any `.env*`, keys, certificates, tokens, or credentials from being leaked.
-            - **SECURITY.md**: Formally declared vulnerability reporting guidelines and data governance architecture.
+            #### 🔐 Real Server Authentication Enforcement
+            - **Purged Offline Mock Tokens**: Excised local mock fallback user generation (`usr_local_*`, `local_token_*`) from the authentication service.
+            - **Real Server Verification**: Enforced 100% genuine backend verification against the live Zoho Catalyst Cloud Server (`project-rainfall`).
+            - **Honest Connection Status**: Fixed telemetry health ping so failures accurately report disconnected status rather than pretending to be connected.
+
+            #### 🗄️ Zoho Catalyst DataStore ("Crystal") Diagnostics
+            - **Provisioning Status Endpoint**: Added `/api/datastore/status` to inspect whether the `Users` table exists in Catalyst DataStore.
+            - **Dynamic Persistence Badge**: Replaced static "Synced" text with live verification status and setup instructions for Catalyst DataStore.
 
             #### 📱 Direct Download
-            - **Direct APK Download (v2.2.1)**: [Lumetric-v2.2.1.apk](https://github.com/rsingh077/lumetric/releases/download/v2.2.1/Lumetric-v2.2.1.apk)
-            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.2.1/Lumetric.apk)
+            - **Direct APK Download (v2.2.2)**: [Lumetric-v2.2.2.apk](https://github.com/rsingh077/lumetric/releases/download/v2.2.2/Lumetric-v2.2.2.apk)
+            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.2.2/Lumetric.apk)
           files: |
             Lumetric.apk
-            Lumetric-v2.2.1.apk
+            Lumetric-v2.2.2.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

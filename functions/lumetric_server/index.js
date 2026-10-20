@@ -209,10 +209,49 @@ async function getUserFromStore(req, email) {
   return memoryStore.get(normEmail) || null;
 }
 
+async function checkDataStoreStatus(req) {
+  const catApp = await initCatalystApp(req);
+  if (!catApp || !catApp.datastore) {
+    return {
+      connected: false,
+      tableExists: false,
+      message: 'Catalyst SDK could not initialize on this request'
+    };
+  }
+
+  try {
+    const tables = await catApp.datastore().getAllTables();
+    const tableNames = (tables || []).map(t => t.table_name || t.tableName || t.tableId || t.name || '').filter(Boolean);
+    const usersTableFound = tableNames.some(name => name.toLowerCase() === 'users');
+
+    return {
+      connected: true,
+      tableExists: usersTableFound,
+      tables: tableNames,
+      totalTables: tableNames.length,
+      projectId: 'Project-Rainfall (83759000000013024)',
+      requiredSchema: {
+        tableName: 'Users',
+        columns: ['email', 'passwordHash', 'name', 'role', 'organization', 'avatarUrl', 'mfaEnabled', 'mfaSecret', 'lastLoginAt', 'settings']
+      }
+    };
+  } catch (err) {
+    return {
+      connected: true,
+      tableExists: false,
+      error: err.message,
+      projectId: 'Project-Rainfall (83759000000013024)'
+    };
+  }
+}
+
 async function saveUserToStore(req, user) {
-  if (!user || !user.email) return;
+  if (!user || !user.email) return { success: false, error: 'User email is required' };
   const normEmail = user.email.toLowerCase().trim();
   memoryStore.set(normEmail, user);
+
+  let dataStorePersisted = false;
+  let dataStoreError = null;
 
   const catApp = await initCatalystApp(req);
   if (catApp && catApp.datastore) {
@@ -232,7 +271,7 @@ async function saveUserToStore(req, user) {
             user.rowid = targetRowId;
           }
         } catch (zcqlErr) {
-          console.warn('ZCQL checkRow error:', zcqlErr.message);
+          dataStoreError = zcqlErr.message;
         }
       }
 
@@ -255,16 +294,26 @@ async function saveUserToStore(req, user) {
         if (updateRes && (updateRes.ROWID || updateRes.Users?.ROWID)) {
           user.rowid = String(updateRes.ROWID || updateRes.Users?.ROWID);
         }
+        dataStorePersisted = true;
       } else {
         const insertRes = await table.insertRow(rowData);
         if (insertRes && (insertRes.ROWID || insertRes.Users?.ROWID)) {
           user.rowid = String(insertRes.ROWID || insertRes.Users?.ROWID);
         }
+        dataStorePersisted = true;
       }
     } catch (dbErr) {
-      console.warn('DataStore persist error (user persisted in memory cache):', dbErr.message);
+      dataStoreError = dbErr.message;
+      console.warn('Catalyst DataStore persist warning:', dbErr.message);
     }
   }
+
+  return {
+    success: true,
+    persistedToCloudStore: dataStorePersisted,
+    dataStoreError,
+    rowid: user.rowid || null
+  };
 }
 
 async function getAllUsersFromStore(req) {
@@ -400,6 +449,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// 1b. Catalyst DataStore Diagnostics & Provisioning Status
+app.get('/api/datastore/status', async (req, res) => {
+  const status = await checkDataStoreStatus(req);
+  return res.json({ success: true, ...status });
+});
+
 // 2. Authentication: Register / Create Account
 app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 20, message: 'Rate limit reached: Max 20 account creations per 15 minutes.' }), async (req, res) => {
   try {
@@ -478,7 +533,7 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 20, 
       }
     };
 
-    await saveUserToStore(req, newUser);
+    const saveResult = await saveUserToStore(req, newUser);
     logAuditEvent(normalizedEmail, 'USER_REGISTERED', 'Authentication', `New account created with initial role: ${newUser.role}`);
 
     const token = jwt.sign(
@@ -489,11 +544,17 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 20, 
 
     const { passwordHash: _, mfaSecret: __, ...userSafe } = newUser;
 
+    const message = saveResult.persistedToCloudStore
+      ? 'Account successfully registered and persisted to Zoho Catalyst DataStore.'
+      : 'Account registered. (Note: Table "Users" pending creation in Catalyst console; session active via memory store).';
+
     return res.status(201).json({
       success: true,
-      message: 'Account successfully registered and persisted to database.',
+      message,
       token,
-      user: userSafe
+      user: userSafe,
+      persistedToCloudStore: saveResult.persistedToCloudStore,
+      dataStoreError: saveResult.dataStoreError
     });
   } catch (err) {
     console.error('Registration error:', err);
