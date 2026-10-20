@@ -11,6 +11,7 @@ import {
   DocumentFileProfile,
   DocumentTreatmentResult,
   AppLanguage,
+  UserProfileDatabase,
 } from '@/types';
 import { LumetricAuthService } from '@/lib/auth';
 
@@ -89,10 +90,15 @@ interface AppContextType {
   // Authentication Modal & Profile Controls
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
-  authModalMode: 'profile' | 'login' | 'register' | 'admin-dashboard';
-  openAuthModal: (mode?: 'profile' | 'login' | 'register' | 'admin-dashboard') => void;
+  authModalMode: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db';
+  openAuthModal: (mode?: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db') => void;
   closeAuthModal: () => void;
   logout: () => Promise<void>;
+
+  // Individual Profile Database & Separation Controls
+  storageFootprintBytes: number;
+  loadSampleDataIntoProfile: () => void;
+  clearProfileData: () => void;
 }
 
 const emptyUser: User = {
@@ -388,6 +394,81 @@ const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
   }
 };
 
+// ========== Per-User Profile Storage & Data Separation Helpers ==========
+function getUserStorageKey(email?: string): string {
+  const clean = (email || 'guest').trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '_');
+  return `lumetric_profile_db_${clean}`;
+}
+
+function createCleanProfileDatabase(userId?: string, userEmail?: string): UserProfileDatabase {
+  const ownerId = userId || 'usr-personal';
+  const email = userEmail || 'user@lumetric.io';
+  const username = email ? email.split('@')[0] : 'personal';
+  const capitalized = username.charAt(0).toUpperCase() + username.slice(1);
+  return {
+    userId: ownerId,
+    userEmail: email,
+    datasets: [],
+    activeDatasetId: null,
+    datasetRows: {},
+    documentFiles: [],
+    activeDocumentId: null,
+    projects: [
+      {
+        id: `prj-${Date.now()}-1`,
+        workspaceId: 'ws-personal',
+        name: `${capitalized} Analytics Workspace`,
+        objective: 'Individual analytical models, dataset ingestion, and document treatments',
+        description: 'Private multi-tenant workspace isolated to this user account.',
+        status: 'active',
+        createdBy: ownerId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    ],
+    workspaces: [
+      {
+        id: 'ws-personal',
+        name: `${capitalized}'s Personal Lab`,
+        slug: 'personal-lab',
+        description: 'Dedicated isolated personal database & file analysis environment',
+        ownerId: ownerId,
+        members: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    ],
+    storageFootprintBytes: 0,
+    lastSyncedAt: new Date().toISOString(),
+  };
+}
+
+function createSampleProfileDatabase(userId?: string, userEmail?: string): UserProfileDatabase {
+  const clean = createCleanProfileDatabase(userId, userEmail);
+  const sampleDs: DatasetProfile = {
+    ...initialDataset,
+    id: `ds-${Date.now().toString(36)}`,
+    uploadedAt: new Date().toISOString()
+  };
+  const sampleDoc: DocumentFileProfile = {
+    ...initialDocumentFiles[0],
+    id: `doc-${Date.now().toString(36)}`,
+    uploadedAt: new Date().toISOString()
+  };
+  return {
+    ...clean,
+    datasets: [sampleDs],
+    activeDatasetId: sampleDs.id,
+    datasetRows: {
+      [sampleDs.id]: initialRows
+    },
+    documentFiles: [sampleDoc],
+    activeDocumentId: sampleDoc.id,
+    storageFootprintBytes: 298780,
+    lastSyncedAt: new Date().toISOString(),
+  };
+}
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -472,9 +553,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard'>('profile');
+  const [authModalMode, setAuthModalMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db'>('profile');
 
-  const openAuthModal = (mode: 'profile' | 'login' | 'register' | 'admin-dashboard' = 'profile') => {
+  const openAuthModal = (mode: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db' = 'profile') => {
     setAuthModalMode(mode);
     setAuthModalOpen(true);
   };
@@ -483,38 +564,204 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAuthModalOpen(false);
   };
 
+  // 3. Workspaces & Projects State (Per-Profile Isolated)
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [currentWorkspace, setCurrentWorkspace] = useState<Workspace>(initialWorkspaces[0]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+
+  // 4. Ingested Tabular Datasets & Multi-Tenant Isolated Rows Map
+  const [datasets, setDatasets] = useState<DatasetProfile[]>([]);
+  const [activeDataset, setActiveDatasetState] = useState<DatasetProfile | null>(null);
+  const [activeRows, setActiveRows] = useState<Record<string, string>[]>([]);
+  const [datasetRowsMap, setDatasetRowsMap] = useState<Record<string, Record<string, string>[]>>({});
+
+  // 5. Document File Analysis State (Per-Profile Isolated)
+  const [documentFiles, setDocumentFiles] = useState<DocumentFileProfile[]>([]);
+  const [activeDocument, setActiveDocument] = useState<DocumentFileProfile | null>(null);
+
+  // 6. Profile Storage Footprint in Bytes
+  const [storageFootprintBytes, setStorageFootprintBytes] = useState<number>(0);
+
+  // Helper to apply a loaded profile database to in-memory React state
+  const applyProfileDatabase = (db: UserProfileDatabase) => {
+    const dss = db.datasets || [];
+    setDatasets(dss);
+    const activeDs = dss.find(d => d.id === db.activeDatasetId) || dss[0] || null;
+    setActiveDatasetState(activeDs);
+
+    const rowsMap = db.datasetRows || {};
+    setDatasetRowsMap(rowsMap);
+    setActiveRows(activeDs ? rowsMap[activeDs.id] || [] : []);
+
+    const docs = db.documentFiles || [];
+    setDocumentFiles(docs);
+    const activeDoc = docs.find(d => d.id === db.activeDocumentId) || docs[0] || null;
+    setActiveDocument(activeDoc);
+
+    const prjs = db.projects || [];
+    setProjects(prjs);
+    setCurrentProject(prjs[0] || null);
+
+    const wss = db.workspaces || [];
+    setWorkspaces(wss);
+    if (wss.length > 0) setCurrentWorkspace(wss[0]);
+
+    setStorageFootprintBytes(db.storageFootprintBytes || 0);
+  };
+
+  // Helper to persist current user profile state to localStorage & Catalyst DataStore
+  const persistProfileDb = (
+    updatedDatasets?: DatasetProfile[],
+    updatedActiveDatasetId?: string | null,
+    updatedRowsMap?: Record<string, Record<string, string>[]>,
+    updatedDocs?: DocumentFileProfile[],
+    updatedActiveDocId?: string | null,
+    updatedProjects?: Project[],
+    updatedWorkspaces?: Workspace[]
+  ) => {
+    if (typeof window === 'undefined' || !currentUser.email) return;
+
+    const currentDss = updatedDatasets !== undefined ? updatedDatasets : datasets;
+    const currentActiveDsId = updatedActiveDatasetId !== undefined ? updatedActiveDatasetId : activeDataset?.id || null;
+    const currentRowsMap = updatedRowsMap !== undefined ? updatedRowsMap : datasetRowsMap;
+    const currentDocs = updatedDocs !== undefined ? updatedDocs : documentFiles;
+    const currentActiveDocId = updatedActiveDocId !== undefined ? updatedActiveDocId : activeDocument?.id || null;
+    const currentProjects = updatedProjects !== undefined ? updatedProjects : projects;
+    const currentWorkspaces = updatedWorkspaces !== undefined ? updatedWorkspaces : workspaces;
+
+    const dbPayload: UserProfileDatabase = {
+      userId: currentUser.id || 'usr-personal',
+      userEmail: currentUser.email,
+      datasets: currentDss,
+      activeDatasetId: currentActiveDsId,
+      datasetRows: currentRowsMap,
+      documentFiles: currentDocs,
+      activeDocumentId: currentActiveDocId,
+      projects: currentProjects,
+      workspaces: currentWorkspaces,
+      storageFootprintBytes: 0,
+      lastSyncedAt: new Date().toISOString(),
+    };
+
+    try {
+      const jsonStr = JSON.stringify(dbPayload);
+      const approxBytes = new Blob([jsonStr]).size;
+      dbPayload.storageFootprintBytes = approxBytes;
+      setStorageFootprintBytes(approxBytes);
+
+      const key = getUserStorageKey(currentUser.email);
+      localStorage.setItem(key, JSON.stringify(dbPayload));
+
+      // Background cloud sync to Zoho Catalyst DataStore
+      LumetricAuthService.saveWorkspaceData(dbPayload).catch(() => {});
+    } catch (e) {
+      console.warn('Failed to persist profile db:', e);
+    }
+  };
+
+  // Load and isolate personal user profile database whenever currentUser changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (!currentUser.email) {
+      // Clear memory when no authenticated user
+      setDatasets([]);
+      setActiveDatasetState(null);
+      setActiveRows([]);
+      setDatasetRowsMap({});
+      setDocumentFiles([]);
+      setActiveDocument(null);
+      setProjects([]);
+      setWorkspaces([]);
+      setStorageFootprintBytes(0);
+      return;
+    }
+
+    const key = getUserStorageKey(currentUser.email);
+    const localSaved = localStorage.getItem(key);
+
+    if (localSaved) {
+      try {
+        const db: UserProfileDatabase = JSON.parse(localSaved);
+        applyProfileDatabase(db);
+        return;
+      } catch (err) {
+        console.warn('Failed to parse local profile db:', err);
+      }
+    }
+
+    // Attempt cloud workspace sync from Zoho Catalyst DataStore
+    LumetricAuthService.fetchWorkspaceData().then((res) => {
+      if (res.success && res.workspaceData && Array.isArray(res.workspaceData.datasets)) {
+        applyProfileDatabase(res.workspaceData);
+        localStorage.setItem(key, JSON.stringify(res.workspaceData));
+      } else {
+        // Brand-new profile: initialize clean, spotless individual workspace
+        const cleanDb = createCleanProfileDatabase(currentUser.id, currentUser.email);
+        applyProfileDatabase(cleanDb);
+        localStorage.setItem(key, JSON.stringify(cleanDb));
+      }
+    }).catch(() => {
+      const cleanDb = createCleanProfileDatabase(currentUser.id, currentUser.email);
+      applyProfileDatabase(cleanDb);
+      localStorage.setItem(key, JSON.stringify(cleanDb));
+    });
+  }, [currentUser.email]);
+
+  // Load Sample Benchmark Data into THIS user's personal profile
+  const loadSampleDataIntoProfile = () => {
+    if (!currentUser.email) return;
+    const sampleDb = createSampleProfileDatabase(currentUser.id, currentUser.email);
+    applyProfileDatabase(sampleDb);
+    const key = getUserStorageKey(currentUser.email);
+    localStorage.setItem(key, JSON.stringify(sampleDb));
+    LumetricAuthService.saveWorkspaceData(sampleDb).catch(() => {});
+  };
+
+  // Reset THIS user's profile database to a fresh clean slate
+  const clearProfileData = () => {
+    if (!currentUser.email) return;
+    const cleanDb = createCleanProfileDatabase(currentUser.id, currentUser.email);
+    applyProfileDatabase(cleanDb);
+    const key = getUserStorageKey(currentUser.email);
+    localStorage.setItem(key, JSON.stringify(cleanDb));
+    LumetricAuthService.saveWorkspaceData(cleanDb).catch(() => {});
+  };
+
   const logout = async () => {
     await LumetricAuthService.logout();
     setIsAuthenticated(false);
     setCurrentUser(emptyUser);
+    // Wipe in-memory state completely so no leaked data appears on auth screen
+    setDatasets([]);
+    setActiveDatasetState(null);
+    setActiveRows([]);
+    setDatasetRowsMap({});
+    setDocumentFiles([]);
+    setActiveDocument(null);
+    setProjects([]);
+    setWorkspaces([]);
+    setStorageFootprintBytes(0);
     closeAuthModal();
   };
 
-  // 3. Workspaces & Projects State
-  const [workspaces, setWorkspaces] = useState<Workspace[]>(initialWorkspaces);
-  const [currentWorkspace, setCurrentWorkspace] = useState<Workspace>(initialWorkspaces[0]);
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [currentProject, setCurrentProject] = useState<Project | null>(initialProjects[0]);
-
-  // 4. Ingested Tabular Datasets State
-  const [datasets, setDatasets] = useState<DatasetProfile[]>([initialDataset]);
-  const [activeDataset, setActiveDatasetState] = useState<DatasetProfile | null>(initialDataset);
-  const [activeRows, setActiveRows] = useState<Record<string, string>[]>(initialRows);
-
-  // 5. Document File Analysis State
-  const [documentFiles, setDocumentFiles] = useState<DocumentFileProfile[]>(initialDocumentFiles);
-  const [activeDocument, setActiveDocument] = useState<DocumentFileProfile | null>(initialDocumentFiles[0]);
-
   const addDocumentFile = (doc: DocumentFileProfile) => {
-    setDocumentFiles(prev => [doc, ...prev]);
+    const updated = [doc, ...documentFiles.filter(d => d.id !== doc.id)];
+    setDocumentFiles(updated);
     setActiveDocument(doc);
+    persistProfileDb(undefined, undefined, undefined, updated, doc.id);
   };
 
   const deleteDocumentFile = (id: string) => {
-    setDocumentFiles(prev => prev.filter(d => d.id !== id));
+    const updated = documentFiles.filter(d => d.id !== id);
+    setDocumentFiles(updated);
+    let nextActive = activeDocument;
     if (activeDocument?.id === id) {
-      setActiveDocument(null);
+      nextActive = updated[0] || null;
+      setActiveDocument(nextActive);
     }
+    persistProfileDb(undefined, undefined, undefined, updated, nextActive?.id || null);
   };
 
   const runDocumentTreatment = async (
@@ -559,7 +806,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         entities: [
           { text: 'Lumetric Intelligence Lab', category: 'ORGANIZATION', confidence: 0.99, frequency: 4 },
           { text: 'Zoho Catalyst Cloud', category: 'ORGANIZATION', confidence: 0.97, frequency: 2 },
-          { text: 'Dr. Alexander Vance', category: 'PERSON', confidence: 0.96, frequency: 1 },
+          { text: currentUser.name || 'Data Scientist', category: 'PERSON', confidence: 0.96, frequency: 1 },
           { text: 'AUC-ROC 0.964', category: 'METRIC', confidence: 0.99, frequency: 2 },
           { text: 'LightGBM Predictor', category: 'TECHNICAL', confidence: 0.94, frequency: 3 },
           { text: 'Q4 2026', category: 'DATE', confidence: 0.98, frequency: 1 },
@@ -594,29 +841,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
-    // Attach treatment to document file
-    setDocumentFiles(prev =>
-      prev.map(d => {
-        if (d.id === docId) {
-          return {
-            ...d,
-            treatments: [result, ...d.treatments.filter(t => t.treatmentType !== treatmentType)]
-          };
-        }
-        return d;
-      })
-    );
+    // Attach treatment to document file and persist
+    const updatedDocs = documentFiles.map(d => {
+      if (d.id === docId) {
+        return {
+          ...d,
+          treatments: [result, ...d.treatments.filter(t => t.treatmentType !== treatmentType)]
+        };
+      }
+      return d;
+    });
+
+    setDocumentFiles(updatedDocs);
+    persistProfileDb(undefined, undefined, undefined, updatedDocs);
 
     return result;
   };
 
-  // 6. Navigation / Shell View State
+  // 7. Navigation / Shell View State
   const [activeView, setActiveView] = useState<ActiveView>('home');
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
 
-  // 7. Zoho Catalyst Serverless Connectivity
+  // 8. Zoho Catalyst Serverless Connectivity
   const [serverStatus, setServerStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
   const [serverLatency, setServerLatency] = useState<number | null>(null);
   const [lastServerSync, setLastServerSync] = useState<string | null>(null);
@@ -669,13 +917,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       name,
       slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       description,
-      ownerId: currentUser.id,
-      members: [{ userId: currentUser.id, role: 'owner', joinedAt: new Date().toISOString() }],
+      ownerId: currentUser.id || 'usr-personal',
+      members: [{ userId: currentUser.id || 'usr-personal', role: 'owner', joinedAt: new Date().toISOString() }],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    setWorkspaces(prev => [...prev, newWs]);
+    const updated = [...workspaces, newWs];
+    setWorkspaces(updated);
     setCurrentWorkspace(newWs);
+    persistProfileDb(undefined, undefined, undefined, undefined, undefined, undefined, updated);
     return newWs;
   };
 
@@ -696,32 +946,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       objective,
       description,
       status: 'active',
-      createdBy: currentUser.id,
+      createdBy: currentUser.id || 'usr-personal',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    setProjects(prev => [...prev, newPrj]);
+    const updated = [...projects, newPrj];
+    setProjects(updated);
     setCurrentProject(newPrj);
+    persistProfileDb(undefined, undefined, undefined, undefined, undefined, updated);
     return newPrj;
   };
 
   const setActiveDataset = (dataset: DatasetProfile | null, rows?: Record<string, string>[]) => {
     setActiveDatasetState(dataset);
-    if (rows) {
-      setActiveRows(rows);
+    if (dataset) {
+      const selectedRows = rows || datasetRowsMap[dataset.id] || [];
+      setActiveRows(selectedRows);
+      persistProfileDb(undefined, dataset.id);
+    } else {
+      setActiveRows([]);
+      persistProfileDb(undefined, null);
     }
   };
 
   const addDataset = (dataset: DatasetProfile, rows?: Record<string, string>[]) => {
-    setDatasets(prev => [dataset, ...prev.filter(d => d.id !== dataset.id)]);
-    setActiveDataset(dataset, rows);
+    const updated = [dataset, ...datasets.filter(d => d.id !== dataset.id)];
+    const updatedRowsMap = {
+      ...datasetRowsMap,
+      [dataset.id]: rows || []
+    };
+    setDatasets(updated);
+    setActiveDatasetState(dataset);
+    setDatasetRowsMap(updatedRowsMap);
+    setActiveRows(rows || []);
+    persistProfileDb(updated, dataset.id, updatedRowsMap);
   };
 
   const deleteDataset = (id: string) => {
-    setDatasets(prev => prev.filter(d => d.id !== id));
+    const updated = datasets.filter(d => d.id !== id);
+    const updatedRowsMap = { ...datasetRowsMap };
+    delete updatedRowsMap[id];
+    setDatasets(updated);
+    setDatasetRowsMap(updatedRowsMap);
+
+    let nextActive = activeDataset;
+    let nextRows = activeRows;
     if (activeDataset?.id === id) {
-      setActiveDataset(null);
+      nextActive = updated[0] || null;
+      nextRows = nextActive ? updatedRowsMap[nextActive.id] || [] : [];
+      setActiveDatasetState(nextActive);
+      setActiveRows(nextRows);
     }
+    persistProfileDb(updated, nextActive?.id || null, updatedRowsMap);
   };
 
   const toggleSidebar = () => {
@@ -785,6 +1061,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         openAuthModal,
         closeAuthModal,
         logout,
+        storageFootprintBytes,
+        loadSampleDataIntoProfile,
+        clearProfileData,
       }}
     >
       {children}

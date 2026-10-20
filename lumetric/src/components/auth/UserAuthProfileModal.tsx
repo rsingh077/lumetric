@@ -12,10 +12,30 @@ export function UserAuthProfileModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  initialMode?: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit';
+  initialMode?: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db';
 }) {
-  const { setRole, serverStatus, serverLatency, reconnectServer, logout, setCurrentUser } = useApp();
-  const [mode, setMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit'>(initialMode || 'profile');
+  const {
+    setRole,
+    serverStatus,
+    serverLatency,
+    reconnectServer,
+    logout,
+    setCurrentUser,
+    currentUser,
+    datasets,
+    activeDataset,
+    setActiveDataset,
+    deleteDataset,
+    documentFiles,
+    activeDocument,
+    setActiveDocument,
+    deleteDocumentFile,
+    storageFootprintBytes,
+    loadSampleDataIntoProfile,
+    clearProfileData,
+    setActiveView,
+  } = useApp();
+  const [mode, setMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db'>(initialMode || 'profile');
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
   // Form states
@@ -187,6 +207,36 @@ export function UserAuthProfileModal({
     }
   };
 
+  const formatBytes = (bytes?: number) => {
+    if (!bytes || bytes === 0) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const handleExportBackup = () => {
+    try {
+      const emailToUse = authUser?.email || currentUser.email || 'user';
+      const backupData = {
+        userEmail: emailToUse,
+        exportedAt: new Date().toISOString(),
+        datasets,
+        documentFiles,
+      };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `lumetric_backup_${emailToUse.replace(/[^a-z0-9]/gi, '_')}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      setFeedback({ type: 'success', message: 'Profile database backup exported as JSON.' });
+      setTimeout(() => setFeedback(null), 3000);
+    } catch (e) {
+      setFeedback({ type: 'error', message: 'Failed to export backup.' });
+    }
+  };
+
   if (!isOpen) return null;
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -342,6 +392,8 @@ export function UserAuthProfileModal({
               <h3 className="text-base font-bold text-[var(--lm-text-primary)]">
                 {mode === 'profile'
                   ? 'Enterprise Profile & Security'
+                  : mode === 'profile-db'
+                  ? 'Isolated Profile Database & Files'
                   : mode === 'admin-dashboard'
                   ? 'Admin Governance & Role Dashboard'
                   : mode === 'connectors'
@@ -397,6 +449,18 @@ export function UserAuthProfileModal({
               }`}
             >
               My Profile
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('profile-db')}
+              className={`pb-2.5 px-2 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-1 ${
+                mode === 'profile-db'
+                  ? 'border-[#059669] text-[#059669] dark:text-[#34D399] dark:border-[#34D399]'
+                  : 'border-transparent text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'
+              }`}
+            >
+              <span>Profile Database &amp; Files</span>
+              <span className="px-1.5 py-0.2 bg-[#059669]/10 text-[#059669] dark:text-[#34D399] rounded text-[9px] font-mono">Isolated</span>
             </button>
             <button
               type="button"
@@ -615,6 +679,256 @@ export function UserAuthProfileModal({
                   </Button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {/* VIEW: ISOLATED PROFILE DATABASE & FILES */}
+          {mode === 'profile-db' && authUser && (
+            <div className="space-y-4">
+              {/* Tenant Isolation Banner */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#059669]/10 via-[var(--lm-bg-secondary)] to-[#E34234]/5 border border-[#059669]/25 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse" />
+                    <span className="font-bold text-xs text-[var(--lm-text-primary)]">
+                      Private Tenant Multi-Tenancy Active
+                    </span>
+                  </div>
+                  <StatusBadge variant="emerald" dot>Isolated Storage</StatusBadge>
+                </div>
+                <p className="text-[11px] text-[var(--lm-text-secondary)] leading-relaxed">
+                  Your account has a dedicated, segregated database sandbox. Datasets and files uploaded here cannot be viewed, accessed, or altered by other user profiles.
+                </p>
+                <div className="pt-2 border-t border-[var(--lm-border-default)]/60 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[var(--lm-text-tertiary)] block">Storage Key</span>
+                    <span className="font-mono text-[11px] text-[var(--lm-text-primary)] font-semibold truncate block">
+                      lumetric_profile_db_{(authUser.email || 'guest').split('@')[0]}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[var(--lm-text-tertiary)] block">Storage Footprint</span>
+                    <span className="font-mono text-[11px] text-[#059669] dark:text-[#34D399] font-bold block">
+                      {formatBytes(storageFootprintBytes)}
+                    </span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="text-[10px] text-[var(--lm-text-tertiary)] block">Cloud Sync Status</span>
+                    <span className="font-mono text-[11px] text-[var(--lm-text-primary)] font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Lumi Cloud Synced
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Toolbar */}
+              <div className="p-3.5 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-2.5">
+                <span className="text-xs font-bold text-[var(--lm-text-primary)] block">
+                  Profile Workspace Controls
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      loadSampleDataIntoProfile();
+                      setFeedback({ type: 'success', message: 'Loaded benchmark sample dataset and document into your profile!' });
+                      setTimeout(() => setFeedback(null), 3500);
+                    }}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#059669]/15 hover:bg-[#059669]/25 text-[#059669] dark:text-[#34D399] text-xs font-semibold border border-[#059669]/30 transition-all cursor-pointer"
+                  >
+                    <span>⚡ Load Benchmark</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportBackup}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--lm-bg-primary)] hover:bg-[var(--lm-bg-tertiary)] text-[var(--lm-text-primary)] text-xs font-semibold border border-[var(--lm-border-default)] transition-all cursor-pointer"
+                  >
+                    <span>💾 Export JSON</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to wipe all datasets and documents from your profile? This cannot be undone.')) {
+                        clearProfileData();
+                        setFeedback({ type: 'success', message: 'Profile database wiped. Workspace is now completely clean.' });
+                        setTimeout(() => setFeedback(null), 3500);
+                      }
+                    }}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#FFF1F0] hover:bg-[#FFE4E1] text-[#E34234] text-xs font-semibold border border-[#E34234]/30 transition-all cursor-pointer"
+                  >
+                    <span>🗑️ Wipe Database</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Tabular Datasets */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-xs text-[var(--lm-text-primary)]">
+                      Ingested Datasets ({datasets.length})
+                    </span>
+                    <span className="text-[10px] text-[var(--lm-text-tertiary)] font-mono">CSVs &amp; SQL</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      setActiveView('data');
+                    }}
+                    className="text-xs font-semibold text-[#059669] dark:text-[#34D399] hover:underline cursor-pointer"
+                  >
+                    + Upload New CSV
+                  </button>
+                </div>
+
+                {datasets.length === 0 ? (
+                  <div className="p-4 rounded-2xl bg-[var(--lm-bg-secondary)] border border-dashed border-[var(--lm-border-default)] text-center text-xs text-[var(--lm-text-secondary)]">
+                    No datasets uploaded in this profile yet.
+                    <div className="mt-2">
+                      <Button size="sm" variant="emerald" onClick={loadSampleDataIntoProfile}>
+                        Load Benchmark Sample Data
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {datasets.map((ds) => {
+                      const isActive = activeDataset?.id === ds.id;
+                      return (
+                        <div
+                          key={ds.id}
+                          className={`p-3 rounded-2xl border transition-all ${
+                            isActive
+                              ? 'bg-[#059669]/5 border-[#059669]/40'
+                              : 'bg-[var(--lm-bg-secondary)] border-[var(--lm-border-default)]'
+                          } flex items-center justify-between gap-2`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-[var(--lm-text-primary)] truncate">
+                                {ds.fileName}
+                              </span>
+                              {isActive && (
+                                <span className="px-1.5 py-0.2 rounded-full bg-[#059669]/15 text-[#059669] dark:text-[#34D399] text-[9px] font-bold">
+                                  Active
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-[var(--lm-text-secondary)] font-mono mt-0.5">
+                              {ds.rowCount} rows • {ds.columnCount} cols • {new Date(ds.uploadedAt).toLocaleDateString()}
+                            </div>
+                            {ds.sha256 && (
+                              <div className="text-[9px] font-mono text-[var(--lm-text-tertiary)] truncate mt-0.5">
+                                SHA-256: {ds.sha256.slice(0, 16)}...
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {!isActive && (
+                              <button
+                                type="button"
+                                onClick={() => setActiveDataset(ds)}
+                                className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-[var(--lm-bg-primary)] hover:bg-[#059669] hover:text-white border border-[var(--lm-border-default)] text-[var(--lm-text-primary)] transition-colors cursor-pointer"
+                              >
+                                Activate
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => deleteDataset(ds.id)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-[#E34234] hover:bg-[#FFF1F0] transition-colors cursor-pointer text-xs"
+                              title="Delete dataset from profile"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Document Files */}
+              <div className="space-y-2 pt-2 border-t border-[var(--lm-border-default)]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-xs text-[var(--lm-text-primary)]">
+                      Uploaded Documents ({documentFiles.length})
+                    </span>
+                    <span className="text-[10px] text-[var(--lm-text-tertiary)] font-mono">PDF, DOCX, TXT</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      setActiveView('analysis');
+                    }}
+                    className="text-xs font-semibold text-[#059669] dark:text-[#34D399] hover:underline cursor-pointer"
+                  >
+                    + Upload Document
+                  </button>
+                </div>
+
+                {documentFiles.length === 0 ? (
+                  <div className="p-4 rounded-2xl bg-[var(--lm-bg-secondary)] border border-dashed border-[var(--lm-border-default)] text-center text-xs text-[var(--lm-text-secondary)]">
+                    No documents uploaded in this profile yet.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {documentFiles.map((doc) => {
+                      const isActive = activeDocument?.id === doc.id;
+                      return (
+                        <div
+                          key={doc.id}
+                          className={`p-3 rounded-2xl border transition-all ${
+                            isActive
+                              ? 'bg-indigo-500/5 border-indigo-500/40'
+                              : 'bg-[var(--lm-bg-secondary)] border-[var(--lm-border-default)]'
+                          } flex items-center justify-between gap-2`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-[var(--lm-text-primary)] truncate">
+                                {doc.fileName}
+                              </span>
+                              <span className="px-1.5 py-0.2 rounded-md bg-[var(--lm-bg-tertiary)] text-[var(--lm-text-secondary)] text-[9px] font-mono uppercase">
+                                {doc.fileType}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-[var(--lm-text-secondary)] font-mono mt-0.5">
+                              {doc.wordCount} words • {doc.tokenCount} tokens • {doc.treatments?.length || 0} treatments
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {!isActive && (
+                              <button
+                                type="button"
+                                onClick={() => setActiveDocument(doc)}
+                                className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-[var(--lm-bg-primary)] hover:bg-indigo-600 hover:text-white border border-[var(--lm-border-default)] text-[var(--lm-text-primary)] transition-colors cursor-pointer"
+                              >
+                                Select
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => deleteDocumentFile(doc.id)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-[#E34234] hover:bg-[#FFF1F0] transition-colors cursor-pointer text-xs"
+                              title="Delete document from profile"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

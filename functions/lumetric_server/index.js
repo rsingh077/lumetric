@@ -1161,6 +1161,37 @@ app.patch('/api/user/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// 11c. User Profile Database & Workspace Data Separation (Multi-Tenant Isolation)
+app.get('/api/user/workspace-data', authenticateToken, (req, res) => {
+  const user = req.user;
+  const workspaceData = (user.settings && user.settings.workspaceData) || null;
+  return res.json({
+    success: true,
+    userEmail: user.email,
+    workspaceData
+  });
+});
+
+app.post('/api/user/workspace-data', authenticateToken, async (req, res) => {
+  try {
+    const { workspaceData } = req.body;
+    const user = req.user;
+    if (!user.settings) user.settings = {};
+    user.settings.workspaceData = workspaceData;
+    await saveUserToStore(req, user);
+    logAuditEvent(user.email, 'WORKSPACE_DATA_SYNCED', 'DataStore', 'Individual profile workspace & datasets synced');
+    return res.json({
+      success: true,
+      message: 'Individual profile database saved to cloud store.'
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to persist individual profile workspace data.'
+    });
+  }
+});
+
 // 11b. User Security: Change Password
 app.post('/api/user/change-password', authenticateToken, rateLimiter({ windowMs: 5 * 60 * 1000, max: 10, message: 'Too many password change attempts.' }), async (req, res) => {
   try {

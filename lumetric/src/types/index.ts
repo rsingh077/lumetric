@@ -207,4 +207,19 @@ export interface DocumentFileProfile {
 // ========== Application Language Localization ==========
 export type AppLanguage = 'en' | 'fr' | 'es' | 'de';
 
+// ========== Individual User Profile Database & Data Separation ==========
+export interface UserProfileDatabase {
+  userId: string;
+  userEmail: string;
+  datasets: DatasetProfile[];
+  activeDatasetId: string | null;
+  datasetRows: Record<string, Record<string, string>[]>; // datasetId -> rows
+  documentFiles: DocumentFileProfile[];
+  activeDocumentId: string | null;
+  projects: Project[];
+  workspaces: Workspace[];
+  storageFootprintBytes: number;
+  lastSyncedAt: string;
+}
+
 

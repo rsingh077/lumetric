@@ -632,5 +632,38 @@ export class LumetricAuthService {
       return { success: false, error: err.message || 'Failed to fetch governed records' };
     }
   }
+
+  public static async fetchWorkspaceData(): Promise<{ success: boolean; workspaceData?: any; error?: string }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/user/workspace-data`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to fetch workspace data' };
+    }
+  }
+
+  public static async saveWorkspaceData(workspaceData: any): Promise<{ success: boolean; message?: string; error?: string }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/user/workspace-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ workspaceData })
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to save workspace data' };
+    }
+  }
 }
 
