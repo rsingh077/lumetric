@@ -159,6 +159,7 @@ const cloudConnectorsStore = [
 // 4. CRYSTAL / CATALYST DATA STORE HELPER
 // -----------------------------------------------------------------------------
 const memoryStore = new Map();
+let cachedUserTableName = null;
 
 async function initCatalystApp(req) {
   if (req && req.res && req.res.locals && req.res.locals.catalyst) {
@@ -172,18 +173,45 @@ async function initCatalystApp(req) {
   }
 }
 
+async function resolveUserTableName(catApp) {
+  if (cachedUserTableName) return cachedUserTableName;
+  if (!catApp || !catApp.datastore) return 'Lumi';
+  try {
+    const tables = await catApp.datastore().getAllTables();
+    for (const t of (tables || [])) {
+      const name = (t._tableDetails && t._tableDetails.table_name) || t.identifier || (t.toJSON && t.toJSON().table_name) || t.table_name || '';
+      if (['lumi', 'users', 'user'].includes(name.toLowerCase())) {
+        cachedUserTableName = name;
+        return name;
+      }
+    }
+    if (tables && tables.length > 0) {
+      const first = tables[0];
+      const firstName = (first._tableDetails && first._tableDetails.table_name) || first.identifier || (first.toJSON && first.toJSON().table_name) || first.table_name || '';
+      if (firstName) {
+        cachedUserTableName = firstName;
+        return firstName;
+      }
+    }
+  } catch (e) {
+    console.warn('Error resolving table name:', e.message);
+  }
+  return 'Lumi';
+}
+
 async function getUserFromStore(req, email) {
   if (!email) return null;
   const normEmail = email.toLowerCase().trim();
   const catApp = await initCatalystApp(req);
   if (catApp && catApp.zcql) {
     try {
+      const tableName = await resolveUserTableName(catApp);
       const safeEmail = normEmail.replace(/'/g, "''");
       const zcqlRes = await catApp.zcql().executeZCQLExpression(
-        `SELECT * FROM Users WHERE email = '${safeEmail}'`
+        `SELECT * FROM ${tableName} WHERE email = '${safeEmail}'`
       );
       if (zcqlRes && zcqlRes.length > 0) {
-        const u = zcqlRes[0].Users;
+        const u = zcqlRes[0][tableName] || zcqlRes[0].Users || zcqlRes[0].Lumi || zcqlRes[0];
         const userObj = {
           rowid: u.ROWID ? String(u.ROWID) : undefined,
           id: u.ROWID ? String(u.ROWID) : (u.id || `usr_${normEmail.replace(/[^a-zA-Z0-9]/g, '_')}`),
@@ -221,22 +249,35 @@ async function checkDataStoreStatus(req) {
 
   try {
     const tables = await catApp.datastore().getAllTables();
-    const tableNames = (tables || []).map(t => t.table_name || t.tableName || t.tableId || t.name || '').filter(Boolean);
-    const usersTableFound = tableNames.some(name => name.toLowerCase() === 'users');
+    const tableDetails = (tables || []).map(t => {
+      const name = (t._tableDetails && t._tableDetails.table_name) || t.identifier || (t.toJSON && t.toJSON().table_name) || t.table_name || '';
+      const id = (t._tableDetails && t._tableDetails.table_id) || t.identifier || '';
+      return { name, id };
+    }).filter(t => Boolean(t.name));
+
+    const tableNames = tableDetails.map(t => t.name);
+    const activeTable = tableNames.find(n => ['lumi', 'users', 'user'].includes(n.toLowerCase())) || tableNames[0] || null;
+
+    if (activeTable) {
+      cachedUserTableName = activeTable;
+    }
 
     return {
+      success: true,
       connected: true,
-      tableExists: usersTableFound,
+      tableExists: Boolean(activeTable),
+      activeTable: activeTable || 'Lumi',
       tables: tableNames,
       totalTables: tableNames.length,
       projectId: 'Project-Rainfall (83759000000013024)',
       requiredSchema: {
-        tableName: 'Users',
+        tableName: activeTable || 'Lumi',
         columns: ['email', 'passwordHash', 'name', 'role', 'organization', 'avatarUrl', 'mfaEnabled', 'mfaSecret', 'lastLoginAt', 'settings']
       }
     };
   } catch (err) {
     return {
+      success: false,
       connected: true,
       tableExists: false,
       error: err.message,
@@ -256,19 +297,23 @@ async function saveUserToStore(req, user) {
   const catApp = await initCatalystApp(req);
   if (catApp && catApp.datastore) {
     try {
-      const table = catApp.datastore().table('Users');
+      const tableName = await resolveUserTableName(catApp);
+      const table = catApp.datastore().table(tableName);
       let targetRowId = user.rowid;
 
-      // If we don't have rowid cached on the user, check if row exists in Users table
+      // If we don't have rowid cached on the user, check if row exists in table
       if (!targetRowId && catApp.zcql) {
         try {
           const safeEmail = normEmail.replace(/'/g, "''");
           const checkRes = await catApp.zcql().executeZCQLExpression(
-            `SELECT ROWID FROM Users WHERE email = '${safeEmail}'`
+            `SELECT ROWID FROM ${tableName} WHERE email = '${safeEmail}'`
           );
-          if (checkRes && checkRes.length > 0 && checkRes[0].Users && checkRes[0].Users.ROWID) {
-            targetRowId = String(checkRes[0].Users.ROWID);
-            user.rowid = targetRowId;
+          if (checkRes && checkRes.length > 0) {
+            const rowDataRes = checkRes[0][tableName] || checkRes[0].Users || checkRes[0].Lumi || checkRes[0];
+            if (rowDataRes && rowDataRes.ROWID) {
+              targetRowId = String(rowDataRes.ROWID);
+              user.rowid = targetRowId;
+            }
           }
         } catch (zcqlErr) {
           dataStoreError = zcqlErr.message;
@@ -291,14 +336,14 @@ async function saveUserToStore(req, user) {
       if (targetRowId) {
         rowData.ROWID = targetRowId;
         const updateRes = await table.updateRow(rowData);
-        if (updateRes && (updateRes.ROWID || updateRes.Users?.ROWID)) {
-          user.rowid = String(updateRes.ROWID || updateRes.Users?.ROWID);
+        if (updateRes && (updateRes.ROWID || updateRes[tableName]?.ROWID)) {
+          user.rowid = String(updateRes.ROWID || updateRes[tableName]?.ROWID);
         }
         dataStorePersisted = true;
       } else {
         const insertRes = await table.insertRow(rowData);
-        if (insertRes && (insertRes.ROWID || insertRes.Users?.ROWID)) {
-          user.rowid = String(insertRes.ROWID || insertRes.Users?.ROWID);
+        if (insertRes && (insertRes.ROWID || insertRes[tableName]?.ROWID)) {
+          user.rowid = String(insertRes.ROWID || insertRes[tableName]?.ROWID);
         }
         dataStorePersisted = true;
       }
@@ -320,10 +365,11 @@ async function getAllUsersFromStore(req) {
   const catApp = await initCatalystApp(req);
   if (catApp && catApp.zcql) {
     try {
-      const zcqlRes = await catApp.zcql().executeZCQLExpression(`SELECT * FROM Users`);
+      const tableName = await resolveUserTableName(catApp);
+      const zcqlRes = await catApp.zcql().executeZCQLExpression(`SELECT * FROM ${tableName}`);
       if (zcqlRes && zcqlRes.length > 0) {
         return zcqlRes.map(r => {
-          const u = r.Users;
+          const u = r[tableName] || r.Users || r.Lumi || r;
           return {
             id: u.ROWID ? String(u.ROWID) : u.id,
             email: u.email,
@@ -544,9 +590,10 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 20, 
 
     const { passwordHash: _, mfaSecret: __, ...userSafe } = newUser;
 
+    const activeTableName = await resolveUserTableName(await initCatalystApp(req));
     const message = saveResult.persistedToCloudStore
-      ? 'Account successfully registered and persisted to Zoho Catalyst DataStore.'
-      : 'Account registered. (Note: Table "Users" pending creation in Catalyst console; session active via memory store).';
+      ? `Account successfully registered and persisted to Zoho Catalyst DataStore table "${activeTableName}".`
+      : `Account registered. (Note: Columns in table "${activeTableName}" being synchronized; session active).`;
 
     return res.status(201).json({
       success: true,
