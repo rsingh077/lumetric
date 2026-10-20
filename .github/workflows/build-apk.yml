@@ -47,39 +47,38 @@ jobs:
       - name: Copy APK to Root for Direct Repo Download
         run: |
           cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric.apk
-          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.3.0.apk
+          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.3.2.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumetric-v2.3.0-debug-apk
-          path: Lumetric-v2.3.0.apk
+          name: lumetric-v2.3.2-debug-apk
+          path: Lumetric-v2.3.2.apk
 
-      - name: Create or Update GitHub Release v2.3.0
+      - name: Create or Update GitHub Release v2.3.2
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v2.3.0
-          name: "Lumetric v2.3.0 — Warm Ivory, Emerald Green & Vermilion Redesign with Live Lumi Cloud DataStore"
+          tag_name: v2.3.2
+          name: "Lumetric v2.3.2 — Multi-Tenant Profile Isolation, Dedicated Database & Dynamic Analytics"
           body: |
-            ### 🎨 Lumetric Mobile v2.3.0 Release
+            ### 🛡️ Lumetric Mobile v2.3.2 Release
 
-            #### 🏛️ Warm Ivory • Emerald Green • Vermilion Design System
-            - **Warm Ivory Surface & Typography**: Natural warmth, editorial clarity, and soft high-contrast dark obsidian canvas.
-            - **Emerald Green Primary Accents**: Jewel emerald buttons, active connection pulses, clean data health scores, and growth indicators.
-            - **Vermilion Dynamic Focus**: Vivid vermilion highlights for alerts, active category filter pills, revenue trend curves, and high-energy CTAs.
-            - **Harmonized Micro-Interactions**: Enhanced button states, responsive bottom navigation dock, and executive dashboard layout.
+            #### 🏢 Multi-Tenant Profile Separation & Isolated Storage
+            - **Strict Individual Isolation**: Every user profile (`currentUser.email`) operates within a segregated database sandbox (`lumetric_profile_db_${sanitizedEmail}`). Datasets and document dossiers uploaded by one profile are completely invisible to others.
+            - **Clean Workspace Onboarding**: Fresh profiles start with a clean workspace (no mock data pollution) with actionable shortcuts to upload files or opt-in to sample benchmarks.
+            - **Dedicated Database & Files Manager**: Manage profile storage footprint in KB/MB, inspect ingested datasets, activate datasets, export JSON backups, and wipe data safely.
 
-            #### 🗄️ Zoho Catalyst "Lumi" DataStore Fully Integrated
-            - **Live Database Verified**: Connected directly to the authentic `Lumi` table (`Table ID: 83759000000013215`).
-            - **Direct Schema Alignment**: Automatic support for all user columns (`email`, `passwordHash`, `name`, `role`, `organization`, `avatarUrl`, `mfaEnabled`, `settings`).
-            - **End-to-End Persistence**: Sign-ups and logins write to and read from the Zoho Catalyst Cloud DataStore with zero mock fallbacks.
+            #### 📊 Dynamic Analytics & Dynamic Metrics
+            - **Eradicated Mock Defaults**: Tabular metrics (rows, ARR sum, NPS ratings, churn probability) compute dynamically from actual uploaded CSV data.
+            - **Dynamic Curve Visualization**: Visualizes real trend data plotted from individual row values.
+            - **Dynamic File Type Distribution**: Real-time breakdown of unstructured documents (PDF, DOCX, TXT).
 
             #### 📱 Direct Download
-            - **Direct APK Download (v2.3.0)**: [Lumetric-v2.3.0.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.0/Lumetric-v2.3.0.apk)
-            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.0/Lumetric.apk)
+            - **Direct APK Download (v2.3.2)**: [Lumetric-v2.3.2.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.2/Lumetric-v2.3.2.apk)
+            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.2/Lumetric.apk)
           files: |
             Lumetric.apk
-            Lumetric-v2.3.0.apk
+            Lumetric-v2.3.2.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
