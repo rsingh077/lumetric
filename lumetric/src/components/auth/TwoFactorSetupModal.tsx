@@ -34,7 +34,7 @@ export function TwoFactorSetupModal({ isOpen, onClose, onSuccess }: TwoFactorSet
         setQrCodeDataUrl(res.qrCodeDataUrl);
         setStep('qr');
       } else {
-        setErrorMessage(res.error || 'Impossible d\'initialiser la clé 2FA sur le serveur Catalyst.');
+        setErrorMessage(res.error || 'Impossible d\'initialiser la clé 2FA sur le serveur cloud.');
         setStep('error');
       }
     });
@@ -107,7 +107,7 @@ export function TwoFactorSetupModal({ isOpen, onClose, onSuccess }: TwoFactorSet
         {step === 'loading' && (
           <div className="py-12 flex flex-col items-center justify-center text-center">
             <div className="w-10 h-10 border-2 border-rose-500 border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-xs text-slate-400">Génération de la clé cryptographique Catalyst...</p>
+            <p className="text-xs text-slate-400">Génération de la clé cryptographique sécurisée...</p>
           </div>
         )}
 

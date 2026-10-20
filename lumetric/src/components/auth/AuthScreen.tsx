@@ -226,24 +226,6 @@ export function AuthScreen() {
             <span className="text-[10px] text-[#10B981] font-mono tracking-wider uppercase font-semibold">Data &amp; Document Studio</span>
           </div>
         </div>
-
-        {/* Server Status Indicator */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#131F19]/90 border border-[#E5D9C8]/15 text-xs shadow-xs">
-          <span className={`w-2 h-2 rounded-full ${serverStatus === 'connected' ? 'bg-[#10B981] animate-pulse shadow-xs shadow-emerald-500' : 'bg-[#E34234]'}`} />
-          <span className="text-[#CFD8D2] font-medium text-[11px]">
-            {serverStatus === 'connected' ? 'Lumi Cloud Online' : 'Connecting...'}
-          </span>
-          {serverLatency && (
-            <span className="text-[#84968C] font-mono text-[10px]">({serverLatency}ms)</span>
-          )}
-          <button
-            onClick={() => reconnectServer()}
-            title="Ping Server"
-            className="text-[11px] text-[#10B981] hover:text-[#34D399] ml-1 cursor-pointer"
-          >
-            ↻
-          </button>
-        </div>
       </header>
 
       {/* Main Authentication Card */}
@@ -594,7 +576,7 @@ export function AuthScreen() {
               <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
               <span>Bcrypt 12 • SOC-2 Tamper-Evident</span>
             </div>
-            <span className="font-mono text-[#84968C] text-[10px]">Zoho Catalyst Lumi Cloud</span>
+            <span className="font-mono text-[#84968C] text-[10px]">Encrypted Storage Vault</span>
           </div>
         </div>
       </main>
@@ -645,7 +627,7 @@ export function AuthScreen() {
 
       {/* Footer */}
       <footer className="w-full max-w-md mx-auto text-center py-2 text-[11px] text-[#84968C] z-10">
-        <span>Lumetric AI Data &amp; Document Studio • Zoho Catalyst Cloud Engine</span>
+        <span>Lumetric AI Data &amp; Document Studio</span>
       </footer>
     </div>
   );

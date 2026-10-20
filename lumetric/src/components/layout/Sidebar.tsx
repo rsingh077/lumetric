@@ -347,30 +347,11 @@ export function Sidebar() {
                 </button>
               </div>
 
-              {/* Cloud Node Cluster Telemetry Tile */}
-              <div className="rounded-2xl bg-slate-100 dark:bg-slate-800/60 p-3 border border-slate-200 dark:border-slate-700/60 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
-                    <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
-                    <line x1="6" y1="6" x2="6.01" y2="6"/>
-                    <line x1="6" y1="18" x2="6.01" y2="18"/>
-                  </svg>
-                </div>
-                <div className="text-[11px] min-w-0">
-                  <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">
-                    Zoho Catalyst Cloud Engine
-                  </span>
-                  <span className="text-[10px] text-slate-500 block truncate font-mono">
-                    {serverLatency !== null ? `${serverLatency}ms latency • Online` : '24ms latency • Online'}
-                  </span>
-                </div>
-              </div>
             </div>
           )}
         </nav>
 
-        {/* User Role & Catalyst Telemetry Footer */}
+        {/* User Profile & Role Footer */}
         <div className="border-t border-[var(--lm-border-default)] p-2.5 bg-[var(--lm-bg-primary)]">
           <div className="relative">
             <button
@@ -445,37 +426,6 @@ export function Sidebar() {
               >
                 <LogOutIcon className="w-3.5 h-3.5" />
                 <span>Sign Out</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => reconnectServer()}
-                className="inline-flex items-center gap-1.5 text-[var(--lm-text-tertiary)] hover:opacity-80 transition-opacity cursor-pointer font-mono"
-                title="Ping Catalyst Server"
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    serverStatus === 'connected'
-                      ? 'bg-emerald-500 animate-pulse'
-                      : serverStatus === 'connecting'
-                      ? 'bg-amber-500 animate-ping'
-                      : 'bg-rose-500'
-                  }`}
-                />
-                <span
-                  className={
-                    serverStatus === 'connected'
-                      ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
-                      : serverStatus === 'connecting'
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-rose-600 dark:text-rose-400 font-bold'
-                  }
-                >
-                  {serverStatus === 'connected'
-                    ? `Live (${serverLatency !== null ? `${serverLatency}ms` : '20ms'})`
-                    : serverStatus === 'connecting'
-                    ? 'Pinging...'
-                    : 'Offline'}
-                </span>
               </button>
             </div>
           ) : (

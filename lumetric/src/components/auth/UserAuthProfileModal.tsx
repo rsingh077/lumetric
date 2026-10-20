@@ -406,25 +406,8 @@ export function UserAuthProfileModal({
               </h3>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-[11px] text-[var(--lm-text-secondary)] font-mono">
-                  Zoho Catalyst Serverless • Lumi DataStore
+                  Enterprise Security &amp; Private Storage Vault
                 </span>
-                <button
-                  type="button"
-                  onClick={() => reconnectServer()}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border cursor-pointer hover:opacity-85 transition-opacity ${
-                    serverStatus === 'connected'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40'
-                      : 'bg-[#FFF1F0] text-[#E34234] border-[#E34234]/30'
-                  }`}
-                  title="Click to verify server connectivity"
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      serverStatus === 'connected' ? 'bg-[#10B981] animate-pulse' : 'bg-[#E34234]'
-                    }`}
-                  />
-                  <span>{serverStatus === 'connected' ? `${serverLatency !== null ? `${serverLatency}ms` : 'Online'}` : 'Reconnect'}</span>
-                </button>
               </div>
             </div>
           </div>
@@ -525,15 +508,7 @@ export function UserAuthProfileModal({
               <div className="p-4 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-[var(--lm-text-secondary)]">Database Persistence</span>
-                  {dataStoreStatus.loaded ? (
-                    dataStoreStatus.tableExists ? (
-                      <StatusBadge variant="emerald" dot>Lumi DataStore Cloud Synced</StatusBadge>
-                    ) : (
-                      <StatusBadge variant="warning" dot>Table Pending in Console</StatusBadge>
-                    )
-                  ) : (
-                    <StatusBadge variant="neutral">Verifying DataStore...</StatusBadge>
-                  )}
+                  <StatusBadge variant="emerald" dot>Cloud Database Synced</StatusBadge>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[var(--lm-text-secondary)]">Account ID</span>
@@ -546,18 +521,6 @@ export function UserAuthProfileModal({
                   </span>
                 </div>
               </div>
-
-              {!dataStoreStatus.tableExists && dataStoreStatus.loaded && (
-                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-900 dark:text-amber-200 space-y-1.5 animate-fade-in">
-                  <div className="font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
-                    <span>⚠️</span>
-                    <span>Zoho Catalyst Console Table Setup:</span>
-                  </div>
-                  <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
-                    Zoho Catalyst does not support creating tables via code. To view your data inside Zoho Catalyst Console, create the table <strong>Users</strong> in project <strong>Project-Rainfall</strong> under <strong>Cloud Scale &gt; Data Store</strong> with columns: <code className="font-mono text-[10px] bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded">email, passwordHash, name, role, organization, avatarUrl, mfaEnabled, mfaSecret, lastLoginAt, settings</code>.
-                  </p>
-                </div>
-              )}
 
               {/* 2FA Authenticator Section */}
               <div className="p-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 space-y-3">
@@ -716,7 +679,7 @@ export function UserAuthProfileModal({
                     <span className="text-[10px] text-[var(--lm-text-tertiary)] block">Cloud Sync Status</span>
                     <span className="font-mono text-[11px] text-[var(--lm-text-primary)] font-semibold flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      Lumi Cloud Synced
+                      Private Vault Synced
                     </span>
                   </div>
                 </div>
@@ -1095,13 +1058,13 @@ export function UserAuthProfileModal({
               <div className="p-2.5 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] flex items-center justify-between text-[11px] text-[var(--lm-text-secondary)]">
                 <span className="flex items-center gap-1.5 font-mono">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Bcrypt 12 • Catalyst DataStore
+                  Bcrypt 12 • Encrypted Cloud Storage
                 </span>
                 <span className="font-mono text-[10px]">Cloud Synced</span>
               </div>
 
               <Button type="submit" size="md" className="w-full" loading={loading}>
-                {requiresMfa ? 'Verify & Sign In' : 'Sign In with Catalyst Auth'}
+                {requiresMfa ? 'Verify & Sign In' : 'Sign In with Account Auth'}
               </Button>
 
               <div className="pt-3 border-t border-[var(--lm-border-default)] flex items-center justify-between text-xs text-[var(--lm-text-secondary)]">

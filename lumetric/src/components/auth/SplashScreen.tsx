@@ -27,7 +27,7 @@ export function SplashScreen({ onComplete, serverStatus = 'connecting', serverLa
     // 1. Smooth rapid progression
     const t1 = setTimeout(() => {
       setProgress(55);
-      setPhaseText('Connecting to Zoho Catalyst Cloud...');
+      setPhaseText('Securing cloud workspace & analytical models...');
     }, 250);
 
     const t2 = setTimeout(() => {
@@ -244,20 +244,10 @@ export function SplashScreen({ onComplete, serverStatus = 'connecting', serverLa
           gap: '8px',
           fontSize: '11px',
           color: '#84968C',
+          letterSpacing: '0.05em',
         }}
       >
-        <span
-          style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: serverStatus === 'connected' ? '#10B981' : '#E34234',
-            display: 'inline-block',
-            boxShadow: serverStatus === 'connected' ? '0 0 8px #10B981' : 'none',
-          }}
-        />
-        <span>Zoho Catalyst Lumi Cloud Engine</span>
-        {serverLatency && <span style={{ color: '#76887E' }}>({serverLatency}ms)</span>}
+        <span>Lumetric AI Data &amp; Document Studio</span>
       </div>
     </div>
   );

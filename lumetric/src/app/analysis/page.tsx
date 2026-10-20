@@ -1336,7 +1336,7 @@ export default function AnalysisStudioPage() {
                   <div className="flex flex-wrap gap-2 pt-2">
                     {[
                       { name: 'Lumetric Intelligence Cloud', type: 'ORGANIZATION', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200 dark:border-indigo-800' },
-                      { name: 'Zoho Catalyst Platform', type: 'ORGANIZATION', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200 dark:border-indigo-800' },
+                      { name: 'Enterprise Cloud Infrastructure', type: 'ORGANIZATION', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200 dark:border-indigo-800' },
                       { name: 'Dr. Alexander Vance', type: 'PERSON', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-200 dark:border-emerald-800' },
                       { name: 'LightGBM Churn Predictor', type: 'TECHNICAL', color: 'bg-purple-500/10 text-purple-600 border-purple-200 dark:border-purple-800' },
                       { name: 'AUC-ROC 0.964', type: 'METRIC', color: 'bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-800' },

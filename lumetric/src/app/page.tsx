@@ -217,21 +217,6 @@ function HomeView() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Server Status Pill */}
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] shadow-xs">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                serverStatus === 'connected' ? 'bg-[#10B981] animate-pulse' : 'bg-[#E34234]'
-              }`}
-            />
-            <span className="text-xs font-semibold text-[var(--lm-text-primary)]">
-              {serverStatus === 'connected' ? 'Zoho Catalyst Lumi Cloud' : 'Connecting...'}
-            </span>
-            {serverLatency && (
-              <span className="text-[11px] font-mono text-[var(--lm-text-tertiary)]">({serverLatency}ms)</span>
-            )}
-          </div>
-
           {/* Profile & Role Button */}
           <button
             onClick={() => openAuthModal('profile-db')}
@@ -809,7 +794,7 @@ function HomeView() {
               </div>
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-[var(--lm-text-secondary)]">Zoho Catalyst DataStore Sync</span>
+                  <span className="text-[var(--lm-text-secondary)]">Enterprise Cloud Data Vault</span>
                   <span className="font-mono font-bold text-[var(--lm-text-primary)]">Cloud Lake</span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-[var(--lm-bg-secondary)]">

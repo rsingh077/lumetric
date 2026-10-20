@@ -47,38 +47,37 @@ jobs:
       - name: Copy APK to Root for Direct Repo Download
         run: |
           cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric.apk
-          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.3.2.apk
+          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.3.3.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumetric-v2.3.2-debug-apk
-          path: Lumetric-v2.3.2.apk
+          name: lumetric-v2.3.3-debug-apk
+          path: Lumetric-v2.3.3.apk
 
-      - name: Create or Update GitHub Release v2.3.2
+      - name: Create or Update GitHub Release v2.3.3
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v2.3.2
-          name: "Lumetric v2.3.2 — Multi-Tenant Profile Isolation, Dedicated Database & Dynamic Analytics"
+          tag_name: v2.3.3
+          name: "Lumetric v2.3.3 — Clean White-Label UI & Infrastructure Telemetry Purged"
           body: |
-            ### 🛡️ Lumetric Mobile v2.3.2 Release
+            ### 🛡️ Lumetric Mobile v2.3.3 Release
 
-            #### 🏢 Multi-Tenant Profile Separation & Isolated Storage
-            - **Strict Individual Isolation**: Every user profile (`currentUser.email`) operates within a segregated database sandbox (`lumetric_profile_db_${sanitizedEmail}`). Datasets and document dossiers uploaded by one profile are completely invisible to others.
-            - **Clean Workspace Onboarding**: Fresh profiles start with a clean workspace (no mock data pollution) with actionable shortcuts to upload files or opt-in to sample benchmarks.
-            - **Dedicated Database & Files Manager**: Manage profile storage footprint in KB/MB, inspect ingested datasets, activate datasets, export JSON backups, and wipe data safely.
+            #### 🏛️ Clean White-Label UI & Telemetry Purge
+            - **Server Status Indicators Hidden**: All debug pills ("Server Live", latency ms, "Online 200 OK", and ping buttons) removed from header, sidebar, dashboard, and splash screen.
+            - **Infrastructure Neutralization**: Removed all external vendor tags (Zoho Catalyst, Lumi DataStore, Crystal) from user-facing screens in favor of clean enterprise terminology ("Enterprise Cloud Data Vault", "Encrypted Cloud Storage").
+            - **Polished Presentation**: Pristine header, clean profile controls, and distraction-free data analytics studio.
 
-            #### 📊 Dynamic Analytics & Dynamic Metrics
-            - **Eradicated Mock Defaults**: Tabular metrics (rows, ARR sum, NPS ratings, churn probability) compute dynamically from actual uploaded CSV data.
-            - **Dynamic Curve Visualization**: Visualizes real trend data plotted from individual row values.
-            - **Dynamic File Type Distribution**: Real-time breakdown of unstructured documents (PDF, DOCX, TXT).
+            #### 🏢 Multi-Tenant Profile Isolation
+            - Every user profile operates strictly within their dedicated database sandbox.
+            - Clean onboarding without mock data pollution.
 
             #### 📱 Direct Download
-            - **Direct APK Download (v2.3.2)**: [Lumetric-v2.3.2.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.2/Lumetric-v2.3.2.apk)
-            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.2/Lumetric.apk)
+            - **Direct APK Download (v2.3.3)**: [Lumetric-v2.3.3.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.3/Lumetric-v2.3.3.apk)
+            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.3/Lumetric.apk)
           files: |
             Lumetric.apk
-            Lumetric-v2.3.2.apk
+            Lumetric-v2.3.3.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
