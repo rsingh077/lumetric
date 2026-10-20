@@ -47,42 +47,39 @@ jobs:
       - name: Copy APK to Root for Direct Repo Download
         run: |
           cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric.apk
-          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.2.2.apk
+          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.3.0.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumetric-v2.2.2-debug-apk
-          path: Lumetric-v2.2.2.apk
+          name: lumetric-v2.3.0-debug-apk
+          path: Lumetric-v2.3.0.apk
 
-      - name: Create or Update GitHub Release v2.2.2
+      - name: Create or Update GitHub Release v2.3.0
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v2.2.2
-          name: "Lumetric v2.2.2 — Real Auth Enforcement, Instant Logout Fix, and Catalyst DataStore Verification"
+          tag_name: v2.3.0
+          name: "Lumetric v2.3.0 — Warm Ivory, Emerald Green & Vermilion Redesign with Live Lumi Cloud DataStore"
           body: |
-            ### 🚀 Lumetric Mobile v2.2.2 Release
+            ### 🎨 Lumetric Mobile v2.3.0 Release
 
-            #### 🚪 Instant Session Logout Resolution
-            - **Fixed Persistent Session Bug**: Profile modal "Sign Out" now properly triggers `AppContext.logout()`, immediately transitioning the application back to the login screen.
-            - **Sidebar & Header Sign Out**: Added direct single-click "Sign Out" buttons in the sidebar footer and header user bar.
-            - **Session Invalidation**: Clears tokens and cached state on logout across web and mobile.
+            #### 🏛️ Warm Ivory • Emerald Green • Vermilion Design System
+            - **Warm Ivory Surface & Typography**: Natural warmth, editorial clarity, and soft high-contrast dark obsidian canvas.
+            - **Emerald Green Primary Accents**: Jewel emerald buttons, active connection pulses, clean data health scores, and growth indicators.
+            - **Vermilion Dynamic Focus**: Vivid vermilion highlights for alerts, active category filter pills, revenue trend curves, and high-energy CTAs.
+            - **Harmonized Micro-Interactions**: Enhanced button states, responsive bottom navigation dock, and executive dashboard layout.
 
-            #### 🔐 Real Server Authentication Enforcement
-            - **Purged Offline Mock Tokens**: Excised local mock fallback user generation (`usr_local_*`, `local_token_*`) from the authentication service.
-            - **Real Server Verification**: Enforced 100% genuine backend verification against the live Zoho Catalyst Cloud Server (`project-rainfall`).
-            - **Honest Connection Status**: Fixed telemetry health ping so failures accurately report disconnected status rather than pretending to be connected.
-
-            #### 🗄️ Zoho Catalyst DataStore ("Crystal") Diagnostics
-            - **Provisioning Status Endpoint**: Added `/api/datastore/status` to inspect whether the `Users` table exists in Catalyst DataStore.
-            - **Dynamic Persistence Badge**: Replaced static "Synced" text with live verification status and setup instructions for Catalyst DataStore.
+            #### 🗄️ Zoho Catalyst "Lumi" DataStore Fully Integrated
+            - **Live Database Verified**: Connected directly to the authentic `Lumi` table (`Table ID: 83759000000013215`).
+            - **Direct Schema Alignment**: Automatic support for all user columns (`email`, `passwordHash`, `name`, `role`, `organization`, `avatarUrl`, `mfaEnabled`, `settings`).
+            - **End-to-End Persistence**: Sign-ups and logins write to and read from the Zoho Catalyst Cloud DataStore with zero mock fallbacks.
 
             #### 📱 Direct Download
-            - **Direct APK Download (v2.2.2)**: [Lumetric-v2.2.2.apk](https://github.com/rsingh077/lumetric/releases/download/v2.2.2/Lumetric-v2.2.2.apk)
-            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.2.2/Lumetric.apk)
+            - **Direct APK Download (v2.3.0)**: [Lumetric-v2.3.0.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.0/Lumetric-v2.3.0.apk)
+            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.0/Lumetric.apk)
           files: |
             Lumetric.apk
-            Lumetric-v2.2.2.apk
+            Lumetric-v2.3.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

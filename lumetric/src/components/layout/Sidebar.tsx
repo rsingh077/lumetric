@@ -132,14 +132,14 @@ export function Sidebar() {
               }}
               className="flex items-center gap-2.5 overflow-hidden group cursor-pointer"
             >
-              <BrandMascotIcon className="w-6 h-6 shrink-0 text-rose-500" />
+              <BrandMascotIcon className="w-6 h-6 shrink-0 text-[#059669]" />
               {!sidebarCollapsed && (
                 <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-sm tracking-tight text-[var(--lm-text-primary)]">
+                    <span className="font-extrabold text-sm tracking-tight text-[var(--lm-text-primary)]">
                       Lumetric
                     </span>
-                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 font-bold border border-rose-200 dark:border-rose-900">
+                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#ECFDF5] dark:bg-[#064E3B]/60 text-[#065F46] dark:text-[#34D399] font-bold border border-[#059669]/30">
                       STUDIO
                     </span>
                   </div>
@@ -177,11 +177,11 @@ export function Sidebar() {
           {/* User Profile Card matching Studio Design */}
           {!sidebarCollapsed && (
             <div className="mt-3 p-2.5 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] flex items-center gap-3">
-              <div className="relative w-11 h-11 rounded-full bg-gradient-to-tr from-rose-500 to-amber-500 p-[2px] shrink-0 shadow-sm">
-                <div className="w-full h-full rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
+              <div className="relative w-11 h-11 rounded-full bg-gradient-to-tr from-[#059669] via-[#10B981] to-[#E34234] p-[2px] shrink-0 shadow-sm">
+                <div className="w-full h-full rounded-full bg-[#0D1612] text-[#FAF8F5] flex items-center justify-center font-bold text-sm">
                   {currentUser.name ? currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'DS'}
                 </div>
-                <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" />
+                <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-[#10B981] border-2 border-white dark:border-[#0D1612]" />
               </div>
               <div className="min-w-0 flex-1">
                 <span className="text-[11px] text-[var(--lm-text-tertiary)] font-medium block">
@@ -204,7 +204,7 @@ export function Sidebar() {
                 aria-expanded={wsDropdownOpen}
               >
                 <div className="flex items-center gap-2 truncate">
-                  <span className="w-2 h-2 rounded-full bg-rose-500 shadow-xs shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-[#059669] shadow-xs shrink-0" />
                   <span className="truncate">{currentWorkspace.name}</span>
                 </div>
                 <ChevronDownIcon className="w-3.5 h-3.5 text-[var(--lm-text-tertiary)] shrink-0" />
@@ -273,16 +273,16 @@ export function Sidebar() {
                     }}
                     className={`group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
                       isActive
-                        ? 'bg-rose-500 text-white font-semibold shadow-md shadow-rose-500/25'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                        ? 'bg-[#059669] text-[#FAF8F5] font-semibold shadow-md shadow-[#059669]/25'
+                        : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] hover:bg-[var(--lm-bg-secondary)]'
                     } ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
                     title={sidebarCollapsed ? item.label : undefined}
                   >
                     <IconComponent
                       className={`w-4 h-4 shrink-0 transition-colors ${
                         isActive
-                          ? 'text-white'
-                          : 'text-slate-500 group-hover:text-slate-900 dark:text-slate-400 dark:group-hover:text-white'
+                          ? 'text-[#FAF8F5]'
+                          : 'text-[var(--lm-text-tertiary)] group-hover:text-[var(--lm-text-primary)]'
                       }`}
                     />
                     {!sidebarCollapsed && (
@@ -292,8 +292,8 @@ export function Sidebar() {
                       <span
                         className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
                           isActive
-                            ? 'bg-white text-rose-600'
-                            : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                            ? 'bg-[#E34234] text-[#FAF8F5]'
+                            : 'bg-[#FFF1F0] dark:bg-[#E34234]/20 text-[#E34234]'
                         }`}
                       >
                         {item.badge}
@@ -308,30 +308,30 @@ export function Sidebar() {
           {/* Dynamic Engine Operations & Ingestion Metrics Card */}
           {!sidebarCollapsed && (
             <div className="pt-2 space-y-3">
-              <div className="rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-indigo-600 text-white p-4 shadow-lg shadow-rose-950/20">
+              <div className="rounded-2xl bg-gradient-to-br from-[#064E3B] via-[#059669] to-[#047857] text-[#FAF8F5] p-4 shadow-lg shadow-emerald-950/30 border border-[#10B981]/25">
                 <div className="flex items-center justify-between text-xs mb-3 font-semibold">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="w-2 h-2 rounded-full bg-[#34D399] animate-pulse" />
                     <span className="tracking-tight">Engine Operations</span>
                   </div>
                   <span
                     onClick={() => setActiveView('operations')}
-                    className="text-rose-100 text-[11px] hover:underline cursor-pointer opacity-90"
+                    className="text-emerald-100 text-[11px] hover:underline cursor-pointer opacity-90"
                   >
                     View All →
                   </span>
                 </div>
                 <div className="space-y-2 text-xs">
                   <div>
-                    <span className="text-[10px] text-rose-200 block uppercase font-mono tracking-wider">Tabular Ingested</span>
+                    <span className="text-[10px] text-emerald-200 block uppercase font-mono tracking-wider">Tabular Ingested</span>
                     <span className="font-extrabold text-base">{activeRows.length > 0 ? `${activeRows.length} Records` : '0 Records'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-rose-200 block uppercase font-mono tracking-wider">Document Dossiers</span>
+                    <span className="text-[10px] text-emerald-200 block uppercase font-mono tracking-wider">Document Dossiers</span>
                     <span className="font-extrabold text-base">{documentFiles.length} Dossier{documentFiles.length !== 1 ? 's' : ''} Loaded</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-rose-200 block uppercase font-mono tracking-wider">Tokens &amp; PII Treated</span>
+                    <span className="text-[10px] text-emerald-200 block uppercase font-mono tracking-wider">Tokens &amp; PII Treated</span>
                     <span className="font-extrabold text-base">
                       {activeDocument?.treatments?.reduce((acc, t) => acc + (t.metrics?.tokensParsed || 0), 0) || 264} Tokens Treated
                     </span>
@@ -340,7 +340,7 @@ export function Sidebar() {
                 <button
                   type="button"
                   onClick={() => setActiveView('data')}
-                  className="w-full mt-3 py-2 px-3 rounded-full bg-white text-rose-600 hover:bg-rose-50 text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  className="w-full mt-3 py-2 px-3 rounded-full bg-[#FAF8F5] text-[#059669] hover:bg-[#F4ECE1] text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                 >
                   <span className="text-sm font-bold">+</span>
                   <span>Ingest Dataset / Doc</span>
@@ -378,7 +378,7 @@ export function Sidebar() {
               className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
               title="Active RBAC Role"
             >
-              <div className="w-7 h-7 rounded-full bg-rose-500 text-white flex items-center justify-center font-semibold text-xs shrink-0">
+              <div className="w-7 h-7 rounded-full bg-[#059669] text-[#FAF8F5] flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
                 {currentUser.name ? currentUser.name.charAt(0) : 'U'}
               </div>
               {!sidebarCollapsed && (
@@ -387,10 +387,10 @@ export function Sidebar() {
                     {currentUser.name}
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[9px] uppercase font-mono px-1 py-0.2 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-300 rounded font-semibold">
+                    <span className="text-[9px] uppercase font-mono px-1 py-0.2 bg-[#ECFDF5] dark:bg-[#064E3B]/60 border border-[#059669]/30 text-[#065F46] dark:text-[#34D399] rounded font-semibold">
                       {currentUser.role}
                     </span>
-                    <span className="text-[10px] text-slate-400">Role ▾</span>
+                    <span className="text-[10px] text-[var(--lm-text-tertiary)]">Role ▾</span>
                   </div>
                 </div>
               )}
@@ -410,7 +410,7 @@ export function Sidebar() {
                     }}
                     className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs capitalize flex items-center justify-between transition-colors ${
                       currentUser.role === r
-                        ? 'bg-rose-500 text-white font-semibold'
+                        ? 'bg-[#059669] text-[#FAF8F5] font-semibold'
                         : 'text-[var(--lm-text-primary)] hover:bg-[var(--lm-bg-tertiary)]'
                     }`}
                   >

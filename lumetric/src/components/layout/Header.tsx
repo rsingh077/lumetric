@@ -525,15 +525,15 @@ export function Header() {
               className="flex items-center gap-2 hover:opacity-85 transition-opacity text-left cursor-pointer"
               title="Manage Catalyst Cloud Profile & Authentication"
             >
-              <div className="w-7 h-7 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center font-semibold text-xs shrink-0">
+              <div className="w-7 h-7 rounded-full bg-[#059669] text-[#FAF8F5] border border-[#059669]/40 flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
                 {(currentUser.name || 'U').charAt(0)}
               </div>
               <div className="hidden xl:flex flex-col text-left">
                 <span className="text-xs font-semibold leading-tight text-[var(--lm-text-primary)] tracking-tight">
                   {currentUser.name}
                 </span>
-                <span className="text-[9.5px] text-[var(--lm-text-tertiary)] uppercase font-mono font-medium flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span className="text-[9.5px] text-[#059669] dark:text-[#34D399] uppercase font-mono font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#059669] dark:bg-[#10B981]"></span>
                   {currentUser.role}
                 </span>
               </div>
@@ -541,10 +541,10 @@ export function Header() {
             <button
               type="button"
               onClick={() => logout()}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-[#E34234] hover:bg-[#FFF1F0] dark:hover:bg-[#E34234]/15 transition-colors cursor-pointer"
               title="Sign Out of Lumetric"
             >
-              <LogOutIcon className="w-3.5 h-3.5" />
+              <LogOutIcon className="w-3.5 h-3.5 text-[#E34234]" />
             </button>
           </div>
         </div>

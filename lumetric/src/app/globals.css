@@ -3,47 +3,66 @@
 @import "@fontsource-variable/jetbrains-mono";
 
 /* ==========================================================================
-   LUMETRIC APPLE-INSPIRED DESIGN SYSTEM TOKENS (WARM CREAM + LIQUID GLASS)
-   Fluid iOS / macOS Spatial Micro-Interactions & Ultra-Smooth Visuals
+   LUMETRIC DESIGN SYSTEM: WARM IVORY • EMERALD GREEN • VERMILION
+   Architectural Data Studio: Natural Warmth, Mathematical Precision & Dynamic Focus
    ========================================================================== */
 
 :root {
-  /* Crisp Enterprise Surfaces */
-  --lm-bg-primary: #F8FAFC;          /* Clean Slate-50 Canvas */
-  --lm-bg-secondary: #F1F5F9;        /* Slate-100 Surface */
-  --lm-bg-tertiary: #E2E8F0;         /* Slate-200 Border/Dividers */
-  --lm-bg-elevated: #FFFFFF;         /* Crisp Pure White Surface */
+  /* Signature Brand Palette Tokens */
+  --lm-warm-ivory: #FAF8F5;
+  --lm-warm-ivory-surface: #F4ECE1;
+  --lm-warm-ivory-subtle: #EFE6D8;
+  --lm-warm-ivory-border: #E5D9C8;
+
+  --lm-emerald-jewel: #059669;
+  --lm-emerald-hover: #047857;
+  --lm-emerald-light: #ECFDF5;
+  --lm-emerald-dark: #064E3B;
+  --lm-emerald-glow: rgba(5, 150, 105, 0.25);
+
+  --lm-vermilion: #E34234;
+  --lm-vermilion-hover: #C93326;
+  --lm-vermilion-light: #FFF1F0;
+  --lm-vermilion-dark: #A82419;
+  --lm-vermilion-glow: rgba(227, 66, 52, 0.25);
+
+  /* Light Mode Surfaces (Warm Ivory Canvas) */
+  --lm-bg-primary: #FAF8F5;          /* Warm Ivory Background Canvas */
+  --lm-bg-secondary: #F4ECE1;        /* Cream Ivory Secondary Panel */
+  --lm-bg-tertiary: #E8DCCB;         /* Soft Almond / Ivory Divider */
+  --lm-bg-elevated: #FFFFFF;         /* Crisp Elevated Card */
   --lm-bg-elevated-solid: #FFFFFF;
-  --lm-bg-overlay: rgba(15, 23, 42, 0.45);
+  --lm-bg-overlay: rgba(18, 32, 25, 0.55);
 
-  /* Modern High-Contrast Typography */
-  --lm-text-primary: #0F172A;        /* Deep Sharp Slate-900 */
-  --lm-text-secondary: #475569;      /* Refined Slate-600 */
-  --lm-text-tertiary: #94A3B8;       /* Slate-400 */
-  --lm-text-inverse: #FFFFFF;
+  /* Modern Forest Charcoal & Sage Typography */
+  --lm-text-primary: #15221B;        /* Deep Forest Charcoal */
+  --lm-text-secondary: #415248;      /* Muted Sage */
+  --lm-text-tertiary: #76887E;       /* Soft Ash */
+  --lm-text-inverse: #FAF8F5;        /* Warm Ivory Text Inverse */
 
-  /* Accent & Interactive States (Electric Cobalt + Indigo) */
-  --lm-accent-primary: #2563EB;      /* Enterprise Cobalt Blue */
-  --lm-accent-primary-hover: #1D4ED8;/* Royal Blue Hover */
-  --lm-accent-primary-light: #EFF6FF;/* Subtle Blue Tint */
-  --lm-accent-primary-subtle: #F0F7FF;
-  --lm-accent-apple-blue: #2563EB;
-  --lm-accent-apple-indigo: #4F46E5;
+  /* Primary Accent (Emerald Green) & Secondary Accent (Vermilion) */
+  --lm-accent-primary: #059669;      /* Emerald Green Jewel */
+  --lm-accent-primary-hover: #047857;
+  --lm-accent-primary-light: #ECFDF5;
+  --lm-accent-primary-subtle: #F0FDF4;
+  --lm-accent-secondary: #E34234;    /* Vivid Vermilion */
+  --lm-accent-vermilion: #E34234;
+  --lm-accent-vermilion-hover: #C93326;
 
-  /* Hairline Borders */
-  --lm-border-default: #E2E8F0;      /* Slate-200 */
-  --lm-border-strong: #CBD5E1;       /* Slate-300 */
-  --lm-border-accent: #2563EB;
+  /* Hairline Warm Ivory Borders */
+  --lm-border-default: #E6DCce;
+  --lm-border-strong: #D4C6B1;
+  --lm-border-accent: #059669;
 
   /* Semantic Status Tokens */
-  --lm-status-success: #10B981;
-  --lm-status-success-bg: rgba(16, 185, 129, 0.12);
-  --lm-status-warning: #F59E0B;
-  --lm-status-warning-bg: rgba(245, 158, 11, 0.12);
-  --lm-status-error: #EF4444;
-  --lm-status-error-bg: rgba(239, 68, 68, 0.12);
-  --lm-status-info: #2563EB;
-  --lm-status-info-bg: rgba(37, 99, 235, 0.1);
+  --lm-status-success: #059669;      /* Emerald Green */
+  --lm-status-success-bg: rgba(5, 150, 105, 0.12);
+  --lm-status-warning: #D97706;      /* Warm Amber */
+  --lm-status-warning-bg: rgba(217, 119, 6, 0.12);
+  --lm-status-error: #E34234;        /* Vermilion Alert */
+  --lm-status-error-bg: rgba(227, 66, 52, 0.12);
+  --lm-status-info: #0D9488;         /* Deep Teal */
+  --lm-status-info-bg: rgba(13, 148, 136, 0.12);
   --lm-status-stale: #8B5CF6;
   --lm-status-stale-bg: rgba(139, 92, 246, 0.12);
 
@@ -68,12 +87,12 @@
   --lm-radius-2xl: 1.25rem;  /* 20px */
   --lm-radius-full: 9999px;
 
-  /* Subtle Crisp Enterprise Shadows */
-  --lm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --lm-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --lm-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
-  --lm-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-  --lm-shadow-glass: 0 4px 24px 0 rgba(15, 23, 42, 0.06);
+  /* Subtle Warm Organic Shadows */
+  --lm-shadow-sm: 0 1px 3px 0 rgba(24, 38, 29, 0.05);
+  --lm-shadow-md: 0 4px 8px -1px rgba(24, 38, 29, 0.07), 0 2px 4px -2px rgba(24, 38, 29, 0.04);
+  --lm-shadow-lg: 0 12px 20px -3px rgba(24, 38, 29, 0.09), 0 4px 6px -4px rgba(24, 38, 29, 0.04);
+  --lm-shadow-xl: 0 20px 28px -5px rgba(24, 38, 29, 0.12), 0 8px 12px -6px rgba(24, 38, 29, 0.05);
+  --lm-shadow-glass: 0 4px 24px 0 rgba(24, 38, 29, 0.06);
 
   /* Transitions */
   --lm-ease-apple: cubic-bezier(0.16, 1, 0.3, 1);
@@ -92,40 +111,41 @@
   --foreground: var(--lm-text-primary);
 }
 
-/* Dark Mode - Apple Space Black / Deep Midnight Slate */
+/* Dark Mode - Obsidian Emerald Night with Warm Ivory Typography */
 [data-theme='dark'] {
-  --lm-bg-primary: #090A0D;
-  --lm-bg-secondary: #121319;
-  --lm-bg-tertiary: #1C1D26;
-  --lm-bg-elevated: rgba(22, 23, 31, 0.85);
-  --lm-bg-elevated-solid: #16171F;
-  --lm-bg-overlay: rgba(0, 0, 0, 0.75);
+  --lm-bg-primary: #0A110E;          /* Deep Obsidian Emerald */
+  --lm-bg-secondary: #111C17;        /* Dark Pine Slate */
+  --lm-bg-tertiary: #192821;         /* Forest Obsidian */
+  --lm-bg-elevated: rgba(18, 29, 24, 0.88);
+  --lm-bg-elevated-solid: #131E18;
+  --lm-bg-overlay: rgba(0, 0, 0, 0.8);
 
-  --lm-text-primary: #F5F5F7;
-  --lm-text-secondary: #A1A1A6;
-  --lm-text-tertiary: #6E6E73;
-  --lm-text-inverse: #090A0D;
+  --lm-text-primary: #FAF8F5;        /* Warm Ivory Text (High Contrast & Soft) */
+  --lm-text-secondary: #CFD8D2;      /* Ivory Sage */
+  --lm-text-tertiary: #84968C;       /* Forest Gray */
+  --lm-text-inverse: #0A110E;
 
-  --lm-accent-primary: #F5F5F7;
-  --lm-accent-primary-hover: #FFFFFF;
-  --lm-accent-primary-light: #232533;
-  --lm-accent-primary-subtle: #161722;
-  --lm-accent-apple-blue: #2997FF;
+  --lm-accent-primary: #10B981;      /* Vivid Luminous Emerald */
+  --lm-accent-primary-hover: #34D399;
+  --lm-accent-primary-light: #064E3B;
+  --lm-accent-primary-subtle: #022C22;
+  --lm-accent-secondary: #FF5442;    /* Luminous Vermilion */
+  --lm-accent-vermilion: #FF5442;
 
-  --lm-border-default: rgba(255, 255, 255, 0.1);
-  --lm-border-strong: rgba(255, 255, 255, 0.2);
-  --lm-border-accent: rgba(255, 255, 255, 0.9);
+  --lm-border-default: rgba(230, 220, 206, 0.12);
+  --lm-border-strong: rgba(230, 220, 206, 0.22);
+  --lm-border-accent: #10B981;
 
-  --lm-status-success-bg: rgba(52, 199, 89, 0.18);
-  --lm-status-warning-bg: rgba(255, 149, 0, 0.18);
-  --lm-status-error-bg: rgba(255, 59, 48, 0.18);
-  --lm-status-info-bg: rgba(41, 151, 255, 0.18);
-  --lm-status-stale-bg: rgba(175, 82, 222, 0.18);
+  --lm-status-success-bg: rgba(16, 185, 129, 0.18);
+  --lm-status-warning-bg: rgba(245, 158, 11, 0.18);
+  --lm-status-error-bg: rgba(255, 84, 66, 0.18);
+  --lm-status-info-bg: rgba(13, 148, 136, 0.18);
+  --lm-status-stale-bg: rgba(139, 92, 246, 0.18);
 
-  --lm-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --lm-shadow-md: 0 6px 18px rgba(0, 0, 0, 0.5);
-  --lm-shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.6);
-  --lm-shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.7);
+  --lm-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --lm-shadow-md: 0 6px 18px rgba(0, 0, 0, 0.6);
+  --lm-shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.7);
+  --lm-shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.8);
 
   --background: var(--lm-bg-primary);
   --foreground: var(--lm-text-primary);
@@ -146,6 +166,7 @@
   --color-lm-accent-hover: var(--lm-accent-primary-hover);
   --color-lm-accent-light: var(--lm-accent-primary-light);
   --color-lm-accent-subtle: var(--lm-accent-primary-subtle);
+  --color-lm-vermilion: var(--lm-accent-vermilion);
   --color-lm-border: var(--lm-border-default);
   --color-lm-border-strong: var(--lm-border-strong);
   --color-lm-success: var(--lm-status-success);
@@ -206,19 +227,72 @@ svg:not([width]):not([height]) {
 
 /* Modern Crisp Glassmorphism Surface Utility */
 .apple-glass {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(250, 248, 245, 0.88);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.04), 0 2px 4px -1px rgba(15, 23, 42, 0.02);
+  border: 1px solid rgba(230, 220, 206, 0.85);
+  box-shadow: 0 4px 16px -2px rgba(24, 38, 29, 0.04), 0 2px 4px -1px rgba(24, 38, 29, 0.02);
 }
 
 [data-theme='dark'] .apple-glass {
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(18, 29, 24, 0.88);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(230, 220, 206, 0.12);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WARM IVORY • EMERALD GREEN • VERMILION PALETTE UTILITIES
+   ══════════════════════════════════════════════════════════════════════════ */
+.bg-warm-ivory { background-color: var(--lm-warm-ivory); }
+.bg-warm-ivory-surface { background-color: var(--lm-warm-ivory-surface); }
+.bg-warm-ivory-subtle { background-color: var(--lm-warm-ivory-subtle); }
+.text-warm-ivory { color: var(--lm-warm-ivory); }
+.border-warm-ivory { border-color: var(--lm-warm-ivory-border); }
+
+.bg-emerald-jewel { background-color: var(--lm-emerald-jewel); }
+.text-emerald-jewel { color: var(--lm-emerald-jewel); }
+.border-emerald-jewel { border-color: var(--lm-emerald-jewel); }
+
+.bg-vermilion { background-color: var(--lm-vermilion); }
+.text-vermilion { color: var(--lm-vermilion); }
+.border-vermilion { border-color: var(--lm-vermilion); }
+
+/* Signature Gradients */
+.bg-gradient-emerald-vermilion {
+  background: linear-gradient(135deg, #059669 0%, #047857 55%, #E34234 100%);
+}
+.bg-gradient-ivory-emerald {
+  background: linear-gradient(135deg, #FAF8F5 0%, #F4ECE1 60%, #ECFDF5 100%);
+}
+.bg-gradient-dark-emerald {
+  background: linear-gradient(135deg, #0A110E 0%, #111C17 60%, #064E3B 100%);
+}
+
+/* Card & Surface Accents */
+.card-ivory {
+  background-color: var(--lm-bg-elevated);
+  border: 1px solid var(--lm-border-default);
+  box-shadow: var(--lm-shadow-sm);
+  border-radius: var(--lm-radius-2xl);
+  transition: all var(--lm-transition-base);
+}
+.card-ivory:hover {
+  box-shadow: var(--lm-shadow-md);
+  border-color: var(--lm-border-strong);
+}
+
+.pill-active-emerald {
+  background-color: #059669;
+  color: #FAF8F5;
+  box-shadow: 0 2px 10px rgba(5, 150, 105, 0.35);
+}
+
+.pill-active-vermilion {
+  background-color: #E34234;
+  color: #FAF8F5;
+  box-shadow: 0 2px 10px rgba(227, 66, 52, 0.35);
 }
 
 /* Tabular numerals for high-precision analytical calculations */

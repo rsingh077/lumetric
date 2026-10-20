@@ -84,39 +84,39 @@ function HomeView() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold text-rose-500 uppercase tracking-wider">
+            <span className="text-xs font-bold text-[#059669] dark:text-[#10B981] uppercase tracking-wider">
               {t('app.subtitle')}
             </span>
-            <span className="text-slate-400 text-xs">•</span>
-            <span className="text-xs text-slate-400">Production Studio</span>
+            <span className="text-[var(--lm-text-tertiary)] text-xs">•</span>
+            <span className="text-xs text-[var(--lm-text-tertiary)]">Production Studio</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--lm-text-primary)] tracking-tight">
             {t('common.welcome')}, {currentUser.name}
           </h1>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Server Status Pill */}
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 shadow-xs">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] shadow-xs">
             <span
               className={`w-2 h-2 rounded-full ${
-                serverStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                serverStatus === 'connected' ? 'bg-[#10B981] animate-pulse' : 'bg-[#E34234]'
               }`}
             />
-            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-              {serverStatus === 'connected' ? 'Zoho Catalyst Cloud' : 'Connecting...'}
+            <span className="text-xs font-semibold text-[var(--lm-text-primary)]">
+              {serverStatus === 'connected' ? 'Zoho Catalyst Lumi Cloud' : 'Connecting...'}
             </span>
             {serverLatency && (
-              <span className="text-[11px] font-mono text-slate-400">({serverLatency}ms)</span>
+              <span className="text-[11px] font-mono text-[var(--lm-text-tertiary)]">({serverLatency}ms)</span>
             )}
           </div>
 
           {/* Profile & Role Button */}
           <button
             onClick={() => openAuthModal('profile')}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-rose-500 transition-colors shadow-xs cursor-pointer"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] text-xs font-semibold text-[var(--lm-text-primary)] hover:border-[#059669] transition-colors shadow-xs cursor-pointer"
           >
-            <div className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold text-[10px]">
+            <div className="w-5 h-5 rounded-full bg-[#059669]/20 text-[#059669] dark:text-[#34D399] flex items-center justify-center font-bold text-[10px]">
               {currentUser.name.charAt(0)}
             </div>
             <span className="capitalize">{currentUser.role}</span>
@@ -140,8 +140,8 @@ function HomeView() {
             onClick={() => setActiveFilter(f.id as any)}
             className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
               activeFilter === f.id
-                ? 'bg-rose-500 text-white shadow-xs'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800'
+                ? 'bg-[#059669] text-[#FAF8F5] shadow-sm shadow-emerald-900/30'
+                : 'bg-[var(--lm-bg-elevated)] text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] border border-[var(--lm-border-default)] hover:border-[#059669]/40'
             }`}
           >
             {f.label}
@@ -152,47 +152,47 @@ function HomeView() {
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* 3. STUDIO HIGHLIGHT BANNER: Pipeline Progress & Health        */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs">
+      <div className="bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-3xl p-5 sm:p-6 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
-              <span className="text-xs font-bold text-rose-500 uppercase tracking-wider">
+              <span className="w-2 h-2 rounded-full bg-[#E34234]" />
+              <span className="text-xs font-bold text-[#E34234] uppercase tracking-wider">
                 Enterprise Intelligence Pipeline
               </span>
-              <StatusBadge variant="success">98.4% Clean Records</StatusBadge>
+              <StatusBadge variant="emerald">98.4% Clean Records</StatusBadge>
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--lm-text-primary)]">
               Data Quality, Document Treatments &amp; Model Scoring
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-[var(--lm-text-secondary)]">
               Automated ingestion engine reconciling structured database schemas and parsing unstructured documents with cryptographic SHA-256 integrity checks.
             </p>
           </div>
 
           {/* Quick Metrics Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
-              <span className="text-[10px] text-slate-400 block font-medium">Tabular Records</span>
-              <span className="text-lg font-bold text-slate-900 dark:text-white font-mono mt-0.5 block">
+            <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-center">
+              <span className="text-[10px] text-[var(--lm-text-tertiary)] block font-medium">Tabular Records</span>
+              <span className="text-lg font-bold text-[var(--lm-text-primary)] font-mono mt-0.5 block">
                 {tabularMetrics.rowCount} Rows
               </span>
             </div>
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
-              <span className="text-[10px] text-slate-400 block font-medium">Document Dossiers</span>
-              <span className="text-lg font-bold text-slate-900 dark:text-white font-mono mt-0.5 block">
+            <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-center">
+              <span className="text-[10px] text-[var(--lm-text-tertiary)] block font-medium">Document Dossiers</span>
+              <span className="text-lg font-bold text-[var(--lm-text-primary)] font-mono mt-0.5 block">
                 {documentFiles.length} Loaded
               </span>
             </div>
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
-              <span className="text-[10px] text-slate-400 block font-medium">Tokens Parsed</span>
-              <span className="text-lg font-bold text-rose-500 font-mono mt-0.5 block">
+            <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-center">
+              <span className="text-[10px] text-[var(--lm-text-tertiary)] block font-medium">Tokens Parsed</span>
+              <span className="text-lg font-bold text-[#E34234] font-mono mt-0.5 block">
                 {activeDocument ? activeDocument.tokenCount : 264}
               </span>
             </div>
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
-              <span className="text-[10px] text-slate-400 block font-medium">ML ROC-AUC</span>
-              <span className="text-lg font-bold text-emerald-500 font-mono mt-0.5 block">
+            <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-center">
+              <span className="text-[10px] text-[var(--lm-text-tertiary)] block font-medium">ML ROC-AUC</span>
+              <span className="text-lg font-bold text-[#059669] dark:text-[#34D399] font-mono mt-0.5 block">
                 0.964
               </span>
             </div>
@@ -200,17 +200,17 @@ function HomeView() {
         </div>
 
         {/* Pipeline Phase Progression */}
-        <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800/80">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
-            <span className="font-semibold text-slate-800 dark:text-slate-200">
+        <div className="mt-6 pt-5 border-t border-[var(--lm-border-default)]">
+          <div className="flex items-center justify-between text-xs text-[var(--lm-text-secondary)] mb-2">
+            <span className="font-semibold text-[var(--lm-text-primary)]">
               ETL &amp; NLP Treatment Progression
             </span>
-            <span className="font-mono text-rose-500 font-bold">96% Completed</span>
+            <span className="font-mono text-[#E34234] font-bold">96% Completed</span>
           </div>
-          <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-rose-500 via-indigo-500 to-emerald-500 rounded-full w-[96%]" />
+          <div className="w-full h-2 rounded-full bg-[var(--lm-bg-secondary)] overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-[#059669] via-[#10B981] to-[#E34234] rounded-full w-[96%]" />
           </div>
-          <div className="grid grid-cols-4 text-[11px] text-slate-400 mt-2">
+          <div className="grid grid-cols-4 text-[11px] text-[var(--lm-text-tertiary)] mt-2">
             <span>1. File Ingestion</span>
             <span className="text-center">2. Schema Profiling</span>
             <span className="text-center">3. PII &amp; Tokenization</span>
@@ -412,8 +412,8 @@ function HomeView() {
             <svg viewBox="0 0 500 160" className="w-full h-full overflow-visible">
               <defs>
                 <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#F43F5E" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#F43F5E" stopOpacity="0.0" />
+                  <stop offset="0%" stopColor="#E34234" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#E34234" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
               {/* Background Grid Lines */}
@@ -430,52 +430,52 @@ function HomeView() {
               <polyline
                 points="0,150 40,110 90,85 140,120 190,70 240,95 290,45 340,60 390,35 440,50 500,20"
                 fill="none"
-                stroke="#F43F5E"
+                stroke="#E34234"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
               {/* Data points */}
               {[[40,110],[90,85],[190,70],[290,45],[390,35],[500,20]].map(([x, y], idx) => (
-                <circle key={idx} cx={x} cy={y} r="4" fill="#FFFFFF" stroke="#F43F5E" strokeWidth="2.5" />
+                <circle key={idx} cx={x} cy={y} r="4" fill="#FAF8F5" stroke="#E34234" strokeWidth="2.5" />
               ))}
             </svg>
           </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 font-mono">
+          <div className="flex items-center justify-between text-[11px] text-[var(--lm-text-tertiary)] mt-2 font-mono">
             <span>Standard Tier ($28k)</span>
             <span>Growth Tier ($84k)</span>
             <span>Enterprise Tier ($310k)</span>
           </div>
         </div>
 
-        {/* RIGHT: Predictive Model Performance Score */}
-        <div className="bg-gradient-to-br from-rose-600 to-rose-700 rounded-3xl p-5 sm:p-6 text-white shadow-lg flex flex-col justify-between">
+        {/* RIGHT: Predictive Model Performance Score (Emerald Jewel Card) */}
+        <div className="bg-gradient-to-br from-[#064E3B] via-[#059669] to-[#047857] rounded-3xl p-5 sm:p-6 text-[#FAF8F5] shadow-lg shadow-emerald-950/40 border border-[#10B981]/25 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-rose-100 bg-white/20 px-2.5 py-0.5 rounded-full inline-block">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#FAF8F5] bg-white/20 px-2.5 py-0.5 rounded-full inline-block">
                 Predictive Analytics Engine
               </span>
-              <span className="text-xs font-semibold text-rose-100">LightGBM v2.4</span>
+              <span className="text-xs font-semibold text-emerald-100">LightGBM v2.4</span>
             </div>
 
             <div className="my-2">
-              <span className="text-4xl sm:text-5xl font-extrabold tracking-tight">0.964</span>
-              <span className="text-rose-100 text-sm ml-2 font-medium">AUC-ROC Score</span>
+              <span className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#FAF8F5]">0.964</span>
+              <span className="text-emerald-100 text-sm ml-2 font-medium">AUC-ROC Score</span>
             </div>
 
-            <p className="text-xs text-rose-100/90 leading-relaxed mt-2">
+            <p className="text-xs text-emerald-100/90 leading-relaxed mt-2">
               Model asserts high calibration accuracy on B2B customer churn indicators. In-fold F1-score reaches 0.94 with 92% sensitivity.
             </p>
           </div>
 
           <div className="mt-6 pt-4 border-t border-white/20 flex items-center justify-between">
             <div className="text-xs">
-              <span className="block text-rose-200">Validation Brier Score</span>
-              <span className="font-bold text-white font-mono text-sm">0.042 (Calibrated)</span>
+              <span className="block text-emerald-200">Validation Brier Score</span>
+              <span className="font-bold text-[#FAF8F5] font-mono text-sm">0.042 (Calibrated)</span>
             </div>
             <button
               onClick={() => setActiveView('models')}
-              className="px-4 py-2 rounded-xl bg-white text-rose-600 font-bold text-xs hover:bg-rose-50 transition-colors shadow-xs cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-[#FAF8F5] text-[#059669] font-bold text-xs hover:bg-[#F4ECE1] transition-colors shadow-xs cursor-pointer"
             >
               Inspect Model Details →
             </button>
@@ -488,42 +488,42 @@ function HomeView() {
       {/* ══════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Col 1: Document Formats (Donut) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs">
-          <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
+        <div className="bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-3xl p-5 shadow-xs">
+          <h4 className="text-sm font-bold text-[var(--lm-text-primary)] mb-1">
             Document File Distribution
           </h4>
-          <p className="text-[11px] text-slate-400 mb-4">Ingested Unstructured File Types</p>
+          <p className="text-[11px] text-[var(--lm-text-tertiary)] mb-4">Ingested Unstructured File Types</p>
 
           <div className="flex items-center justify-center my-3">
             <svg viewBox="0 0 100 100" className="w-28 h-28 transform -rotate-90">
-              <circle cx="50" cy="50" r="38" fill="none" stroke="#E2E8F0" className="dark:stroke-slate-800" strokeWidth="12" />
-              {/* PDF Segment (45%) */}
-              <circle cx="50" cy="50" r="38" fill="none" stroke="#F43F5E" strokeWidth="12" strokeDasharray="107 238" strokeDashoffset="0" />
-              {/* DOCX Segment (25%) */}
-              <circle cx="50" cy="50" r="38" fill="none" stroke="#6366F1" strokeWidth="12" strokeDasharray="60 238" strokeDashoffset="-107" />
-              {/* TXT/MD Segment (18%) */}
+              <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" className="text-[var(--lm-bg-tertiary)]" strokeWidth="12" />
+              {/* PDF Segment (45% - Vermilion) */}
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#E34234" strokeWidth="12" strokeDasharray="107 238" strokeDashoffset="0" />
+              {/* DOCX Segment (25% - Emerald) */}
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#059669" strokeWidth="12" strokeDasharray="60 238" strokeDashoffset="-107" />
+              {/* TXT/MD Segment (18% - Bright Emerald) */}
               <circle cx="50" cy="50" r="38" fill="none" stroke="#10B981" strokeWidth="12" strokeDasharray="43 238" strokeDashoffset="-167" />
-              {/* JSON/CSV (12%) */}
+              {/* JSON/CSV (12% - Amber) */}
               <circle cx="50" cy="50" r="38" fill="none" stroke="#F59E0B" strokeWidth="12" strokeDasharray="28 238" strokeDashoffset="-210" />
             </svg>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-[11px] mt-2">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
-              <span className="text-slate-600 dark:text-slate-400">PDF (45%)</span>
+              <span className="w-2 h-2 rounded-full bg-[#E34234]" />
+              <span className="text-[var(--lm-text-secondary)]">PDF (45%)</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-indigo-500" />
-              <span className="text-slate-600 dark:text-slate-400">DOCX (25%)</span>
+              <span className="w-2 h-2 rounded-full bg-[#059669]" />
+              <span className="text-[var(--lm-text-secondary)]">DOCX (25%)</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-slate-600 dark:text-slate-400">TXT/MD (18%)</span>
+              <span className="w-2 h-2 rounded-full bg-[#10B981]" />
+              <span className="text-[var(--lm-text-secondary)]">TXT/MD (18%)</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-500" />
-              <span className="text-slate-600 dark:text-slate-400">JSON (12%)</span>
+              <span className="text-[var(--lm-text-secondary)]">JSON (12%)</span>
             </div>
           </div>
         </div>
@@ -628,18 +628,18 @@ function HomeView() {
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* 7. BOTTOM CTA BANNER: Launch Data & Document Workspace       */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white border border-slate-700/60 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-6 rounded-3xl bg-gradient-to-r from-[#0A110E] via-[#111C17] to-[#064E3B] text-[#FAF8F5] border border-[#10B981]/25 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <h3 className="text-base sm:text-lg font-bold">
             Ready to analyze tabular datasets and document dossiers?
           </h3>
-          <p className="text-xs text-slate-300 max-w-xl">
+          <p className="text-xs text-[#CFD8D2] max-w-xl">
             Ingest CSVs, parse PDFs, mask sensitive PII, extract structured entities, and train predictive machine learning models in a single executive workbench.
           </p>
         </div>
         <button
           onClick={() => setActiveView('data')}
-          className="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold transition-colors shadow-xs whitespace-nowrap cursor-pointer self-start sm:self-auto"
+          className="px-5 py-2.5 rounded-xl bg-[#E34234] hover:bg-[#C93326] text-[#FAF8F5] text-xs font-bold transition-all shadow-md shadow-[#E34234]/30 whitespace-nowrap cursor-pointer self-start sm:self-auto active:scale-95"
         >
           Open Data &amp; Document Studio →
         </button>

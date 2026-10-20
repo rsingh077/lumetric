@@ -319,9 +319,9 @@ export function UserAuthProfileModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-fade-in select-none">
       <div className="bg-[var(--lm-bg-primary)] border border-[var(--lm-border-default)] rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="p-5 border-b border-[var(--lm-border-default)] bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-transparent flex items-center justify-between">
+        <div className="p-5 border-b border-[var(--lm-border-default)] bg-gradient-to-r from-[#059669]/15 via-[#FAF8F5]/5 to-transparent dark:from-[#059669]/20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#059669] via-[#10B981] to-[#E34234] text-[#FAF8F5] flex items-center justify-center font-bold text-sm shadow-md">
               {authUser ? authUser.name.charAt(0).toUpperCase() : 'L'}
             </div>
             <div>
@@ -340,21 +340,21 @@ export function UserAuthProfileModal({
               </h3>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-[11px] text-[var(--lm-text-secondary)] font-mono">
-                  Zoho Catalyst Serverless • Crystal Store
+                  Zoho Catalyst Serverless • Lumi DataStore
                 </span>
                 <button
                   type="button"
                   onClick={() => reconnectServer()}
                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border cursor-pointer hover:opacity-85 transition-opacity ${
                     serverStatus === 'connected'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40'
+                      : 'bg-[#FFF1F0] text-[#E34234] border-[#E34234]/30'
                   }`}
                   title="Click to verify server connectivity"
                 >
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
-                      serverStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+                      serverStatus === 'connected' ? 'bg-[#10B981] animate-pulse' : 'bg-[#E34234]'
                     }`}
                   />
                   <span>{serverStatus === 'connected' ? `${serverLatency !== null ? `${serverLatency}ms` : 'Online'}` : 'Reconnect'}</span>
@@ -378,7 +378,7 @@ export function UserAuthProfileModal({
               onClick={() => setMode('profile')}
               className={`pb-2.5 px-2 font-semibold transition-colors border-b-2 whitespace-nowrap ${
                 mode === 'profile'
-                  ? 'border-blue-600 text-blue-600'
+                  ? 'border-[#059669] text-[#059669] dark:text-[#34D399] dark:border-[#34D399]'
                   : 'border-transparent text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'
               }`}
             >
@@ -389,7 +389,7 @@ export function UserAuthProfileModal({
               onClick={() => setMode('connectors')}
               className={`pb-2.5 px-2 font-semibold transition-colors border-b-2 whitespace-nowrap ${
                 mode === 'connectors'
-                  ? 'border-blue-600 text-blue-600'
+                  ? 'border-[#059669] text-[#059669] dark:text-[#34D399] dark:border-[#34D399]'
                   : 'border-transparent text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'
               }`}
             >
@@ -401,12 +401,12 @@ export function UserAuthProfileModal({
                 onClick={() => setMode('admin-dashboard')}
                 className={`pb-2.5 px-2 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-1 ${
                   mode === 'admin-dashboard'
-                    ? 'border-blue-600 text-blue-600'
+                    ? 'border-[#059669] text-[#059669] dark:text-[#34D399] dark:border-[#34D399]'
                     : 'border-transparent text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'
                 }`}
               >
                 <span>Roles Dashboard</span>
-                <span className="px-1.5 py-0.2 bg-blue-600/10 text-blue-600 rounded text-[9px] font-mono">RBAC</span>
+                <span className="px-1.5 py-0.2 bg-[#059669]/10 text-[#059669] dark:text-[#34D399] rounded text-[9px] font-mono">RBAC</span>
               </button>
             )}
             {(authUser.role === 'owner' || authUser.role === 'administrator' || authUser.role === 'reviewer') && (
@@ -415,12 +415,12 @@ export function UserAuthProfileModal({
                 onClick={() => setMode('audit')}
                 className={`pb-2.5 px-2 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-1 ${
                   mode === 'audit'
-                    ? 'border-blue-600 text-blue-600'
+                    ? 'border-[#059669] text-[#059669] dark:text-[#34D399] dark:border-[#34D399]'
                     : 'border-transparent text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'
                 }`}
               >
                 <span>Audit Logs</span>
-                <span className="px-1.5 py-0.2 bg-emerald-600/10 text-emerald-600 rounded text-[9px] font-mono">SOC-2</span>
+                <span className="px-1.5 py-0.2 bg-[#059669]/10 text-[#059669] dark:text-[#34D399] rounded text-[9px] font-mono">SOC-2</span>
               </button>
             )}
           </div>
@@ -449,9 +449,9 @@ export function UserAuthProfileModal({
                   <span className="text-xs text-[var(--lm-text-secondary)]">Database Persistence</span>
                   {dataStoreStatus.loaded ? (
                     dataStoreStatus.tableExists ? (
-                      <StatusBadge variant="success" dot>Catalyst DataStore Active</StatusBadge>
+                      <StatusBadge variant="emerald" dot>Lumi DataStore Cloud Synced</StatusBadge>
                     ) : (
-                      <StatusBadge variant="warning" dot>Table &apos;Users&apos; Pending in Console</StatusBadge>
+                      <StatusBadge variant="warning" dot>Table Pending in Console</StatusBadge>
                     )
                   ) : (
                     <StatusBadge variant="neutral">Verifying DataStore...</StatusBadge>
@@ -463,7 +463,7 @@ export function UserAuthProfileModal({
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[var(--lm-text-secondary)]">Active Role Grant</span>
-                  <span className="font-mono uppercase font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
+                  <span className="font-mono uppercase font-bold text-[#059669] bg-[#059669]/10 px-2 py-0.5 rounded-md border border-[#059669]/25">
                     {authUser.role}
                   </span>
                 </div>
@@ -590,14 +590,13 @@ export function UserAuthProfileModal({
                 <div className="pt-2 flex items-center justify-between gap-2">
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="vermilion"
                     size="sm"
                     onClick={handleLogout}
-                    className="text-red-500 hover:text-red-600"
                   >
                     Sign Out
                   </Button>
-                  <Button type="submit" size="sm" loading={loading}>
+                  <Button type="submit" size="sm" variant="emerald" loading={loading}>
                     Save Profile Changes
                   </Button>
                 </div>

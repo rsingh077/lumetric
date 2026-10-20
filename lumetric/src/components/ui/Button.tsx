@@ -1,6 +1,6 @@
 import React from 'react';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'vermilion' | 'emerald';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -13,13 +13,17 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-[var(--lm-accent-primary)] text-white hover:bg-[var(--lm-accent-primary-hover)] shadow-sm hover:shadow-md border border-black/10 dark:border-white/10',
+    'bg-[#059669] text-[#FAF8F5] hover:bg-[#047857] shadow-sm hover:shadow-md border border-[#047857]/30 focus-visible:ring-2 focus-visible:ring-[#059669]',
+  emerald:
+    'bg-[#059669] text-[#FAF8F5] hover:bg-[#047857] shadow-sm hover:shadow-md border border-[#047857]/30 focus-visible:ring-2 focus-visible:ring-[#059669]',
+  vermilion:
+    'bg-[#E34234] text-[#FAF8F5] hover:bg-[#C93326] shadow-sm hover:shadow-md border border-[#C93326]/30 focus-visible:ring-2 focus-visible:ring-[#E34234]',
   secondary:
     'bg-[var(--lm-bg-secondary)] text-[var(--lm-text-primary)] border border-[var(--lm-border-default)] hover:bg-[var(--lm-bg-tertiary)] shadow-xs hover:shadow-sm',
   ghost:
     'bg-transparent text-[var(--lm-text-secondary)] hover:bg-[var(--lm-bg-secondary)] hover:text-[var(--lm-text-primary)] border border-transparent',
   danger:
-    'bg-[var(--lm-status-error)] text-white hover:opacity-90 shadow-sm border border-red-700/20',
+    'bg-[#E34234] text-[#FAF8F5] hover:bg-[#C93326] shadow-sm border border-red-700/20',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

@@ -87,7 +87,7 @@ export function MobileBottomNav() {
                 <div
                   className={`p-1 rounded-full transition-all duration-200 ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+                      ? 'bg-[#059669] text-[#FAF8F5] shadow-md shadow-[#059669]/30'
                       : 'text-[var(--lm-text-secondary)]'
                   }`}
                 >
@@ -96,7 +96,7 @@ export function MobileBottomNav() {
                 <span
                   className={`text-[9.5px] tracking-tight mt-0.5 ${
                     isActive
-                      ? 'text-blue-600 dark:text-blue-400 font-bold'
+                      ? 'text-[#059669] dark:text-[#34D399] font-bold'
                       : 'text-[var(--lm-text-tertiary)] font-medium'
                   }`}
                 >
