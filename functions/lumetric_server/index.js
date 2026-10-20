@@ -207,7 +207,7 @@ async function getUserFromStore(req, email) {
     try {
       const tableName = await resolveUserTableName(catApp);
       const safeEmail = normEmail.replace(/'/g, "''");
-      const zcqlRes = await catApp.zcql().executeZCQLExpression(
+      const zcqlRes = await catApp.zcql().executeZCQLQuery(
         `SELECT * FROM ${tableName} WHERE email = '${safeEmail}'`
       );
       if (zcqlRes && zcqlRes.length > 0) {
@@ -224,7 +224,7 @@ async function getUserFromStore(req, email) {
           mfaEnabled: u.mfaEnabled === 'true' || u.mfaEnabled === true,
           mfaSecret: u.mfaSecret || '',
           createdAt: u.CREATEDTIME || u.createdAt || new Date().toISOString(),
-          lastLoginAt: u.lastLoginAt || new Date().toISOString(),
+          lastLoginAt: u.lastLoginAt || u.lasttLoginAt || new Date().toISOString(),
           settings: typeof u.settings === 'string' ? JSON.parse(u.settings || '{}') : (u.settings || {})
         };
         memoryStore.set(normEmail, userObj);
@@ -262,6 +262,22 @@ async function checkDataStoreStatus(req) {
       cachedUserTableName = activeTable;
     }
 
+    const requiredColumns = ['email', 'passwordHash', 'name', 'role', 'organization', 'avatarUrl', 'mfaEnabled', 'mfaSecret', 'lastLoginAt', 'settings'];
+    let existingColumns = [];
+
+    if (activeTable) {
+      try {
+        const cols = await catApp.datastore().table(activeTable).getAllColumns();
+        existingColumns = (cols || []).map(c => {
+          return (c._columnDetails && c._columnDetails.column_name) || c.identifier || (c.toJSON && c.toJSON().column_name) || c.column_name || '';
+        }).filter(Boolean);
+      } catch (colErr) {
+        console.warn('Error fetching columns:', colErr.message);
+      }
+    }
+
+    const missingColumns = requiredColumns.filter(rc => !existingColumns.some(ec => ec.toLowerCase() === rc.toLowerCase()));
+
     return {
       success: true,
       connected: true,
@@ -269,10 +285,13 @@ async function checkDataStoreStatus(req) {
       activeTable: activeTable || 'Lumi',
       tables: tableNames,
       totalTables: tableNames.length,
+      existingColumns,
+      missingColumns,
+      readyForAuth: Boolean(activeTable && existingColumns.some(c => c.toLowerCase() === 'passwordhash') && existingColumns.some(c => c.toLowerCase() === 'email')),
       projectId: 'Project-Rainfall (83759000000013024)',
       requiredSchema: {
         tableName: activeTable || 'Lumi',
-        columns: ['email', 'passwordHash', 'name', 'role', 'organization', 'avatarUrl', 'mfaEnabled', 'mfaSecret', 'lastLoginAt', 'settings']
+        columns: requiredColumns
       }
     };
   } catch (err) {
@@ -301,11 +320,20 @@ async function saveUserToStore(req, user) {
       const table = catApp.datastore().table(tableName);
       let targetRowId = user.rowid;
 
+      // Inspect existing table columns to prevent rejecting unknown columns
+      let existingColNames = null;
+      try {
+        const colList = await table.getAllColumns();
+        existingColNames = new Set((colList || []).map(c => {
+          return ((c._columnDetails && c._columnDetails.column_name) || c.identifier || (c.toJSON && c.toJSON().column_name) || c.column_name || '').toLowerCase();
+        }).filter(Boolean));
+      } catch (colErr) {}
+
       // If we don't have rowid cached on the user, check if row exists in table
       if (!targetRowId && catApp.zcql) {
         try {
           const safeEmail = normEmail.replace(/'/g, "''");
-          const checkRes = await catApp.zcql().executeZCQLExpression(
+          const checkRes = await catApp.zcql().executeZCQLQuery(
             `SELECT ROWID FROM ${tableName} WHERE email = '${safeEmail}'`
           );
           if (checkRes && checkRes.length > 0) {
@@ -320,7 +348,7 @@ async function saveUserToStore(req, user) {
         }
       }
 
-      const rowData = {
+      const allRowData = {
         email: normEmail,
         passwordHash: user.passwordHash,
         name: user.name || '',
@@ -332,6 +360,16 @@ async function saveUserToStore(req, user) {
         lastLoginAt: user.lastLoginAt || new Date().toISOString(),
         settings: JSON.stringify(user.settings || {})
       };
+
+      const rowData = {};
+      for (const [key, val] of Object.entries(allRowData)) {
+        if (!existingColNames || existingColNames.has(key.toLowerCase())) {
+          rowData[key] = val;
+        }
+      }
+      if (existingColNames && existingColNames.has('lasttloginat') && !existingColNames.has('lastloginat')) {
+        rowData['lasttLoginAt'] = allRowData.lastLoginAt;
+      }
 
       if (targetRowId) {
         rowData.ROWID = targetRowId;
@@ -366,7 +404,7 @@ async function getAllUsersFromStore(req) {
   if (catApp && catApp.zcql) {
     try {
       const tableName = await resolveUserTableName(catApp);
-      const zcqlRes = await catApp.zcql().executeZCQLExpression(`SELECT * FROM ${tableName}`);
+      const zcqlRes = await catApp.zcql().executeZCQLQuery(`SELECT * FROM ${tableName}`);
       if (zcqlRes && zcqlRes.length > 0) {
         return zcqlRes.map(r => {
           const u = r[tableName] || r.Users || r.Lumi || r;
