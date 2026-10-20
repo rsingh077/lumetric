@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { StatusBadge, Button, Input } from '@/components/ui';
-import { LumetricAuthService, AuthUser } from '@/lib/auth';
+import { LumetricAuthService, AuthUser, validateEmailAuthenticity } from '@/lib/auth';
 import { useApp } from '@/contexts/AppContext';
 
 export function UserAuthProfileModal({
@@ -61,6 +61,8 @@ export function UserAuthProfileModal({
 
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const emailValidation = email.trim() ? validateEmailAuthenticity(email) : null;
 
   useEffect(() => {
     if (isOpen) {
@@ -189,6 +191,12 @@ export function UserAuthProfileModal({
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailCheck = validateEmailAuthenticity(email);
+    if (!emailCheck.valid) {
+      setFeedback({ type: 'error', message: emailCheck.message || 'Please enter a genuine, valid email address.' });
+      return;
+    }
+
     setLoading(true);
     setFeedback(null);
 
@@ -218,6 +226,12 @@ export function UserAuthProfileModal({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailCheck = validateEmailAuthenticity(email);
+    if (!emailCheck.valid) {
+      setFeedback({ type: 'error', message: emailCheck.message || 'Please enter a genuine, valid email address.' });
+      return;
+    }
+
     if (password.length < 8) {
       setFeedback({ type: 'error', message: 'Password must be at least 8 characters in length.' });
       return;
@@ -718,20 +732,36 @@ export function UserAuthProfileModal({
           {/* VIEW 5: LOGIN WITH MFA SUPPORT */}
           {mode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-3.5">
-              <Input
-                label="Email Address"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@company.com"
-              />
+              <div>
+                <Input
+                  label="Work Email Address"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (feedback) setFeedback(null);
+                  }}
+                  placeholder="name@company.com"
+                  hint={email.length === 0 ? "Genuine work or personal email required" : undefined}
+                  error={email.length > 0 && emailValidation && !emailValidation.valid ? emailValidation.message : undefined}
+                />
+                {emailValidation && emailValidation.valid && (
+                  <div className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                    <span>✓</span>
+                    <span>Domain <span className="font-mono">{emailValidation.domain}</span> verified authentic</span>
+                  </div>
+                )}
+              </div>
               <Input
                 label="Password"
                 type="password"
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (feedback) setFeedback(null);
+                }}
                 placeholder="••••••••"
               />
 
@@ -786,21 +816,44 @@ export function UserAuthProfileModal({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Rajveer Singh"
               />
-              <Input
-                label="Work Email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="rajveer@lumetric.dev"
-              />
+              <div>
+                <Input
+                  label="Work Email Address"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (feedback) setFeedback(null);
+                  }}
+                  placeholder="name@company.com"
+                  hint={email.length === 0 ? "Must be a genuine domain (e.g. name@company.com). Numeric/disposable domains rejected." : undefined}
+                  error={email.length > 0 && emailValidation && !emailValidation.valid ? emailValidation.message : undefined}
+                />
+                {emailValidation && emailValidation.valid && (
+                  <div className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                    <span>✓</span>
+                    <span>Domain <span className="font-mono">{emailValidation.domain}</span> verified authentic</span>
+                  </div>
+                )}
+              </div>
               <Input
                 label="Password"
                 type="password"
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (feedback) setFeedback(null);
+                }}
                 placeholder="At least 8 characters"
+                hint={password.length === 0 ? "Must contain >= 8 chars with a letter and a number or symbol" : undefined}
+                error={
+                  password.length > 0 &&
+                  (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password))
+                    ? "Password must be >= 8 chars and include a letter & number/symbol"
+                    : undefined
+                }
               />
               <Input
                 label="Organization"

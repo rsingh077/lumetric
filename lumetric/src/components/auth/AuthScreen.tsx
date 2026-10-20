@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { LumetricAuthService } from '@/lib/auth';
+import { LumetricAuthService, validateEmailAuthenticity } from '@/lib/auth';
 import { UserRole } from '@/types';
 
 export function AuthScreen() {
@@ -38,11 +38,32 @@ export function AuthScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Real-time Email authenticity validation
+  const isEmailTouched = email.trim().length > 0;
+  const emailValidation = isEmailTouched ? validateEmailAuthenticity(email) : null;
+
+  // Real-time Password validation state (for registration)
+  const isPasswordTouched = password.length > 0;
+  const passwordHasLength = password.length >= 8;
+  const passwordHasLetter = /[a-zA-Z]/.test(password);
+  const passwordHasNumberOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
+  const isPasswordValid = passwordHasLength && passwordHasLetter && passwordHasNumberOrSymbol;
+
+  // Google email validation
+  const isGoogleEmailTouched = googleEmail.trim().length > 0;
+  const googleEmailValidation = isGoogleEmailTouched ? validateEmailAuthenticity(googleEmail) : null;
+
   // Real Email + Password Sign In
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) {
       setErrorMessage('Please enter both your work email and password.');
+      return;
+    }
+
+    const emailCheck = validateEmailAuthenticity(email);
+    if (!emailCheck.valid) {
+      setErrorMessage(emailCheck.message || 'Please enter a genuine, valid work email address.');
       return;
     }
 
@@ -67,9 +88,16 @@ export function AuthScreen() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password || !fullName.trim()) {
-      setErrorMessage('Full name, email, and password are required.');
+      setErrorMessage('Full name, work email, and password are required.');
       return;
     }
+
+    const emailCheck = validateEmailAuthenticity(email);
+    if (!emailCheck.valid) {
+      setErrorMessage(emailCheck.message || 'Please enter a genuine, valid work email address.');
+      return;
+    }
+
     if (password.length < 8) {
       setErrorMessage('Password must be at least 8 characters in length.');
       return;
@@ -131,6 +159,13 @@ export function AuthScreen() {
       setErrorMessage('Please enter your Google / Workspace email address.');
       return;
     }
+
+    const emailCheck = validateEmailAuthenticity(googleEmail);
+    if (!emailCheck.valid) {
+      setErrorMessage(emailCheck.message || 'Please enter a genuine Google / Workspace email address.');
+      return;
+    }
+
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -155,6 +190,13 @@ export function AuthScreen() {
   const handleForgotPassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotEmail.trim()) return;
+
+    const emailCheck = validateEmailAuthenticity(forgotEmail);
+    if (!emailCheck.valid) {
+      setForgotFeedback(emailCheck.message || 'Please enter a genuine email address.');
+      return;
+    }
+
     setForgotFeedback(`Password reset link dispatched to ${forgotEmail.trim()}. If an account exists, check your inbox.`);
     setTimeout(() => {
       setShowForgotPassword(false);
@@ -289,18 +331,51 @@ export function AuthScreen() {
             )}
 
             <div>
-              <label className="block text-xs font-medium text-[#CFD8D2] mb-1">
-                Work Email Address <span className="text-[#E34234]">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-[#CFD8D2]">
+                  Work Email Address <span className="text-[#E34234]">*</span>
+                </label>
+                {emailValidation && emailValidation.valid && (
+                  <span className="text-[10px] font-mono text-[#10B981] flex items-center gap-1 font-semibold animate-in fade-in">
+                    <span>✓ Genuine Domain</span>
+                  </span>
+                )}
+              </div>
               <input
                 type="email"
                 required
                 placeholder="name@company.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errorMessage) setErrorMessage(null);
+                }}
                 style={{ fontSize: '16px' }}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0D1612] border border-[#E5D9C8]/20 text-[#FAF8F5] placeholder-[#76887E] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all"
+                className={`w-full px-3.5 py-2.5 rounded-xl bg-[#0D1612] border text-[#FAF8F5] placeholder-[#76887E] focus:outline-none transition-all ${
+                  emailValidation && !emailValidation.valid
+                    ? 'border-[#E34234]/70 focus:ring-2 focus:ring-[#E34234]'
+                    : emailValidation && emailValidation.valid
+                    ? 'border-[#059669]/70 focus:ring-2 focus:ring-[#059669]'
+                    : 'border-[#E5D9C8]/20 focus:ring-2 focus:ring-[#059669]'
+                }`}
               />
+
+              {/* Email Authenticity Warning / Success / Guidance */}
+              {emailValidation && !emailValidation.valid ? (
+                <div className="mt-1.5 p-2 rounded-xl bg-[#E34234]/15 border border-[#E34234]/35 text-[#FF8577] text-[11px] flex items-start gap-1.5 animate-in fade-in">
+                  <span className="text-[#FF5442] font-bold shrink-0">⚠️</span>
+                  <span className="flex-1 leading-snug">{emailValidation.message}</span>
+                </div>
+              ) : emailValidation && emailValidation.valid ? (
+                <div className="mt-1.5 p-1.5 px-2.5 rounded-xl bg-[#059669]/15 border border-[#059669]/30 text-[#34D399] text-[11px] flex items-center gap-1.5 animate-in fade-in">
+                  <span className="text-[#10B981] font-bold shrink-0">✓</span>
+                  <span className="flex-1 font-medium">Domain <span className="font-mono text-[#FAF8F5] font-semibold">{emailValidation.domain}</span> verified authentic</span>
+                </div>
+              ) : (
+                <p className="mt-1 text-[11px] text-[#84968C]">
+                  Must be a genuine work or personal email. Purely numeric domains (e.g. 12.com) and disposable providers are rejected.
+                </p>
+              )}
             </div>
 
             <div>
@@ -324,9 +399,18 @@ export function AuthScreen() {
                   required
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
                   style={{ fontSize: '16px' }}
-                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-[#0D1612] border border-[#E5D9C8]/20 text-[#FAF8F5] placeholder-[#76887E] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all"
+                  className={`w-full px-3.5 py-2.5 pr-10 rounded-xl bg-[#0D1612] border text-[#FAF8F5] placeholder-[#76887E] focus:outline-none transition-all ${
+                    mode === 'signup' && isPasswordTouched && !isPasswordValid
+                      ? 'border-[#E34234]/70 focus:ring-2 focus:ring-[#E34234]'
+                      : mode === 'signup' && isPasswordTouched && isPasswordValid
+                      ? 'border-[#059669]/70 focus:ring-2 focus:ring-[#059669]'
+                      : 'border-[#E5D9C8]/20 focus:ring-2 focus:ring-[#059669]'
+                  }`}
                 />
                 <button
                   type="button"
@@ -336,10 +420,30 @@ export function AuthScreen() {
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
+
+              {/* Password Complexity Warning / Success / Guidance */}
               {mode === 'signup' && (
-                <p className="mt-1 text-[11px] text-[#84968C]">
-                  Password must be at least 8 characters and include a letter and a number or symbol.
-                </p>
+                isPasswordTouched ? (
+                  !isPasswordValid ? (
+                    <div className="mt-1.5 p-2 rounded-xl bg-[#E34234]/15 border border-[#E34234]/35 text-[#FF8577] text-[11px] flex items-start gap-1.5 animate-in fade-in">
+                      <span className="text-[#FF5442] font-bold shrink-0">⚠️</span>
+                      <span className="flex-1 leading-snug">
+                        {!passwordHasLength
+                          ? 'Password must be at least 8 characters in length.'
+                          : 'Password must contain at least one letter and at least one number or special character.'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mt-1.5 p-1.5 px-2.5 rounded-xl bg-[#059669]/15 border border-[#059669]/30 text-[#34D399] text-[11px] flex items-center gap-1.5 animate-in fade-in">
+                      <span className="text-[#10B981] font-bold shrink-0">✓</span>
+                      <span className="flex-1 font-medium">Password complexity requirements satisfied</span>
+                    </div>
+                  )
+                ) : (
+                  <p className="mt-1 text-[11px] text-[#84968C]">
+                    Password must be at least 8 characters and include a letter and a number or symbol.
+                  </p>
+                )
               )}
             </div>
 
@@ -458,6 +562,12 @@ export function AuthScreen() {
                   style={{ fontSize: '16px' }}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#0D1612] border border-[#E5D9C8]/25 text-[#FAF8F5] placeholder-[#76887E] focus:outline-none focus:ring-2 focus:ring-[#059669]"
                 />
+                {googleEmailValidation && !googleEmailValidation.valid && (
+                  <div className="p-2 rounded-xl bg-[#E34234]/15 border border-[#E34234]/30 text-[#FF8577] text-[11px] flex items-center gap-1.5 animate-in fade-in">
+                    <span className="text-[#FF5442] font-bold">⚠️</span>
+                    <span className="flex-1">{googleEmailValidation.message}</span>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <button
                     type="submit"
