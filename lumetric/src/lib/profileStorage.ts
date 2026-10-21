@@ -68,16 +68,40 @@ export class ProfileStorageManager {
       console.warn('IndexedDB save warning:', err);
     }
 
-    // Secondary best-effort backup to localStorage (if within quota)
+    // Proactively purge any legacy localStorage copy to free up browser quota for session & auth tokens
     try {
       const key = this.getLegacyStorageKey(normEmail);
-      const json = JSON.stringify(payloadWithNorm);
-      if (json.length < 3000000) {
-        localStorage.setItem(key, json);
+      if (localStorage.getItem(key)) {
+        localStorage.removeItem(key);
       }
     } catch {
-      // Ignore quota errors on localStorage since IndexedDB holds authoritative data
+      // Storage operations should never crash profile save
     }
+  }
+
+  /**
+   * Purges all legacy profile database blobs from localStorage to free up the 5MB browser quota.
+   * IndexedDB is the authoritative store for all multi-megabyte datasets and profiles.
+   */
+  public static purgeLegacyLocalStorage(): number {
+    if (typeof window === 'undefined') return 0;
+    let purged = 0;
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('lumetric_profile_db_') || k.startsWith('lumetric_dataset_'))) {
+          keysToRemove.push(k);
+        }
+      }
+      for (const k of keysToRemove) {
+        localStorage.removeItem(k);
+        purged++;
+      }
+    } catch (e) {
+      console.warn('Failed to purge legacy localStorage keys:', e);
+    }
+    return purged;
   }
 
   /**
@@ -120,6 +144,10 @@ export class ProfileStorageManager {
         if (parsed && Array.isArray(parsed.datasets)) {
           // Migrate old user's work directly into IndexedDB for future large-capacity storage
           this.saveProfile(parsed).catch(() => {});
+          // Reclaim localStorage quota immediately
+          try {
+            localStorage.removeItem(legacyKey);
+          } catch {}
           return parsed;
         }
       }

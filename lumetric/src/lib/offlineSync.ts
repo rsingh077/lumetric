@@ -63,7 +63,11 @@ export class OfflineSyncManager {
 
     queue.push(action);
     if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
+      } catch (err) {
+        console.warn('offlineSync storage write warning:', err);
+      }
     }
     this.notifyListeners();
 
@@ -99,7 +103,11 @@ export class OfflineSyncManager {
     }
 
     if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(remainingQueue));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(remainingQueue));
+      } catch (err) {
+        console.warn('offlineSync storage write warning:', err);
+      }
     }
     this.notifyListeners();
 

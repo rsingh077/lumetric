@@ -487,7 +487,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setLanguage = (lang: AppLanguage) => {
     setLanguageState(lang);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('lumetric_language', lang);
+      try {
+        localStorage.setItem('lumetric_language', lang);
+      } catch {}
     }
   };
 

@@ -172,31 +172,157 @@ const TOKEN_STORAGE_KEY = 'lumetric_auth_token';
 const USER_STORAGE_KEY = 'lumetric_auth_user';
 
 export class LumetricAuthService {
+  private static inMemoryToken: string | null = null;
+  private static inMemoryUser: AuthUser | null = null;
+
+  /**
+   * Proactively purges legacy multi-megabyte datasets and profile snapshots
+   * from localStorage to protect the 5MB browser quota for authentication tokens.
+   */
+  public static pruneLocalStorageQuota(): number {
+    if (typeof window === 'undefined') return 0;
+    let pruned = 0;
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (
+          k &&
+          (k.startsWith('lumetric_profile_db_') ||
+           k.startsWith('lumetric_dataset_') ||
+           k.startsWith('lumetric_cache_') ||
+           k === 'lumetric_offline_sync_queue')
+        ) {
+          keysToRemove.push(k);
+        }
+      }
+      for (const k of keysToRemove) {
+        localStorage.removeItem(k);
+        pruned++;
+      }
+      if (pruned > 0) {
+        console.info('[LumetricAuthService] Pruned ' + pruned + ' legacy localStorage items to preserve quota.');
+      }
+    } catch (e) {
+      console.warn('[LumetricAuthService] Quota pruning warning:', e);
+    }
+    return pruned;
+  }
+
   private static getStoredToken(): string | null {
+    if (this.inMemoryToken) return this.inMemoryToken;
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem(TOKEN_STORAGE_KEY);
+
+    try {
+      const fromLocal = localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (fromLocal) {
+        this.inMemoryToken = fromLocal;
+        return fromLocal;
+      }
+    } catch {}
+
+    try {
+      const fromSession = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+      if (fromSession) {
+        this.inMemoryToken = fromSession;
+        return fromSession;
+      }
+    } catch {}
+
+    return null;
   }
 
   public static getStoredUser(): AuthUser | null {
+    if (this.inMemoryUser) return this.inMemoryUser;
     if (typeof window === 'undefined') return null;
+
     try {
       const data = localStorage.getItem(USER_STORAGE_KEY);
-      return data ? JSON.parse(data) : null;
+      if (data) {
+        const parsed = JSON.parse(data);
+        this.inMemoryUser = parsed;
+        return parsed;
+      }
+    } catch {}
+
+    try {
+      const sessData = sessionStorage.getItem(USER_STORAGE_KEY);
+      if (sessData) {
+        const parsed = JSON.parse(sessData);
+        this.inMemoryUser = parsed;
+        return parsed;
+      }
+    } catch {}
+
+    return null;
+  }
+
+  public static safeSaveUser(user: AuthUser) {
+    this.inMemoryUser = user;
+    if (typeof window === 'undefined') return;
+
+    try {
+      sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    } catch {}
+
+    try {
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
     } catch {
-      return null;
+      this.pruneLocalStorageQuota();
+      try {
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+      } catch (err) {
+        console.warn('[LumetricAuthService] safeSaveUser localStorage fallback warning:', err);
+      }
     }
   }
 
   public static setSession(token: string, user: AuthUser) {
+    this.inMemoryToken = token;
+    this.inMemoryUser = user;
+
     if (typeof window === 'undefined') return;
-    localStorage.setItem(TOKEN_STORAGE_KEY, token);
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+
+    // 1. Always mirror to sessionStorage (quota isolated from localStorage)
+    try {
+      sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
+      sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    } catch (e) {
+      console.warn('[LumetricAuthService] sessionStorage setSession warning:', e);
+    }
+
+    // 2. Persist to localStorage with automatic quota recovery
+    try {
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    } catch (err) {
+      console.warn('[LumetricAuthService] localStorage quota exceeded, pruning legacy caches and retrying...', err);
+      this.pruneLocalStorageQuota();
+
+      try {
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+      } catch (retryErr) {
+        console.error('[LumetricAuthService] Critical: localStorage full even after pruning. Continuing with active sessionStorage and in-memory session.', retryErr);
+        // Do not throw! User authentication remains active in sessionStorage & memory
+      }
+    }
   }
 
   public static clearSession() {
+    this.inMemoryToken = null;
+    this.inMemoryUser = null;
     if (typeof window === 'undefined') return;
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    localStorage.removeItem(USER_STORAGE_KEY);
+
+    try {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(USER_STORAGE_KEY);
+    } catch {}
+
+    try {
+      sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+      sessionStorage.removeItem(USER_STORAGE_KEY);
+    } catch {}
   }
 
   public static getServerUrl(): string {
@@ -442,7 +568,7 @@ export class LumetricAuthService {
       });
       const data: AuthResponse = await res.json();
       if (data.success && data.user) {
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
+        this.safeSaveUser(data.user);
       }
       return data;
     } catch (err: any) {
@@ -470,7 +596,7 @@ export class LumetricAuthService {
       });
       const data: AuthResponse = await res.json();
       if (data.success && data.user) {
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
+        this.safeSaveUser(data.user);
       }
       return data;
     } catch (err: any) {
@@ -764,3 +890,9 @@ export class LumetricAuthService {
   }
 }
 
+
+if (typeof window !== 'undefined') {
+  try {
+    LumetricAuthService.pruneLocalStorageQuota();
+  } catch {}
+}

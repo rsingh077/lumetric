@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { LumetricAuthService, validateEmailAuthenticity } from '@/lib/auth';
 import { UserRole } from '@/types';
@@ -38,6 +38,11 @@ export function AuthScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    // Proactively reclaim browser storage quota on auth mount
+    LumetricAuthService.pruneLocalStorageQuota();
+  }, []);
+
   // Real-time Email authenticity validation
   const isEmailTouched = email.trim().length > 0;
   const emailValidation = isEmailTouched ? validateEmailAuthenticity(email) : null;
@@ -71,6 +76,7 @@ export function AuthScreen() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    LumetricAuthService.pruneLocalStorageQuota();
     const cleanEmail = email.trim().toLowerCase();
     const res = await LumetricAuthService.login({ email: cleanEmail, password });
     setIsLoading(false);
@@ -117,6 +123,7 @@ export function AuthScreen() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    LumetricAuthService.pruneLocalStorageQuota();
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = fullName.trim();
     const cleanOrg = organization.trim() || 'Data Intelligence Lab';
@@ -169,6 +176,7 @@ export function AuthScreen() {
     setIsLoading(true);
     setErrorMessage(null);
 
+    LumetricAuthService.pruneLocalStorageQuota();
     const displayName = googleName.trim() || googleEmail.split('@')[0];
     const res = await LumetricAuthService.loginWithGoogle({
       email: googleEmail.trim(),
