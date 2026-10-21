@@ -809,7 +809,7 @@ function HomeView() {
 
             {/* SVG Dynamic Trend Curve */}
             <div className="w-full h-80 sm:h-96 min-h-[320px] relative mt-3">
-              <svg viewBox="0 0 700 250" className="w-full h-full overflow-visible">
+              <svg viewBox="0 0 700 250" width="100%" height="100%" data-chart="home-trend" className="w-full h-full chart-svg overflow-visible">
                 <defs>
                   <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#E34234" stopOpacity="0.35" />
@@ -906,7 +906,7 @@ function HomeView() {
             </p>
 
             <div className="flex items-center justify-center my-4">
-              <svg viewBox="0 0 100 100" className="w-56 h-56 sm:w-64 sm:h-64 transform -rotate-90">
+              <svg viewBox="0 0 100 100" width="100%" height="100%" data-chart="home-donut" className="w-56 h-56 sm:w-64 sm:h-64 chart-svg transform -rotate-90">
                 <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" className="text-[var(--lm-bg-tertiary)]" strokeWidth="12" />
                 {documentMetrics.count > 0 ? (
                   <>

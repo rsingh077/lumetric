@@ -202,17 +202,36 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Universal SVG Safeguards: Prevents SVG expanding to container width */
+/* Universal SVG Safeguards */
 svg {
   display: inline-block;
   vertical-align: middle;
-  flex-shrink: 0;
-  max-width: 100%;
 }
-svg:not([width]):not([height]) {
+/* Icon fallback: ONLY applies to bare SVGs without explicit width/height attributes or dimensional classes */
+svg:not([width]):not([height]):not(.w-full):not(.h-full):not([class*="w-"]):not([class*="h-"]):not(.chart-svg):not([data-chart]) {
   width: 1.25rem;
   height: 1.25rem;
+  flex-shrink: 0;
 }
+
+/* Explicit high-definition chart canvas utilities */
+svg.chart-svg,
+svg[data-chart],
+.chart-svg,
+svg.w-full {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex-shrink: 0;
+}
+svg.chart-svg.h-full,
+svg[data-chart].h-full,
+svg.h-full {
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+.w-full { width: 100% !important; }
+.h-full { height: 100% !important; }
 .w-2\.5 { width: 0.625rem !important; height: 0.625rem !important; }
 .w-3 { width: 0.75rem !important; height: 0.75rem !important; }
 .w-3\.5 { width: 0.875rem !important; height: 0.875rem !important; }
@@ -224,6 +243,9 @@ svg:not([width]):not([height]) {
 .w-10 { width: 2.5rem !important; height: 2.5rem !important; }
 .w-12 { width: 3rem !important; height: 3rem !important; }
 .w-16 { width: 4rem !important; height: 4rem !important; }
+.w-56 { width: 14rem !important; height: 14rem !important; }
+.w-64 { width: 16rem !important; height: 16rem !important; }
+.w-72 { width: 18rem !important; height: 18rem !important; }
 
 /* Modern Crisp Glassmorphism Surface Utility */
 .apple-glass {

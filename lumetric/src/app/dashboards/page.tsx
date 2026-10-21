@@ -108,9 +108,17 @@ export default function DashboardsPage() {
 
   const dimensionColumns = useMemo(
     () =>
-      currentDataset.columns.filter(
-        (c) => c.semanticRole === 'dimension' || c.inferredType === 'string'
-      ),
+      currentDataset.columns
+        .filter(
+          (c) => c.semanticRole === 'dimension' || c.inferredType === 'string'
+        )
+        .sort((a, b) => {
+          const aIsId = /id|key|hash|uuid|guid|record/i.test(a.name) || a.semanticRole === 'identifier';
+          const bIsId = /id|key|hash|uuid|guid|record/i.test(b.name) || b.semanticRole === 'identifier';
+          if (!aIsId && bIsId) return -1;
+          if (aIsId && !bIsId) return 1;
+          return (a.uniqueCount || 999) - (b.uniqueCount || 999);
+        }),
     [currentDataset]
   );
 
@@ -123,11 +131,11 @@ export default function DashboardsPage() {
   );
 
   // Active Field Names
-  const currentMetric = selectedMetric || numericColumns[0]?.name || 'Sales';
-  const currentSecondaryMetric = selectedSecondaryMetric || (numericColumns[1]?.name || numericColumns[0]?.name || 'Profit');
-  const currentDim = selectedDimension || dimensionColumns[0]?.name || 'Brand';
-  const currentSecondaryDim = selectedSecondaryDimension || (dimensionColumns[1]?.name || dimensionColumns[0]?.name || 'Category');
-  const currentTimeCol = temporalColumns[0]?.name || 'Period';
+  const currentMetric = selectedMetric || numericColumns[0]?.name || 'Metric';
+  const currentSecondaryMetric = selectedSecondaryMetric || (numericColumns[1]?.name || numericColumns[0]?.name || 'Secondary');
+  const currentDim = selectedDimension || dimensionColumns[0]?.name || 'Dimension';
+  const currentSecondaryDim = selectedSecondaryDimension || (dimensionColumns[1]?.name || dimensionColumns[0]?.name || 'Subdimension');
+  const currentTimeCol = temporalColumns[0]?.name || dimensionColumns[0]?.name || 'Timestamp';
 
   // Slicer: Unique Categories for Primary Dimension
   const uniqueCategories = useMemo(() => {
@@ -430,7 +438,14 @@ export default function DashboardsPage() {
   const trajectorySeries = useMemo(() => {
     if (filteredRows.length === 0) return [];
 
-    return filteredRows.map((r, i) => {
+    const total = filteredRows.length;
+    let sampled = filteredRows;
+    if (total > 60) {
+      const step = Math.ceil(total / 60);
+      sampled = filteredRows.filter((_, i) => i % step === 0);
+    }
+
+    return sampled.map((r, i) => {
       const p1 = parseFloat(r[currentMetric]) || 0;
       const p2 = parseFloat(r[currentSecondaryMetric]) || 0;
       const label = r[currentTimeCol] || r[currentDim] || `#${i + 1}`;
@@ -478,23 +493,44 @@ export default function DashboardsPage() {
     ];
 
     const sorted = Object.entries(map)
-      .map(([name, stats], idx) => ({
+      .map(([name, stats]) => ({
         name,
         sum: Math.round(stats.sum),
         secondarySum: Math.round(stats.secondarySum),
         count: stats.count,
-        mean: Math.round(stats.sum / stats.count),
+        mean: Math.round(stats.sum / (stats.count || 1)),
         share: grandSum > 0 ? (stats.sum / grandSum) * 100 : 0,
-        color: colors[idx % colors.length],
       }))
       .sort((a, b) => b.sum - a.sum);
 
+    let finalItems = sorted;
+    if (sorted.length > 6) {
+      const top5 = sorted.slice(0, 5);
+      const rest = sorted.slice(5);
+      const otherSum = rest.reduce((acc, c) => acc + c.sum, 0);
+      const otherCount = rest.reduce((acc, c) => acc + c.count, 0);
+      const otherSecondary = rest.reduce((acc, c) => acc + c.secondarySum, 0);
+      const otherShare = grandSum > 0 ? (otherSum / grandSum) * 100 : 0;
+      finalItems = [
+        ...top5,
+        {
+          name: 'Other',
+          sum: otherSum,
+          secondarySum: otherSecondary,
+          count: otherCount,
+          mean: Math.round(otherSum / (otherCount || 1)),
+          share: otherShare,
+        },
+      ];
+    }
+
     let cumulative = 0;
-    return sorted.map((item) => {
+    return finalItems.map((item, idx) => {
       const offsetPct = cumulative;
       cumulative += item.share;
       return {
         ...item,
+        color: colors[idx % colors.length],
         offsetPct,
       };
     });
@@ -1301,7 +1337,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
             {/* SVG Frequency Histogram Chart */}
             <div className="h-80 sm:h-96 min-h-[320px] w-full relative">
               {histogramDistribution.bins.length > 0 ? (
-                <svg viewBox="0 0 600 160" className="w-full h-full overflow-visible">
+                <svg viewBox="0 0 600 160" width="100%" height="100%" data-chart="histogram" className="w-full h-full chart-svg overflow-visible">
                   {/* Background grid */}
                   {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
                     const y = 140 - pct * 110;
@@ -1453,7 +1489,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
                 const area1 = `${path1} L ${pts1[pts1.length - 1].x} ${padding.top + chartH} L ${pts1[0].x} ${padding.top + chartH} Z`;
 
                 return (
-                  <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+                  <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" data-chart="trajectory" className="w-full h-full chart-svg overflow-visible">
                     <defs>
                       <linearGradient id="trajGrad1" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.4" />
@@ -1638,7 +1674,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
 
             {/* SVG Donut */}
             <div className="relative w-64 h-64 sm:w-72 sm:h-72 mx-auto my-4">
-              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90 transform">
+              <svg viewBox="0 0 100 100" width="100%" height="100%" data-chart="donut" className="w-full h-full chart-svg -rotate-90 transform">
                 {/* Background Ring */}
                 <circle cx="50" cy="50" r="38" stroke="currentColor" strokeWidth="14" fill="none" opacity="0.1" />
 
@@ -1741,7 +1777,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
 
             {/* Semi-Circle Speedometer SVG */}
             <div className="relative w-64 h-40 sm:w-72 sm:h-44 mx-auto mt-3">
-              <svg viewBox="0 0 100 60" className="w-full h-full overflow-visible">
+              <svg viewBox="0 0 100 60" width="100%" height="100%" data-chart="gauge" className="w-full h-full chart-svg overflow-visible">
                 {/* Arc 1: Red Zone (0 - 50%) */}
                 <path
                   d="M 10 50 A 40 40 0 0 1 30 18"
@@ -1900,8 +1936,8 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
             </div>
 
             {/* SVG Radar Chart */}
-            <div className="relative w-52 h-52 mx-auto my-1">
-              <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
+            <div className="relative w-64 h-64 sm:w-72 sm:h-72 mx-auto my-2">
+              <svg viewBox="0 0 100 100" width="100%" height="100%" data-chart="radar" className="w-full h-full chart-svg overflow-visible">
                 {/* Concentric Polygonal Grid Rings */}
                 {[0.2, 0.4, 0.6, 0.8, 1.0].map((ring) => {
                   const points = radarAxes.map((_, i) => {
