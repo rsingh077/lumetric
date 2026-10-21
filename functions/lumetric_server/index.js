@@ -912,40 +912,7 @@ app.post('/api/auth/login', rateLimiter({ windowMs: 5 * 60 * 1000, max: 20, mess
 // 3b. Authentication: Google OAuth / Gmail Login & Auto-Registration
 app.post('/api/auth/google', rateLimiter({ windowMs: 5 * 60 * 1000, max: 30 }), async (req, res) => {
   try {
-    let { email, name, avatarUrl, googleId, credential, accessToken } = req.body;
-
-    // Decode Google ID token (credential) if provided
-    if (credential && (!email || !name)) {
-      try {
-        const decoded = jwt.decode(credential);
-        if (decoded && decoded.email) {
-          email = email || decoded.email;
-          name = name || decoded.name;
-          avatarUrl = avatarUrl || decoded.picture;
-          googleId = googleId || decoded.sub;
-        }
-      } catch (e) {
-        console.warn('Could not decode Google ID token:', e);
-      }
-    }
-
-    // Query Google OAuth userinfo if accessToken provided
-    if (accessToken && !email && typeof fetch !== 'undefined') {
-      try {
-        const gRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        if (gRes.ok) {
-          const gData = await gRes.json();
-          email = email || gData.email;
-          name = name || gData.name;
-          avatarUrl = avatarUrl || gData.picture;
-          googleId = googleId || gData.sub;
-        }
-      } catch (e) {
-        console.warn('Could not fetch Google userinfo:', e);
-      }
-    }
+    const { email, name, avatarUrl, googleId } = req.body;
 
     if (!email) {
       return res.status(400).json({
@@ -1218,19 +1185,17 @@ async function sendRecoveryEmail(req, recipientEmail, resetOtp, userName) {
   try {
     const catApp = await initCatalystApp(req);
     if (catApp && catApp.email) {
-      const fromEmail = process.env.CATALYST_SENDER_EMAIL || process.env.SENDER_EMAIL || 'rajskatoch07@zohomail.in';
-      const mailConfig = {
+      const fromEmail = process.env.CATALYST_SENDER_EMAIL || process.env.SENDER_EMAIL || 'support@lumetric.io';
+      await catApp.email().sendMail({
         from_email: fromEmail,
         to_email: [recipientEmail],
         subject: subject,
         content: htmlContent,
         html_mode: true
-      };
-      const mailRes = await catApp.email().sendMail(mailConfig);
-      console.log('Catalyst sendMail success:', mailRes);
+      });
       deliveryResult = {
         dispatched: true,
-        channel: 'Zoho Catalyst Cloud Mail (Lumetric AI)',
+        channel: 'Zoho Catalyst Native Mail',
         details: `Dispatched to ${recipientEmail} via Catalyst Mail component`
       };
       return { success: true, ...deliveryResult, subject, html: htmlContent, text: textContent };
@@ -1287,27 +1252,6 @@ async function sendRecoveryEmail(req, recipientEmail, resetOtp, userName) {
     text: textContent
   };
 }
-
-// Diagnostic Test Route for Catalyst Native Mail
-app.get('/api/test/catalyst-mail', async (req, res) => {
-  try {
-    const catApp = await initCatalystApp(req);
-    if (!catApp || !catApp.email) {
-      return res.json({ success: false, error: 'Catalyst email component not initialized on request' });
-    }
-    const targetRecipient = req.query.to || 'rajskatoch07@zohomail.in';
-    const mailRes = await catApp.email().sendMail({
-      from_email: 'rajskatoch07@zohomail.in',
-      to_email: [targetRecipient],
-      subject: 'Lumetric Studio — Mail Test',
-      content: '<p>Hello from Lumetric Studio! Your Catalyst Mail component is fully operational.</p>',
-      html_mode: true
-    });
-    return res.json({ success: true, targetRecipient, result: mailRes });
-  } catch (err) {
-    return res.json({ success: false, error: err.message, stack: err.stack, fullError: err });
-  }
-});
 
 // 5c. Password Reset: Request 6-Digit OTP & Dispatch Recovery Email
 app.post('/api/auth/forgot-password', rateLimiter({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many password reset requests. Please wait 15 minutes.' }), async (req, res) => {

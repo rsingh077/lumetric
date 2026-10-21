@@ -337,8 +337,6 @@ export class LumetricAuthService {
     name?: string;
     avatarUrl?: string;
     googleId?: string;
-    credential?: string;
-    accessToken?: string;
   }): Promise<AuthResponse> {
     const cleanEmail = (payload.email || '').trim().toLowerCase();
     const emailCheck = validateEmailAuthenticity(cleanEmail);
@@ -378,126 +376,6 @@ export class LumetricAuthService {
           : err.message || 'Cannot reach Zoho Catalyst Cloud server for Google Auth.'
       };
     }
-  }
-
-  /**
-   * Opens the genuine Google Account Chooser popup window (centered 500x620)
-   * Listens for account selection and automatically logs in / registers with Catalyst Cloud
-   */
-  public static openGooglePopup(hintEmail?: string): Promise<AuthResponse> {
-    if (typeof window === 'undefined') {
-      return Promise.resolve({ success: false, error: 'Window environment not available.' });
-    }
-
-    return new Promise((resolve) => {
-      const width = 500;
-      const height = 620;
-      const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
-      const dualScreenTop = window.screenTop !== undefined ? window.screenTop : window.screenY;
-      const screenWidth = window.innerWidth || document.documentElement.clientWidth || screen.width;
-      const screenHeight = window.innerHeight || document.documentElement.clientHeight || screen.height;
-
-      const left = Math.max(0, Math.floor((screenWidth - width) / 2 + dualScreenLeft));
-      const top = Math.max(0, Math.floor((screenHeight - height) / 2 + dualScreenTop));
-
-      const origin = window.location.origin;
-      const isAppPath = window.location.pathname.startsWith('/app');
-      const basePath = isAppPath ? `${origin}/app` : origin;
-      const params = new URLSearchParams();
-      if (hintEmail) params.set('email', hintEmail);
-      params.set('origin', origin);
-
-      const popupUrl = `${basePath}/google-auth.html?${params.toString()}`;
-
-      let popupWindow: Window | null = null;
-      try {
-        popupWindow = window.open(
-          popupUrl,
-          'GoogleAccountChooser',
-          `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,resizable=yes,status=no,toolbar=no,menubar=no,location=no`
-        );
-      } catch (e: any) {
-        console.warn('Popup open exception:', e);
-      }
-
-      if (!popupWindow || popupWindow.closed || typeof popupWindow.closed === 'undefined') {
-        resolve({
-          success: false,
-          error: 'POPUP_BLOCKED',
-          message: 'The Google Sign-In popup was blocked by your browser. Please allow popups for this site, or use the direct link below.'
-        });
-        return;
-      }
-
-      try {
-        if (popupWindow.focus) popupWindow.focus();
-      } catch {
-        // ignore
-      }
-
-      let isResolved = false;
-
-      const cleanup = () => {
-        window.removeEventListener('message', handleMessage);
-        if (checkClosedInterval) clearInterval(checkClosedInterval);
-      };
-
-      const handleMessage = async (event: MessageEvent) => {
-        if (event.data && event.data.type === 'LUMETRIC_GOOGLE_AUTH_SUCCESS' && event.data.payload) {
-          if (isResolved) return;
-          isResolved = true;
-          cleanup();
-
-          const payload = event.data.payload;
-          try {
-            const authResult = await LumetricAuthService.loginWithGoogle(payload);
-            resolve(authResult);
-          } catch (err: any) {
-            resolve({
-              success: false,
-              error: err.message || 'Failed to authenticate Google account with Catalyst server.'
-            });
-          }
-        } else if (event.data && event.data.type === 'LUMETRIC_GOOGLE_AUTH_CANCEL') {
-          if (isResolved) return;
-          isResolved = true;
-          cleanup();
-          resolve({ success: false, error: 'WINDOW_CLOSED', message: 'Google sign-in was cancelled.' });
-        }
-      };
-
-      window.addEventListener('message', handleMessage);
-
-      const checkClosedInterval = setInterval(() => {
-        try {
-          if (popupWindow && popupWindow.closed) {
-            if (!isResolved) {
-              isResolved = true;
-              cleanup();
-              resolve({
-                success: false,
-                error: 'WINDOW_CLOSED',
-                message: 'Google Sign-In window was closed before completing authentication.'
-              });
-            }
-          }
-        } catch {
-          // ignore cross-origin errors
-        }
-      }, 700);
-
-      // Auto-timeout after 5 minutes
-      setTimeout(() => {
-        if (!isResolved) {
-          isResolved = true;
-          cleanup();
-          resolve({
-            success: false,
-            error: 'Google Sign-In session timed out. Please try again.'
-          });
-        }
-      }, 5 * 60 * 1000);
-    });
   }
 
   public static async checkDataStoreStatus(): Promise<{

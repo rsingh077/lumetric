@@ -24,9 +24,10 @@ export function AuthScreen() {
   const [rememberMe, setRememberMe] = useState(true);
   const [agreeTerms, setAgreeTerms] = useState(true);
 
-  // Google OAuth popup state
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [popupBlockedLink, setPopupBlockedLink] = useState<string | null>(null);
+  // Google quick sign in
+  const [showGoogleInput, setShowGoogleInput] = useState(false);
+  const [googleEmail, setGoogleEmail] = useState('');
+  const [googleName, setGoogleName] = useState('');
 
   // Forgot password modal
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -47,6 +48,10 @@ export function AuthScreen() {
   const passwordHasLetter = /[a-zA-Z]/.test(password);
   const passwordHasNumberOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
   const isPasswordValid = passwordHasLength && passwordHasLetter && passwordHasNumberOrSymbol;
+
+  // Google email validation
+  const isGoogleEmailTouched = googleEmail.trim().length > 0;
+  const googleEmailValidation = isGoogleEmailTouched ? validateEmailAuthenticity(googleEmail) : null;
 
   // Real Email + Password Sign In
   const handleLogin = async (e: React.FormEvent) => {
@@ -147,40 +152,37 @@ export function AuthScreen() {
     }
   };
 
-  // Google OAuth Popup Sign In
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
+  // Google / OAuth sign in
+  const handleGoogleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!googleEmail.trim()) {
+      setErrorMessage('Please enter your Google / Workspace email address.');
+      return;
+    }
+
+    const emailCheck = validateEmailAuthenticity(googleEmail);
+    if (!emailCheck.valid) {
+      setErrorMessage(emailCheck.message || 'Please enter a genuine Google / Workspace email address.');
+      return;
+    }
+
+    setIsLoading(true);
     setErrorMessage(null);
-    setSuccessMessage(null);
-    setPopupBlockedLink(null);
 
-    try {
-      const res = await LumetricAuthService.openGooglePopup(email || undefined);
-      setGoogleLoading(false);
+    const displayName = googleName.trim() || googleEmail.split('@')[0];
+    const res = await LumetricAuthService.loginWithGoogle({
+      email: googleEmail.trim(),
+      name: displayName,
+      avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(displayName)}`
+    });
 
-      if (res.error === 'POPUP_BLOCKED') {
-        const origin = window.location.origin;
-        const isAppPath = window.location.pathname.startsWith('/app');
-        const directUrl = `${origin}${isAppPath ? '/app' : ''}/google-auth.html${email ? `?email=${encodeURIComponent(email)}` : ''}`;
-        setPopupBlockedLink(directUrl);
-        setErrorMessage('Google Sign-In popup was blocked by your browser. Click the button below to launch the Google Account Chooser.');
-        return;
-      }
-
-      if (res.error === 'WINDOW_CLOSED') {
-        return;
-      }
-
-      if (res.success && res.user) {
-        setSuccessMessage(`Welcome, ${res.user.name}! Signed in via Google (${res.user.email}). Entering Studio...`);
-        setCurrentUser(res.user);
-        setIsAuthenticated(true);
-      } else {
-        setErrorMessage(res.error || 'Google authentication could not be completed.');
-      }
-    } catch (err: any) {
-      setGoogleLoading(false);
-      setErrorMessage(err.message || 'Error opening Google authentication window.');
+    setIsLoading(false);
+    if (res.success && res.user) {
+      setSuccessMessage('Google authentication validated.');
+      setCurrentUser(res.user);
+      setIsAuthenticated(true);
+    } else {
+      setErrorMessage(res.error || 'Unable to authenticate with Google. Please use standard email login.');
     }
   };
 
@@ -515,43 +517,56 @@ export function AuthScreen() {
 
           {/* Google Sign In */}
           <div className="space-y-2">
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={isLoading || googleLoading}
-              className="w-full h-11 px-4 rounded-xl bg-[#FAF8F5] hover:bg-[#F4ECE1] text-[#15221B] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-[0.99] cursor-pointer disabled:opacity-50"
-            >
-              {googleLoading ? (
-                <span className="w-4 h-4 border-2 border-[#15221B]/30 border-t-[#15221B] rounded-full animate-spin" />
-              ) : (
+            {!showGoogleInput ? (
+              <button
+                type="button"
+                onClick={() => setShowGoogleInput(true)}
+                disabled={isLoading}
+                className="w-full h-11 px-4 rounded-xl bg-[#FAF8F5] hover:bg-[#F4ECE1] text-[#15221B] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-[0.99] cursor-pointer disabled:opacity-50"
+              >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
                   <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/>
                   <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
                   <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
                 </svg>
-              )}
-              <span>{googleLoading ? 'Opening Google Account Chooser...' : 'Continue with Google'}</span>
-            </button>
-
-            {popupBlockedLink && (
-              <div className="p-3 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-xs text-amber-200 flex flex-col gap-2">
-                <div className="font-semibold flex items-center gap-1.5">
-                  <span>⚠️</span>
-                  <span>Popup Blocked by Browser</span>
+                <span>Continue with Google</span>
+              </button>
+            ) : (
+              <form onSubmit={handleGoogleSubmit} className="space-y-2 p-3 bg-[#0A110E] border border-[#E5D9C8]/15 rounded-2xl animate-in fade-in">
+                <span className="text-xs font-semibold text-[#FAF8F5] block">Google / Gmail Account</span>
+                <input
+                  type="email"
+                  required
+                  placeholder="name@gmail.com"
+                  value={googleEmail}
+                  onChange={(e) => setGoogleEmail(e.target.value)}
+                  style={{ fontSize: '16px' }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#0D1612] border border-[#E5D9C8]/25 text-[#FAF8F5] placeholder-[#76887E] focus:outline-none focus:ring-2 focus:ring-[#059669]"
+                />
+                {googleEmailValidation && !googleEmailValidation.valid && (
+                  <div className="p-2 rounded-xl bg-[#E34234]/15 border border-[#E34234]/30 text-[#FF8577] text-[11px] flex items-center gap-1.5 animate-in fade-in">
+                    <span className="text-[#FF5442] font-bold">⚠️</span>
+                    <span className="flex-1">{googleEmailValidation.message}</span>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="flex-1 py-2 rounded-xl bg-[#059669] hover:bg-[#047857] font-bold text-xs text-[#FAF8F5] cursor-pointer disabled:opacity-50"
+                  >
+                    Authenticate Account
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowGoogleInput(false)}
+                    className="px-3 py-2 rounded-xl bg-[#131F19] text-xs text-[#CFD8D2] hover:text-[#FAF8F5] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
                 </div>
-                <p className="text-[11px] text-amber-300 leading-relaxed">
-                  Your browser prevented the Google Sign-In popup from opening automatically. Click the button below to launch it:
-                </p>
-                <a
-                  href={popupBlockedLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-amber-600 text-white font-medium rounded-xl text-xs hover:bg-amber-700 transition-colors w-fit shadow-xs"
-                >
-                  <span>Open Google Account Window ↗</span>
-                </a>
-              </div>
+              </form>
             )}
           </div>
 
