@@ -571,7 +571,20 @@ export class LumetricAuthService {
     }
   }
 
-  public static async requestPasswordReset(email: string): Promise<{ success: boolean; message?: string; resetOtp?: string; error?: string }> {
+  public static async requestPasswordReset(email: string): Promise<{
+    success: boolean;
+    message?: string;
+    resetOtp?: string;
+    emailDispatched?: boolean;
+    deliveryChannel?: string;
+    recipient?: string;
+    emailPreview?: {
+      subject: string;
+      html: string;
+      text: string;
+    };
+    error?: string;
+  }> {
     const cleanEmail = (email || '').trim().toLowerCase();
     const emailCheck = validateEmailAuthenticity(cleanEmail);
     if (!emailCheck.valid) {

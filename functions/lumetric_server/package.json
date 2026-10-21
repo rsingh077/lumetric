@@ -8,6 +8,7 @@
 		"cors": "^2.8.5",
 		"express": "^4.18.2",
 		"jsonwebtoken": "^9.0.2",
+		"nodemailer": "^10.1.7",
 		"otplib": "^12.0.1",
 		"qrcode": "^1.5.4",
 		"zcatalyst-sdk-node": "^3.4.0"

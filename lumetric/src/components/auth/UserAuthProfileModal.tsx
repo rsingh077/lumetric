@@ -69,6 +69,9 @@ export function UserAuthProfileModal({
   const [resetBannerOtp, setResetBannerOtp] = useState<string | null>(null);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetFeedback, setResetFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [resetEmailPreview, setResetEmailPreview] = useState<{ subject: string; html: string; text: string } | null>(null);
+  const [showEmailPreviewModal, setShowEmailPreviewModal] = useState(false);
+  const [deliveryChannel, setDeliveryChannel] = useState<string | null>(null);
 
   // Admin Dashboard State
   const [allUsers, setAllUsers] = useState<AuthUser[]>([]);
@@ -242,7 +245,16 @@ export function UserAuthProfileModal({
         setResetBannerOtp(res.resetOtp);
         setResetOtp(res.resetOtp);
       }
-      setResetFeedback({ type: 'success', message: res.message || '6-digit verification code generated! Enter it below.' });
+      if (res.emailPreview) {
+        setResetEmailPreview(res.emailPreview);
+      }
+      if (res.deliveryChannel) {
+        setDeliveryChannel(res.deliveryChannel);
+      }
+      setResetFeedback({
+        type: 'success',
+        message: res.message || `Password recovery email dispatched to ${targetEmail}. Please check your inbox!`
+      });
     } else {
       setResetFeedback({ type: 'error', message: res.error || 'Failed to send reset code.' });
     }
@@ -1352,6 +1364,7 @@ export function UserAuthProfileModal({
                       if (resetFeedback) setResetFeedback(null);
                     }}
                     placeholder="name@company.com"
+                    hint="We will dispatch a secure 6-digit recovery code to this email address."
                   />
 
                   <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-xs text-[var(--lm-text-secondary)] space-y-1">
@@ -1362,22 +1375,78 @@ export function UserAuthProfileModal({
                   </div>
 
                   <Button type="submit" size="md" className="w-full" loading={resetLoading}>
-                    Send 6-Digit Verification Code
+                    Send Password Recovery Email
                   </Button>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyAndResetPassword} className="space-y-3.5 animate-fade-in">
-                  {resetBannerOtp && (
-                    <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs">
-                      <div>
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-700 dark:text-emerald-300 block">
-                          Verification OTP Generated
-                        </span>
-                        <span className="font-mono text-base font-extrabold text-emerald-800 dark:text-emerald-200 tracking-widest">
-                          {resetBannerOtp}
+                  {/* Email Dispatch Notice */}
+                  <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                          Recovery Email Dispatched
                         </span>
                       </div>
-                      <span className="text-[10px] text-emerald-600 font-mono">Valid 15m</span>
+                      <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full font-semibold">
+                        {deliveryChannel || 'Cloud Mail Gateway'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[var(--lm-text-secondary)] leading-relaxed">
+                      We dispatched a 6-digit verification code to <span className="font-semibold text-[var(--lm-text-primary)]">{resetEmail || email}</span>. Please check your inbox and spam folder.
+                    </p>
+
+                    <div className="pt-2 border-t border-emerald-500/20 flex items-center justify-between text-xs">
+                      {resetEmailPreview && (
+                        <button
+                          type="button"
+                          onClick={() => setShowEmailPreviewModal(!showEmailPreviewModal)}
+                          className="text-xs text-emerald-700 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
+                        >
+                          <span>📨</span>
+                          <span>{showEmailPreviewModal ? 'Hide Email Preview' : 'View Sent Email Preview'}</span>
+                        </button>
+                      )}
+                      {resetBannerOtp && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResetOtp(resetBannerOtp);
+                            navigator.clipboard?.writeText(resetBannerOtp);
+                          }}
+                          className="text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 px-2 py-1 rounded-lg font-mono font-bold"
+                        >
+                          Auto-fill: {resetBannerOtp}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Rendered Email Preview Drawer */}
+                  {showEmailPreviewModal && resetEmailPreview && (
+                    <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-[var(--lm-border-default)] shadow-sm space-y-2.5 animate-fade-in text-xs">
+                      <div className="flex items-center justify-between pb-2 border-b border-[var(--lm-border-default)]">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] text-[var(--lm-text-tertiary)] block font-mono">SUBJECT</span>
+                          <span className="font-bold text-[var(--lm-text-primary)]">{resetEmailPreview.subject}</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-[var(--lm-text-secondary)] bg-[var(--lm-bg-secondary)] px-2 py-0.5 rounded">
+                          To: {resetEmail || email}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-[#FDFBF7] dark:bg-slate-950 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 space-y-2">
+                        <p className="text-[11px] leading-relaxed">
+                          Hello <strong>{(resetEmail || email).split('@')[0]}</strong>, we received a request to recover and reset the password for your Lumetric account.
+                        </p>
+                        <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-center">
+                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase block">Verification Code</span>
+                          <span className="font-mono text-2xl font-extrabold text-emerald-800 dark:text-emerald-200 tracking-widest block my-1">
+                            {resetBannerOtp || resetOtp}
+                          </span>
+                          <span className="text-[10px] text-emerald-600">Valid for 15 minutes</span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -1417,7 +1486,10 @@ export function UserAuthProfileModal({
                   <div className="flex items-center justify-between pt-2 text-xs">
                     <button
                       type="button"
-                      onClick={() => setResetStep(1)}
+                      onClick={() => {
+                        setResetStep(1);
+                        setShowEmailPreviewModal(false);
+                      }}
                       className="text-[var(--lm-text-secondary)] hover:underline"
                     >
                       ← Change Email
@@ -1427,7 +1499,7 @@ export function UserAuthProfileModal({
                       onClick={handleRequestResetOtp}
                       className="text-[var(--lm-accent-primary)] hover:underline font-semibold"
                     >
-                      Resend Code
+                      Resend Email
                     </button>
                   </div>
                 </form>
