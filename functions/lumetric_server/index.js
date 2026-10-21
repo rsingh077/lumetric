@@ -11,7 +11,8 @@ const catalyst = require('zcatalyst-sdk-node');
 const app = express();
 
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Handle Zoho Catalyst gateway path prefix if present
 app.use((req, res, next) => {
@@ -478,6 +479,21 @@ async function saveUserToStore(req, user) {
         }
       }
 
+      // Safely serialize user settings to prevent DataStore column length overflow
+      let serializedSettings = JSON.stringify(user.settings || {});
+      if (serializedSettings.length > 55000 && user.settings && user.settings.workspaceData) {
+        const ws = user.settings.workspaceData;
+        const compactWorkspace = {
+          ...ws,
+          // Keep dataset definitions, column profiles, and sample preview rows
+          datasetRows: Object.fromEntries(
+            Object.entries(ws.datasetRows || {}).map(([dsId, rows]) => [dsId, (rows || []).slice(0, 100)])
+          ),
+          fullRowsStoredInClientDB: true
+        };
+        serializedSettings = JSON.stringify({ ...user.settings, workspaceData: compactWorkspace });
+      }
+
       const allRowData = {
         email: normEmail,
         passwordHash: user.passwordHash,
@@ -488,7 +504,7 @@ async function saveUserToStore(req, user) {
         mfaEnabled: user.mfaEnabled ? 'true' : 'false',
         mfaSecret: user.mfaSecret || '',
         lastLoginAt: user.lastLoginAt || new Date().toISOString(),
-        settings: JSON.stringify(user.settings || {})
+        settings: serializedSettings
       };
 
       const rowData = {};
@@ -501,19 +517,41 @@ async function saveUserToStore(req, user) {
         rowData['lasttLoginAt'] = allRowData.lastLoginAt;
       }
 
-      if (targetRowId) {
-        rowData.ROWID = targetRowId;
-        const updateRes = await table.updateRow(rowData);
-        if (updateRes && (updateRes.ROWID || updateRes[tableName]?.ROWID)) {
-          user.rowid = String(updateRes.ROWID || updateRes[tableName]?.ROWID);
+      try {
+        if (targetRowId) {
+          rowData.ROWID = targetRowId;
+          const updateRes = await table.updateRow(rowData);
+          if (updateRes && (updateRes.ROWID || updateRes[tableName]?.ROWID)) {
+            user.rowid = String(updateRes.ROWID || updateRes[tableName]?.ROWID);
+          }
+          dataStorePersisted = true;
+        } else {
+          const insertRes = await table.insertRow(rowData);
+          if (insertRes && (insertRes.ROWID || insertRes[tableName]?.ROWID)) {
+            user.rowid = String(insertRes.ROWID || insertRes[tableName]?.ROWID);
+          }
+          dataStorePersisted = true;
         }
-        dataStorePersisted = true;
-      } else {
-        const insertRes = await table.insertRow(rowData);
-        if (insertRes && (insertRes.ROWID || insertRes[tableName]?.ROWID)) {
-          user.rowid = String(insertRes.ROWID || insertRes[tableName]?.ROWID);
+      } catch (writeErr) {
+        // Fallback retry with lightweight workspace settings if length exceeded
+        if (rowData.settings && rowData.settings.length > 5000) {
+          const minimalSettings = { ...user.settings };
+          if (minimalSettings.workspaceData) {
+            minimalSettings.workspaceData = {
+              ...minimalSettings.workspaceData,
+              datasetRows: {}
+            };
+          }
+          rowData.settings = JSON.stringify(minimalSettings);
+          if (targetRowId) {
+            await table.updateRow(rowData);
+          } else {
+            await table.insertRow(rowData);
+          }
+          dataStorePersisted = true;
+        } else {
+          throw writeErr;
         }
-        dataStorePersisted = true;
       }
     } catch (dbErr) {
       dataStoreError = dbErr.message;

@@ -14,6 +14,7 @@ import {
   UserProfileDatabase,
 } from '@/types';
 import { LumetricAuthService } from '@/lib/auth';
+import { ProfileStorageManager } from '@/lib/profileStorage';
 
 interface NotificationItem {
   id: string;
@@ -650,10 +651,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       dbPayload.storageFootprintBytes = approxBytes;
       setStorageFootprintBytes(approxBytes);
 
-      const key = getUserStorageKey(currentUser.email);
-      localStorage.setItem(key, JSON.stringify(dbPayload));
+      // 1. High-capacity, zero-latency persistence in IndexedDB (>500MB capacity)
+      ProfileStorageManager.saveProfile(dbPayload).catch((err) => {
+        console.warn('Profile vault save error:', err);
+      });
 
-      // Background cloud sync to Zoho Catalyst DataStore
+      // 2. Background cloud sync to Zoho Catalyst DataStore
       LumetricAuthService.saveWorkspaceData(dbPayload).catch(() => {});
     } catch (e) {
       console.warn('Failed to persist profile db:', e);
@@ -678,35 +681,59 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const key = getUserStorageKey(currentUser.email);
-    const localSaved = localStorage.getItem(key);
+    let isMounted = true;
 
-    if (localSaved) {
-      try {
-        const db: UserProfileDatabase = JSON.parse(localSaved);
-        applyProfileDatabase(db);
+    async function loadAndSyncProfile() {
+      // 1. Check local high-capacity vault (IndexedDB, with automatic backward-compatibility migration for existing users)
+      const localVaultDb = await ProfileStorageManager.loadProfile(currentUser.email);
+      if (!isMounted) return;
+
+      if (localVaultDb && Array.isArray(localVaultDb.datasets)) {
+        applyProfileDatabase(localVaultDb);
+
+        // Reconcile in the background with Zoho Catalyst DataStore
+        LumetricAuthService.fetchWorkspaceData().then((res) => {
+          if (!isMounted) return;
+          if (res.success && res.workspaceData && Array.isArray(res.workspaceData.datasets)) {
+            if (res.workspaceData.lastSyncedAt && localVaultDb.lastSyncedAt) {
+              if (new Date(res.workspaceData.lastSyncedAt).getTime() > new Date(localVaultDb.lastSyncedAt).getTime()) {
+                applyProfileDatabase(res.workspaceData);
+                ProfileStorageManager.saveProfile(res.workspaceData).catch(() => {});
+              }
+            }
+          }
+        }).catch(() => {});
         return;
-      } catch (err) {
-        console.warn('Failed to parse local profile db:', err);
       }
-    }
 
-    // Attempt cloud workspace sync from Zoho Catalyst DataStore
-    LumetricAuthService.fetchWorkspaceData().then((res) => {
-      if (res.success && res.workspaceData && Array.isArray(res.workspaceData.datasets)) {
-        applyProfileDatabase(res.workspaceData);
-        localStorage.setItem(key, JSON.stringify(res.workspaceData));
-      } else {
-        // Brand-new profile: initialize clean, spotless individual workspace
-        const cleanDb = createCleanProfileDatabase(currentUser.id, currentUser.email);
-        applyProfileDatabase(cleanDb);
-        localStorage.setItem(key, JSON.stringify(cleanDb));
+      // 2. Cloud workspace fetch from Zoho Catalyst DataStore
+      try {
+        const res = await LumetricAuthService.fetchWorkspaceData();
+        if (!isMounted) return;
+
+        if (res.success && res.workspaceData && Array.isArray(res.workspaceData.datasets)) {
+          applyProfileDatabase(res.workspaceData);
+          await ProfileStorageManager.saveProfile(res.workspaceData);
+          return;
+        }
+      } catch (err) {
+        console.warn('Catalyst workspace fetch error:', err);
       }
-    }).catch(() => {
+
+      if (!isMounted) return;
+
+      // 3. Brand-new profile: initialize clean, spotless individual workspace
       const cleanDb = createCleanProfileDatabase(currentUser.id, currentUser.email);
       applyProfileDatabase(cleanDb);
-      localStorage.setItem(key, JSON.stringify(cleanDb));
-    });
+      await ProfileStorageManager.saveProfile(cleanDb);
+      LumetricAuthService.saveWorkspaceData(cleanDb).catch(() => {});
+    }
+
+    loadAndSyncProfile();
+
+    return () => {
+      isMounted = false;
+    };
   }, [currentUser.email]);
 
   // Load Sample Benchmark Data into THIS user's personal profile
@@ -714,8 +741,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!currentUser.email) return;
     const sampleDb = createSampleProfileDatabase(currentUser.id, currentUser.email);
     applyProfileDatabase(sampleDb);
-    const key = getUserStorageKey(currentUser.email);
-    localStorage.setItem(key, JSON.stringify(sampleDb));
+    ProfileStorageManager.saveProfile(sampleDb).catch(() => {});
     LumetricAuthService.saveWorkspaceData(sampleDb).catch(() => {});
   };
 
@@ -724,8 +750,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!currentUser.email) return;
     const cleanDb = createCleanProfileDatabase(currentUser.id, currentUser.email);
     applyProfileDatabase(cleanDb);
-    const key = getUserStorageKey(currentUser.email);
-    localStorage.setItem(key, JSON.stringify(cleanDb));
+    ProfileStorageManager.saveProfile(cleanDb).catch(() => {});
     LumetricAuthService.saveWorkspaceData(cleanDb).catch(() => {});
   };
 

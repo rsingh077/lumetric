@@ -664,9 +664,9 @@ export function UserAuthProfileModal({
                 </p>
                 <div className="pt-2 border-t border-[var(--lm-border-default)]/60 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                   <div>
-                    <span className="text-[10px] text-[var(--lm-text-tertiary)] block">Storage Key</span>
+                    <span className="text-[10px] text-[var(--lm-text-tertiary)] block">Storage Engine</span>
                     <span className="font-mono text-[11px] text-[var(--lm-text-primary)] font-semibold truncate block">
-                      lumetric_profile_db_{(authUser.email || 'guest').split('@')[0]}
+                      IndexedDB & Catalyst
                     </span>
                   </div>
                   <div>
