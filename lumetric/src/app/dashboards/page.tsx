@@ -49,6 +49,7 @@ export default function DashboardsPage() {
   const [hoveredPoint, setHoveredPoint] = useState<{ label: string; primary: number; secondary: number; idx: number } | null>(null);
   const [hoveredDonutSegment, setHoveredDonutSegment] = useState<string | null>(null);
   const [inspectedRow, setInspectedRow] = useState<Record<string, string> | null>(null);
+  const [trajectorySmoothMode, setTrajectorySmoothMode] = useState<'smoothed' | 'discrete'>('smoothed');
   const [exportNotice, setExportNotice] = useState<string | null>(null);
 
   // Table Sorting & Pagination State
@@ -440,15 +441,29 @@ export default function DashboardsPage() {
 
     const total = filteredRows.length;
     let sampled = filteredRows;
-    if (total > 60) {
-      const step = Math.ceil(total / 60);
-      sampled = filteredRows.filter((_, i) => i % step === 0);
+    // Balanced point density: 24 to 45 points for smooth curve geometry
+    const targetPoints = Math.min(Math.max(total, 12), 40);
+    if (total > targetPoints) {
+      const step = total / targetPoints;
+      sampled = [];
+      for (let i = 0; i < targetPoints; i++) {
+        const idx = Math.min(Math.floor(i * step), total - 1);
+        sampled.push(filteredRows[idx]);
+      }
     }
+
+    const hasTemporal = temporalColumns.some((c) => c.name === currentTimeCol);
 
     return sampled.map((r, i) => {
       const p1 = parseFloat(r[currentMetric]) || 0;
       const p2 = parseFloat(r[currentSecondaryMetric]) || 0;
-      const label = r[currentTimeCol] || r[currentDim] || `#${i + 1}`;
+      let label: string;
+      if (hasTemporal && r[currentTimeCol]) {
+        label = String(r[currentTimeCol]);
+      } else {
+        const cat = r[currentDim];
+        label = cat && cat.length > 2 ? `${cat} #${i + 1}` : `Pt #${i + 1}`;
+      }
       return {
         label,
         primary: p1,
@@ -457,7 +472,7 @@ export default function DashboardsPage() {
         row: r,
       };
     });
-  }, [filteredRows, currentMetric, currentSecondaryMetric, currentTimeCol, currentDim]);
+  }, [filteredRows, currentMetric, currentSecondaryMetric, currentTimeCol, currentDim, temporalColumns]);
 
   // 3. Category Breakdown for Donut & Bar Charts
   const categoryBreakdown = useMemo(() => {
@@ -1423,8 +1438,8 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
       {/* 4. HERO ANALYTICAL CANVAS (3 Widgets: Dual Trend Bézier, Category Donut, Speedometer Gauge) */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
         {/* Widget 1: Dual-Series Trajectory Bézier + Volume Combo Chart */}
-        <div className="lg:col-span-6 rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] relative">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--lm-border-default)]">
+        <div className="lg:col-span-6 rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] relative flex flex-col justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-[var(--lm-border-default)]">
             <div>
               <h2 className="text-sm font-bold text-[var(--lm-text-primary)] tracking-tight flex items-center gap-2">
                 <TrendingUpIcon className="w-4 h-4 text-blue-500" />
@@ -1434,15 +1449,44 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
                 Smooth Bézier trend trajectory with underlying volume bars and interactive hover scrubber
               </p>
             </div>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="flex items-center gap-1.5 font-semibold text-blue-500 text-[11px]">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
-                {currentMetric}
-              </span>
-              <span className="flex items-center gap-1.5 font-semibold text-emerald-500 text-[11px]">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-                {currentSecondaryMetric}
-              </span>
+            <div className="flex items-center gap-3">
+              {/* Smoothing Mode Toggle */}
+              <div className="flex items-center gap-1 p-0.5 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)]">
+                <button
+                  type="button"
+                  onClick={() => setTrajectorySmoothMode('smoothed')}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all ${
+                    trajectorySmoothMode === 'smoothed'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-[var(--lm-text-tertiary)] hover:text-[var(--lm-text-primary)]'
+                  }`}
+                >
+                  Smooth Bézier
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrajectorySmoothMode('discrete')}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all ${
+                    trajectorySmoothMode === 'discrete'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-[var(--lm-text-tertiary)] hover:text-[var(--lm-text-primary)]'
+                  }`}
+                >
+                  Raw Sample
+                </button>
+              </div>
+
+              {/* Legends */}
+              <div className="flex items-center gap-2.5 text-xs">
+                <span className="flex items-center gap-1.5 font-semibold text-blue-500 text-[11px]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block shadow-xs shadow-blue-500/40" />
+                  {currentMetric}
+                </span>
+                <span className="flex items-center gap-1.5 font-semibold text-emerald-500 text-[11px]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shadow-xs shadow-emerald-500/40" />
+                  {currentSecondaryMetric}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -1450,54 +1494,167 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
           <div className="h-80 sm:h-96 min-h-[340px] w-full relative">
             {trajectorySeries.length > 0 ? (
               (() => {
-                const maxVal = Math.max(
-                  ...trajectorySeries.map((d) => Math.max(d.primary, d.secondary)),
-                  100
+                // Dynamically fit Y-axis to actual data (no artificial 100 ceiling)
+                const rawMax = Math.max(
+                  ...trajectorySeries.map((d) => Math.max(d.primary, d.secondary, 0)),
+                  1
                 );
-                const width = 800;
-                const height = 300;
-                const padding = { top: 25, right: 25, bottom: 40, left: 55 };
+
+                // Add 15% headroom above peak so curves utilize 85% of vertical space gracefully
+                const headroomMax = rawMax * 1.15;
+
+                // Compute clean, round step intervals
+                let tickStep = 1;
+                if (headroomMax <= 5) tickStep = 1;
+                else if (headroomMax <= 12) tickStep = 2.5;
+                else if (headroomMax <= 25) tickStep = 5;
+                else if (headroomMax <= 60) tickStep = 10;
+                else if (headroomMax <= 120) tickStep = 20;
+                else if (headroomMax <= 250) tickStep = 50;
+                else if (headroomMax <= 600) tickStep = 100;
+                else if (headroomMax <= 1500) tickStep = 250;
+                else if (headroomMax <= 3000) tickStep = 500;
+                else if (headroomMax <= 10000) tickStep = 1000;
+                else {
+                  const p = Math.pow(10, Math.floor(Math.log10(headroomMax)));
+                  tickStep = p * (headroomMax / p > 5 ? 1 : headroomMax / p > 2 ? 0.5 : 0.2);
+                }
+
+                const numTicks = 4;
+                const maxVal = Math.max(Math.ceil(headroomMax / (tickStep * numTicks)) * (tickStep * numTicks), tickStep * numTicks);
+
+                const width = 840;
+                const height = 340;
+                const padding = { top: 20, right: 25, bottom: 42, left: 52 };
                 const chartW = width - padding.left - padding.right;
                 const chartH = height - padding.top - padding.bottom;
                 const step = chartW / Math.max(trajectorySeries.length - 1, 1);
 
-                // Compute Bézier Points
+                // Apply weighted moving-average smoothing when in 'smoothed' mode
+                const smoothedPrimary = trajectorySeries.map((d, i, arr) => {
+                  if (trajectorySmoothMode === 'discrete' || arr.length < 3) return d.primary;
+                  const prev = i > 0 ? arr[i - 1].primary : d.primary;
+                  const next = i < arr.length - 1 ? arr[i + 1].primary : d.primary;
+                  return prev * 0.22 + d.primary * 0.56 + next * 0.22;
+                });
+
+                const smoothedSecondary = trajectorySeries.map((d, i, arr) => {
+                  if (trajectorySmoothMode === 'discrete' || arr.length < 3) return d.secondary;
+                  const prev = i > 0 ? arr[i - 1].secondary : d.secondary;
+                  const next = i < arr.length - 1 ? arr[i + 1].secondary : d.secondary;
+                  return prev * 0.22 + d.secondary * 0.56 + next * 0.22;
+                });
+
+                // Compute SVG Coordinate Points
                 const pts1 = trajectorySeries.map((d, i) => ({
                   x: padding.left + i * step,
-                  y: padding.top + chartH - (d.primary / maxVal) * chartH,
+                  y: padding.top + chartH - (Math.max(0, smoothedPrimary[i]) / maxVal) * chartH,
+                  rawY: padding.top + chartH - (Math.max(0, d.primary) / maxVal) * chartH,
                 }));
 
                 const pts2 = trajectorySeries.map((d, i) => ({
                   x: padding.left + i * step,
-                  y: padding.top + chartH - (d.secondary / maxVal) * chartH,
+                  y: padding.top + chartH - (Math.max(0, smoothedSecondary[i]) / maxVal) * chartH,
+                  rawY: padding.top + chartH - (Math.max(0, d.secondary) / maxVal) * chartH,
                 }));
 
-                const makeSmoothPath = (pts: { x: number; y: number }[]) => {
+                // Catmull-Rom to Cubic Bézier Spline (C1 continuous tangents)
+                const makeSmoothPath = (pts: { x: number; y: number }[], tension = 0.35) => {
                   if (pts.length === 0) return '';
-                  let d = `M ${pts[0].x} ${pts[0].y}`;
+                  if (pts.length === 1) return `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+                  if (pts.length === 2) return `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)} L ${pts[1].x.toFixed(1)} ${pts[1].y.toFixed(1)}`;
+
+                  let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
                   for (let i = 0; i < pts.length - 1; i++) {
-                    const curr = pts[i];
-                    const next = pts[i + 1];
-                    const cpX = (curr.x + next.x) / 2;
-                    d += ` C ${cpX} ${curr.y}, ${cpX} ${next.y}, ${next.x} ${next.y}`;
+                    const p0 = i > 0 ? pts[i - 1] : pts[i];
+                    const p1 = pts[i];
+                    const p2 = pts[i + 1];
+                    const p3 = i < pts.length - 2 ? pts[i + 2] : p2;
+
+                    const cp1x = p1.x + (p2.x - p0.x) * tension;
+                    const cp1y = p1.y + (p2.y - p0.y) * tension;
+                    const cp2x = p2.x - (p3.x - p1.x) * tension;
+                    const cp2y = p2.y - (p3.y - p1.y) * tension;
+
+                    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
                   }
                   return d;
                 };
 
                 const path1 = makeSmoothPath(pts1);
                 const path2 = makeSmoothPath(pts2);
-                const area1 = `${path1} L ${pts1[pts1.length - 1].x} ${padding.top + chartH} L ${pts1[0].x} ${padding.top + chartH} Z`;
+                const area1 = pts1.length > 0
+                  ? `${path1} L ${pts1[pts1.length - 1].x.toFixed(1)} ${(padding.top + chartH).toFixed(1)} L ${pts1[0].x.toFixed(1)} ${(padding.top + chartH).toFixed(1)} Z`
+                  : '';
 
                 return (
-                  <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" data-chart="trajectory" className="w-full h-full chart-svg overflow-visible">
+                  <svg
+                    viewBox={`0 0 ${width} ${height}`}
+                    width="100%"
+                    height="100%"
+                    data-chart="trajectory"
+                    className="w-full h-full chart-svg select-none overflow-visible"
+                    onMouseMove={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const clientX = e.clientX - rect.left;
+                      const svgX = (clientX / rect.width) * width;
+                      if (svgX < padding.left || svgX > width - padding.right) {
+                        setHoveredPoint(null);
+                        return;
+                      }
+                      const relX = svgX - padding.left;
+                      const nearestIdx = Math.max(0, Math.min(trajectorySeries.length - 1, Math.round(relX / step)));
+                      const d = trajectorySeries[nearestIdx];
+                      if (d) {
+                        setHoveredPoint({
+                          label: d.label,
+                          primary: d.primary,
+                          secondary: d.secondary,
+                          idx: nearestIdx,
+                        });
+                      }
+                    }}
+                    onMouseLeave={() => setHoveredPoint(null)}
+                  >
                     <defs>
-                      <linearGradient id="trajGrad1" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.4" />
+                      <linearGradient id="trajGradPrimary" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.38" />
+                        <stop offset="70%" stopColor="#3B82F6" stopOpacity="0.08" />
                         <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
                       </linearGradient>
+                      <filter id="glowBlue" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#3B82F6" floodOpacity="0.35" />
+                      </filter>
+                      <filter id="glowEmerald" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#10B981" floodOpacity="0.35" />
+                      </filter>
                     </defs>
 
-                    {/* Grid lines */}
+                    <style>{`
+                      @keyframes trajDrawLine {
+                        from { stroke-dashoffset: 3500; }
+                        to { stroke-dashoffset: 0; }
+                      }
+                      @keyframes trajFadeArea {
+                        0% { opacity: 0; transform: translateY(4px); }
+                        100% { opacity: 1; transform: translateY(0); }
+                      }
+                      .traj-path-primary {
+                        stroke-dasharray: 3500;
+                        stroke-dashoffset: 3500;
+                        animation: trajDrawLine 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                      }
+                      .traj-path-secondary {
+                        stroke-dasharray: 3500;
+                        stroke-dashoffset: 3500;
+                        animation: trajDrawLine 1.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+                      }
+                      .traj-area-fill {
+                        animation: trajFadeArea 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                      }
+                    `}</style>
+
+                    {/* Horizontal Grid lines & Dynamic Y-axis labels */}
                     {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
                       const y = padding.top + chartH * (1 - pct);
                       return (
@@ -1508,16 +1665,17 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
                             x2={width - padding.right}
                             y2={y}
                             stroke="currentColor"
-                            strokeOpacity="0.1"
+                            strokeOpacity="0.12"
                             strokeDasharray="4 4"
                           />
                           <text
-                            x={padding.left - 8}
+                            x={padding.left - 10}
                             y={y + 3}
                             textAnchor="end"
                             fontSize="9"
                             fill="currentColor"
-                            opacity="0.5"
+                            opacity="0.6"
+                            className="font-mono font-medium"
                           >
                             {formatNumber(maxVal * pct)}
                           </text>
@@ -1525,46 +1683,97 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
                       );
                     })}
 
-                    {/* Underlying Volume Bars */}
+                    {/* Underlying Volume Bars (Scales with data) */}
                     {trajectorySeries.map((d, i) => {
-                      const x = padding.left + i * step - 5;
-                      const barH = (d.primary / maxVal) * chartH * 0.4;
+                      const barW = Math.max(Math.min(step * 0.7, 12), 4);
+                      const x = padding.left + i * step - barW / 2;
+                      const barH = Math.max(2, (Math.max(0, d.primary) / maxVal) * chartH * 0.35);
                       const y = padding.top + chartH - barH;
+                      const isHovered = hoveredPoint?.idx === i;
                       return (
                         <rect
                           key={`bar-${i}`}
-                          x={x}
-                          y={y}
-                          width="10"
-                          height={barH}
-                          rx="2"
-                          fill="#3B82F6"
-                          opacity="0.15"
+                          x={x.toFixed(1)}
+                          y={y.toFixed(1)}
+                          width={barW.toFixed(1)}
+                          height={barH.toFixed(1)}
+                          rx="3"
+                          className="transition-all duration-300"
+                          fill={isHovered ? '#3B82F6' : '#94A3B8'}
+                          opacity={isHovered ? 0.45 : 0.12}
                         />
                       );
                     })}
 
-                    {/* Area Gradient */}
-                    <path d={area1} fill="url(#trajGrad1)" />
+                    {/* Smooth Area Gradient Fill */}
+                    {area1 && (
+                      <path
+                        d={area1}
+                        fill="url(#trajGradPrimary)"
+                        className="traj-area-fill transition-opacity duration-500"
+                      />
+                    )}
 
-                    {/* Curve 1: Primary */}
-                    <path
-                      d={path1}
-                      fill="none"
-                      stroke="#3B82F6"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
+                    {/* Curve 1: Primary Metric (Bézier Spline with Animation & Glow) */}
+                    {path1 && (
+                      <path
+                        d={path1}
+                        fill="none"
+                        stroke="#3B82F6"
+                        strokeWidth="3.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        filter="url(#glowBlue)"
+                        className="traj-path-primary"
+                      />
+                    )}
 
-                    {/* Curve 2: Secondary */}
-                    <path
-                      d={path2}
-                      fill="none"
-                      stroke="#10B981"
-                      strokeWidth="2.5"
-                      strokeDasharray="4 3"
-                      strokeLinecap="round"
-                    />
+                    {/* Curve 2: Secondary Metric (Dashed Bézier Spline with Animation) */}
+                    {path2 && (
+                      <path
+                        d={path2}
+                        fill="none"
+                        stroke="#10B981"
+                        strokeWidth="2.5"
+                        strokeDasharray="5 4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        filter="url(#glowEmerald)"
+                        className="traj-path-secondary opacity-90"
+                      />
+                    )}
+
+                    {/* X-axis Sequential Labels (6-8 evenly sampled milestones) */}
+                    {[0, 0.2, 0.4, 0.6, 0.8, 1].map((pct, i) => {
+                      const idx = Math.min(Math.round(pct * (trajectorySeries.length - 1)), trajectorySeries.length - 1);
+                      const d = trajectorySeries[idx];
+                      if (!d) return null;
+                      const x = padding.left + idx * step;
+                      return (
+                        <g key={i}>
+                          <line
+                            x1={x}
+                            y1={padding.top + chartH}
+                            x2={x}
+                            y2={padding.top + chartH + 5}
+                            stroke="currentColor"
+                            strokeOpacity="0.25"
+                          />
+                          <text
+                            x={x}
+                            y={height - 12}
+                            textAnchor="middle"
+                            fontSize="9"
+                            fill="currentColor"
+                            opacity="0.65"
+                            fontWeight="500"
+                            className="font-mono"
+                          >
+                            {d.label.length > 8 ? d.label.substring(0, 7) + '..' : d.label}
+                          </text>
+                        </g>
+                      );
+                    })}
 
                     {/* Interactive Vertex Scrubber Points */}
                     {trajectorySeries.map((d, i) => {
@@ -1582,48 +1791,76 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
                               idx: i,
                             })
                           }
-                          onMouseLeave={() => setHoveredPoint(null)}
                         >
-                          {/* Invisible hover target */}
                           <circle cx={pt.x} cy={pt.y} r="14" fill="transparent" />
                           <circle
                             cx={pt.x}
                             cy={pt.y}
-                            r={isHovered ? 6 : 3.5}
+                            r={isHovered ? 6 : 3}
                             fill="#FFFFFF"
                             stroke="#3B82F6"
-                            strokeWidth={isHovered ? 3 : 2}
-                            className="transition-all"
+                            strokeWidth={isHovered ? 3 : 1.8}
+                            className="transition-all duration-150"
                           />
-                          {/* X-axis label with anti-collision sampling */}
-                          {(isHovered || i % Math.max(1, Math.ceil(trajectorySeries.length / 8)) === 0 || i === trajectorySeries.length - 1) && (
-                            <text
-                              x={pt.x}
-                              y={height - 10}
-                              textAnchor="middle"
-                              fontSize="8"
-                              fill="currentColor"
-                              opacity={isHovered ? '1' : '0.6'}
-                              fontWeight={isHovered ? 'bold' : 'normal'}
-                            >
-                              {d.label.length > 7 ? d.label.substring(0, 6) + '..' : d.label}
-                            </text>
-                          )}
                         </g>
                       );
                     })}
 
-                    {/* Vertical Hairline when hovered */}
+                    {/* Vertical Hairline Scrubber & Glowing Markers when hovered */}
                     {hoveredPoint && pts1[hoveredPoint.idx] && (
-                      <line
-                        x1={pts1[hoveredPoint.idx].x}
-                        y1={padding.top}
-                        x2={pts1[hoveredPoint.idx].x}
-                        y2={padding.top + chartH}
-                        stroke="#3B82F6"
-                        strokeWidth="1.5"
-                        strokeDasharray="3 3"
-                      />
+                      <g className="pointer-events-none">
+                        <line
+                          x1={pts1[hoveredPoint.idx].x}
+                          y1={padding.top}
+                          x2={pts1[hoveredPoint.idx].x}
+                          y2={padding.top + chartH}
+                          stroke="#3B82F6"
+                          strokeWidth="1.5"
+                          strokeDasharray="4 3"
+                          opacity="0.8"
+                          className="transition-all duration-75"
+                        />
+                        {/* Primary Marker */}
+                        <circle
+                          cx={pts1[hoveredPoint.idx].x}
+                          cy={pts1[hoveredPoint.idx].y}
+                          r="10"
+                          fill="#3B82F6"
+                          opacity="0.25"
+                          className="animate-ping"
+                        />
+                        <circle
+                          cx={pts1[hoveredPoint.idx].x}
+                          cy={pts1[hoveredPoint.idx].y}
+                          r="6"
+                          fill="#FFFFFF"
+                          stroke="#3B82F6"
+                          strokeWidth="3"
+                          filter="url(#glowBlue)"
+                        />
+                        {/* Secondary Marker */}
+                        {pts2[hoveredPoint.idx] && (
+                          <>
+                            <circle
+                              cx={pts2[hoveredPoint.idx].x}
+                              cy={pts2[hoveredPoint.idx].y}
+                              r="10"
+                              fill="#10B981"
+                              opacity="0.25"
+                              className="animate-ping"
+                            />
+                            <circle
+                              cx={pts2[hoveredPoint.idx].x}
+                              cy={pts2[hoveredPoint.idx].y}
+                              r="5.5"
+                              fill="#FFFFFF"
+                              stroke="#10B981"
+                              strokeWidth="3"
+                              filter="url(#glowEmerald)"
+                            />
+                          </>
+                        )}
+                      </g>
                     )}
                   </svg>
                 );
@@ -1637,21 +1874,30 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
             {/* Floating Glassmorphic Tooltip */}
             {hoveredPoint && (
               <div
-                className="absolute top-2 right-4 bg-slate-900/95 text-white backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-slate-700 shadow-xl text-xs z-20 pointer-events-none animate-fade-in"
+                className="absolute top-2 right-4 bg-slate-900/95 dark:bg-slate-950/95 text-white backdrop-blur-xl px-4 py-3 rounded-2xl border border-slate-700/70 shadow-2xl text-xs z-20 pointer-events-none animate-in fade-in zoom-in-95 duration-150 min-w-[200px]"
               >
-                <div className="font-bold text-blue-400 mb-1">{hoveredPoint.label}</div>
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate-300">{currentMetric}:</span>
-                  <span className="font-mono font-bold text-white">{formatNumber(hoveredPoint.primary)}</span>
+                <div className="flex items-center justify-between border-b border-slate-700/60 pb-1.5 mb-1.5">
+                  <span className="font-bold text-blue-400 text-xs">{hoveredPoint.label}</span>
+                  <span className="text-[10px] text-slate-400 font-mono">Index #{hoveredPoint.idx + 1}</span>
                 </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate-300">{currentSecondaryMetric}:</span>
-                  <span className="font-mono font-bold text-emerald-400">{formatNumber(hoveredPoint.secondary)}</span>
+                <div className="flex items-center justify-between gap-4 py-0.5">
+                  <span className="text-slate-300 flex items-center gap-1.5 text-[11px]">
+                    <span className="w-2 h-2 rounded-full bg-blue-500" />
+                    {currentMetric}:
+                  </span>
+                  <span className="font-mono font-bold text-white text-[12px]">{formatNumber(hoveredPoint.primary)}</span>
                 </div>
-                <div className="flex items-center justify-between gap-4 mt-1 pt-1 border-t border-slate-800 text-[10px]">
-                  <span className="text-slate-400">Variance Margin:</span>
-                  <span className="text-amber-400 font-bold">
-                    {hoveredPoint.primary > 0 ? `${((hoveredPoint.secondary / hoveredPoint.primary) * 100).toFixed(1)}%` : '0%'}
+                <div className="flex items-center justify-between gap-4 py-0.5">
+                  <span className="text-slate-300 flex items-center gap-1.5 text-[11px]">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    {currentSecondaryMetric}:
+                  </span>
+                  <span className="font-mono font-bold text-emerald-400 text-[12px]">{formatNumber(hoveredPoint.secondary)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4 mt-1.5 pt-1.5 border-t border-slate-800 text-[10px]">
+                  <span className="text-slate-400">Spread Ratio:</span>
+                  <span className="text-amber-400 font-bold font-mono">
+                    {hoveredPoint.secondary > 0 ? `${(hoveredPoint.primary / hoveredPoint.secondary).toFixed(2)}x` : 'N/A'}
                   </span>
                 </div>
               </div>
