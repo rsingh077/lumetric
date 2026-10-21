@@ -10,6 +10,7 @@ export interface AuthUser {
   role: 'owner' | 'administrator' | 'builder' | 'reviewer' | 'viewer';
   organization?: string;
   avatarUrl?: string;
+  mfaEnabled?: boolean;
   createdAt: string;
   lastLoginAt?: string;
   settings?: {
@@ -288,7 +289,7 @@ export class LumetricAuthService {
     }
   }
 
-  public static async login(payload: { email: string; password: string }): Promise<AuthResponse> {
+  public static async login(payload: { email: string; password: string; totpToken?: string }): Promise<AuthResponse> {
     const cleanEmail = (payload.email || '').trim().toLowerCase();
     const emailCheck = validateEmailAuthenticity(cleanEmail);
     if (!emailCheck.valid) {
@@ -300,7 +301,11 @@ export class LumetricAuthService {
       const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, password: payload.password }),
+        body: JSON.stringify({
+          email: cleanEmail,
+          password: payload.password,
+          totpToken: payload.totpToken ? payload.totpToken.trim() : undefined
+        }),
         signal: controller.signal
       });
       clearTimeout(timeoutId);
@@ -389,6 +394,15 @@ export class LumetricAuthService {
     }
   }
 
+  public static getAuthHeaders(token?: string | null): Record<string, string> {
+    const activeToken = token || this.getStoredToken();
+    if (!activeToken) return {};
+    return {
+      'x-auth-token': activeToken,
+      'x-access-token': activeToken
+    };
+  }
+
   public static isAuthenticated(): boolean {
     if (typeof window === 'undefined') return false;
     const token = this.getStoredToken();
@@ -404,7 +418,7 @@ export class LumetricAuthService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
+            ...this.getAuthHeaders(token)
           }
         });
       } catch (e) {
@@ -423,7 +437,7 @@ export class LumetricAuthService {
     try {
       const res = await fetch(`${CATALYST_SERVER_URL}/api/user/profile`, {
         headers: {
-          Authorization: `Bearer ${token}`
+          ...this.getAuthHeaders(token)
         }
       });
       const data: AuthResponse = await res.json();
@@ -450,7 +464,7 @@ export class LumetricAuthService {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          ...this.getAuthHeaders(token)
         },
         body: JSON.stringify(payload)
       });
@@ -476,7 +490,7 @@ export class LumetricAuthService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          ...this.getAuthHeaders(token)
         },
         body: JSON.stringify(payload)
       });
@@ -493,7 +507,7 @@ export class LumetricAuthService {
     try {
       const res = await fetch(`${CATALYST_SERVER_URL}/api/admin/users`, {
         headers: {
-          Authorization: `Bearer ${token}`
+          ...this.getAuthHeaders(token)
         }
       });
       return await res.json();
@@ -509,7 +523,9 @@ export class LumetricAuthService {
     try {
       const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/2fa/setup`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {
+          ...this.getAuthHeaders(token)
+        }
       });
       return await res.json();
     } catch (err: any) {
@@ -517,19 +533,77 @@ export class LumetricAuthService {
     }
   }
 
-  public static async verify2FA(totpToken: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  public static async verify2FA(totpToken: string, secret?: string): Promise<{ success: boolean; message?: string; error?: string }> {
     const token = this.getStoredToken();
     if (!token) return { success: false, error: 'Not authenticated' };
 
     try {
       const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/2fa/verify`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ token: totpToken })
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.getAuthHeaders(token)
+        },
+        body: JSON.stringify({ token: totpToken, secret })
       });
       return await res.json();
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to verify 2FA' };
+    }
+  }
+
+  public static async disable2FA(payload: { password?: string; token?: string }): Promise<{ success: boolean; message?: string; error?: string }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/2fa/disable`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.getAuthHeaders(token)
+        },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to disable 2FA' };
+    }
+  }
+
+  public static async requestPasswordReset(email: string): Promise<{ success: boolean; message?: string; resetOtp?: string; error?: string }> {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const emailCheck = validateEmailAuthenticity(cleanEmail);
+    if (!emailCheck.valid) {
+      return { success: false, error: emailCheck.message };
+    }
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail })
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to request password reset' };
+    }
+  }
+
+  public static async resetPassword(payload: { email: string; otp: string; newPassword: string }): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: payload.email.trim().toLowerCase(),
+          otp: payload.otp.trim(),
+          newPassword: payload.newPassword
+        })
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to reset password' };
     }
   }
 
@@ -539,7 +613,9 @@ export class LumetricAuthService {
 
     try {
       const res = await fetch(`${CATALYST_SERVER_URL}/api/audit/logs`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {
+          ...this.getAuthHeaders(token)
+        }
       });
       return await res.json();
     } catch (err: any) {
@@ -553,7 +629,9 @@ export class LumetricAuthService {
 
     try {
       const res = await fetch(`${CATALYST_SERVER_URL}/api/connectors`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {
+          ...this.getAuthHeaders(token)
+        }
       });
       return await res.json();
     } catch (err: any) {
@@ -568,7 +646,9 @@ export class LumetricAuthService {
     try {
       const res = await fetch(`${CATALYST_SERVER_URL}/api/connectors/sync/${id}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {
+          ...this.getAuthHeaders(token)
+        }
       });
       return await res.json();
     } catch (err: any) {
@@ -585,7 +665,7 @@ export class LumetricAuthService {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          ...this.getAuthHeaders(token)
         },
         body: JSON.stringify({ targetEmail, newRole })
       });
@@ -611,7 +691,7 @@ export class LumetricAuthService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
+          ...this.getAuthHeaders(token)
         },
         body: JSON.stringify(payload)
       });
@@ -625,7 +705,9 @@ export class LumetricAuthService {
     const token = this.getStoredToken();
     try {
       const res = await fetch(`${CATALYST_SERVER_URL}/api/data/records`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        headers: {
+          ...this.getAuthHeaders(token)
+        }
       });
       return await res.json();
     } catch (err: any) {
@@ -639,7 +721,9 @@ export class LumetricAuthService {
 
     try {
       const res = await fetch(`${CATALYST_SERVER_URL}/api/user/workspace-data`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {
+          ...this.getAuthHeaders(token)
+        }
       });
       return await res.json();
     } catch (err: any) {
@@ -656,7 +740,7 @@ export class LumetricAuthService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          ...this.getAuthHeaders(token)
         },
         body: JSON.stringify({ workspaceData })
       });

@@ -12,7 +12,7 @@ export function UserAuthProfileModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  initialMode?: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db';
+  initialMode?: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db' | 'forgot-password';
 }) {
   const {
     setRole,
@@ -35,7 +35,7 @@ export function UserAuthProfileModal({
     clearProfileData,
     setActiveView,
   } = useApp();
-  const [mode, setMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db'>(initialMode || 'profile');
+  const [mode, setMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db' | 'forgot-password'>(initialMode || 'profile');
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
   // Form states
@@ -52,11 +52,23 @@ export function UserAuthProfileModal({
   const [changePwMsg, setChangePwMsg] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [showChangePw, setShowChangePw] = useState(false);
 
-  // MFA state
+  // MFA / 2FA state
   const [totpToken, setTotpToken] = useState('');
   const [requiresMfa, setRequiresMfa] = useState(false);
   const [mfaSetupData, setMfaSetupData] = useState<{ secret?: string; qrCodeDataUrl?: string } | null>(null);
   const [mfaVerifyCode, setMfaVerifyCode] = useState('');
+  const [showDisable2FA, setShowDisable2FA] = useState(false);
+  const [disable2FAPassword, setDisable2FAPassword] = useState('');
+
+  // Password Reset state
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [resetStep, setResetStep] = useState<1 | 2>(1);
+  const [resetBannerOtp, setResetBannerOtp] = useState<string | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetFeedback, setResetFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Admin Dashboard State
   const [allUsers, setAllUsers] = useState<AuthUser[]>([]);
@@ -179,14 +191,114 @@ export function UserAuthProfileModal({
   const handleConfirm2FA = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const res = await LumetricAuthService.verify2FA(mfaVerifyCode);
+    const res = await LumetricAuthService.verify2FA(mfaVerifyCode, mfaSetupData?.secret);
     setLoading(false);
     if (res.success) {
       setMfaSetupData(null);
       setMfaVerifyCode('');
-      setFeedback({ type: 'success', message: 'Two-Factor Authentication is now active!' });
+      setAuthUser(prev => prev ? { ...prev, mfaEnabled: true } : null);
+      setFeedback({ type: 'success', message: 'Two-Factor Authentication is now active and protecting your account!' });
     } else {
       setFeedback({ type: 'error', message: res.error || 'Invalid 6-digit code.' });
+    }
+  };
+
+  const handleDisable2FA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const res = await LumetricAuthService.disable2FA({
+      password: disable2FAPassword.trim() || undefined,
+      token: mfaVerifyCode.trim() || undefined
+    });
+    setLoading(false);
+    if (res.success) {
+      setShowDisable2FA(false);
+      setDisable2FAPassword('');
+      setMfaVerifyCode('');
+      setAuthUser(prev => prev ? { ...prev, mfaEnabled: false } : null);
+      setFeedback({ type: 'success', message: 'Two-Factor Authentication disabled successfully.' });
+    } else {
+      setFeedback({ type: 'error', message: res.error || 'Failed to disable 2FA. Verify password or code.' });
+    }
+  };
+
+  const handleRequestResetOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetEmail = (resetEmail || email).trim().toLowerCase();
+    const check = validateEmailAuthenticity(targetEmail);
+    if (!check.valid) {
+      setResetFeedback({ type: 'error', message: check.message || 'Please enter a genuine, valid email address.' });
+      return;
+    }
+
+    setResetLoading(true);
+    setResetFeedback(null);
+    const res = await LumetricAuthService.requestPasswordReset(targetEmail);
+    setResetLoading(false);
+
+    if (res.success) {
+      setResetStep(2);
+      if (res.resetOtp) {
+        setResetBannerOtp(res.resetOtp);
+        setResetOtp(res.resetOtp);
+      }
+      setResetFeedback({ type: 'success', message: res.message || '6-digit verification code generated! Enter it below.' });
+    } else {
+      setResetFeedback({ type: 'error', message: res.error || 'Failed to send reset code.' });
+    }
+  };
+
+  const handleVerifyAndResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetEmail = (resetEmail || email).trim().toLowerCase();
+
+    if (!resetOtp || resetOtp.trim().length !== 6) {
+      setResetFeedback({ type: 'error', message: 'Please enter the 6-digit verification code.' });
+      return;
+    }
+
+    if (resetNewPassword.length < 8) {
+      setResetFeedback({ type: 'error', message: 'Password must be at least 8 characters in length.' });
+      return;
+    }
+
+    const hasLetter = /[a-zA-Z]/.test(resetNewPassword);
+    const hasNumberOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(resetNewPassword);
+    if (!hasLetter || !hasNumberOrSymbol) {
+      setResetFeedback({ type: 'error', message: 'Password must contain at least one letter and one number or special character.' });
+      return;
+    }
+
+    if (resetNewPassword !== resetConfirmPassword) {
+      setResetFeedback({ type: 'error', message: 'Passwords do not match.' });
+      return;
+    }
+
+    setResetLoading(true);
+    setResetFeedback(null);
+    const res = await LumetricAuthService.resetPassword({
+      email: targetEmail,
+      otp: resetOtp.trim(),
+      newPassword: resetNewPassword
+    });
+    setResetLoading(false);
+
+    if (res.success) {
+      setResetFeedback({ type: 'success', message: 'Password updated successfully! Returning to sign in...' });
+      setPassword(resetNewPassword);
+      setEmail(targetEmail);
+      setTimeout(() => {
+        setMode('login');
+        setResetStep(1);
+        setResetOtp('');
+        setResetNewPassword('');
+        setResetConfirmPassword('');
+        setResetBannerOtp(null);
+        setResetFeedback(null);
+        setFeedback({ type: 'success', message: 'Password reset successful. Sign in with your new password.' });
+      }, 1500);
+    } else {
+      setResetFeedback({ type: 'error', message: res.error || 'Failed to reset password.' });
     }
   };
 
@@ -247,15 +359,24 @@ export function UserAuthProfileModal({
       return;
     }
 
+    if (requiresMfa && (!totpToken || totpToken.trim().length !== 6)) {
+      setFeedback({ type: 'error', message: 'Please enter the 6-digit Authenticator OTP code.' });
+      return;
+    }
+
     setLoading(true);
     setFeedback(null);
 
-    const res: any = await LumetricAuthService.login({ email, password });
+    const res: any = await LumetricAuthService.login({
+      email,
+      password,
+      totpToken: requiresMfa ? totpToken.trim() : undefined
+    });
     setLoading(false);
 
     if (res.requiresMfa) {
       setRequiresMfa(true);
-      setFeedback({ type: 'success', message: 'Enter your 6-digit Authenticator code to continue.' });
+      setFeedback({ type: 'success', message: 'Two-Factor Authentication code required. Open Google Authenticator or 1Password.' });
       return;
     }
 
@@ -264,6 +385,7 @@ export function UserAuthProfileModal({
       setCurrentUser(res.user);
       setRole(res.user.role);
       setRequiresMfa(false);
+      setTotpToken('');
       setFeedback({ type: 'success', message: 'Signed in successfully. Live session active.' });
       setTimeout(() => {
         setMode('profile');
@@ -526,34 +648,92 @@ export function UserAuthProfileModal({
               <div className="p-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-xs font-bold text-[var(--lm-text-primary)]">Two-Factor Authentication (2FA)</h4>
-                    <p className="text-[11px] text-[var(--lm-text-secondary)]">Protect your account with Google Authenticator or 1Password.</p>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-bold text-[var(--lm-text-primary)]">Two-Factor Authentication (2FA)</h4>
+                      {authUser.mfaEnabled ? (
+                        <StatusBadge variant="emerald" dot>Active</StatusBadge>
+                      ) : (
+                        <StatusBadge variant="neutral">Disabled</StatusBadge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-[var(--lm-text-secondary)]">
+                      {authUser.mfaEnabled
+                        ? 'Your account is secured with Google Authenticator / 1Password OTP.'
+                        : 'Protect your account with Google Authenticator, Microsoft Authenticator, or 1Password.'}
+                    </p>
                   </div>
-                  <Button size="sm" variant="secondary" onClick={handleSetup2FA} loading={loading}>
-                    Configure 2FA
-                  </Button>
+                  {authUser.mfaEnabled ? (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => setShowDisable2FA(!showDisable2FA)}
+                    >
+                      {showDisable2FA ? 'Cancel' : 'Disable 2FA'}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={handleSetup2FA}
+                      loading={loading}
+                    >
+                      Configure 2FA
+                    </Button>
+                  )}
                 </div>
 
-                {mfaSetupData && (
+                {/* Disable 2FA Form */}
+                {authUser.mfaEnabled && showDisable2FA && (
+                  <form onSubmit={handleDisable2FA} className="pt-3 border-t border-red-500/10 space-y-3 animate-fade-in">
+                    <p className="text-xs text-[var(--lm-text-secondary)]">
+                      Confirm your current account password or enter the 6-digit Authenticator code to turn off 2FA:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Input
+                        label="Account Password"
+                        type="password"
+                        value={disable2FAPassword}
+                        onChange={(e) => setDisable2FAPassword(e.target.value)}
+                        placeholder="••••••••"
+                      />
+                      <Input
+                        label="OR 6-Digit Authenticator Code"
+                        value={mfaVerifyCode}
+                        onChange={(e) => setMfaVerifyCode(e.target.value)}
+                        placeholder="000000"
+                        maxLength={6}
+                      />
+                    </div>
+                    <Button type="submit" size="sm" variant="danger" className="w-full" loading={loading}>
+                      Confirm & Turn Off 2FA
+                    </Button>
+                  </form>
+                )}
+
+                {/* Configure 2FA Setup Form */}
+                {!authUser.mfaEnabled && mfaSetupData && (
                   <form onSubmit={handleConfirm2FA} className="pt-2 border-t border-blue-500/10 space-y-3 animate-fade-in">
                     <div className="flex flex-col sm:flex-row items-center gap-3">
                       {mfaSetupData.qrCodeDataUrl && (
                         <img src={mfaSetupData.qrCodeDataUrl} alt="2FA QR Code" className="w-28 h-28 rounded-xl border border-[var(--lm-border-default)] bg-white p-1" />
                       )}
                       <div className="space-y-1.5 text-xs flex-1">
-                        <span className="font-semibold text-[var(--lm-text-primary)]">Scan code or enter key manually:</span>
-                        <div className="p-1.5 bg-black/10 dark:bg-white/10 rounded-lg font-mono text-[10px] break-all">{mfaSetupData.secret}</div>
+                        <span className="font-semibold text-[var(--lm-text-primary)]">Scan code in Google Authenticator or enter key:</span>
+                        <div className="p-1.5 bg-black/10 dark:bg-white/10 rounded-lg font-mono text-[10px] break-all select-all">{mfaSetupData.secret}</div>
                         <Input
-                          label="Enter 6-Digit Code"
+                          label="Enter 6-Digit Verification Code"
                           value={mfaVerifyCode}
                           onChange={(e) => setMfaVerifyCode(e.target.value)}
-                          placeholder="123456"
+                          placeholder="000000"
                           maxLength={6}
+                          className="font-mono tracking-widest text-center font-bold"
                           required
                         />
                       </div>
                     </div>
-                    <Button type="submit" size="sm" className="w-full">Activate Two-Factor Protection</Button>
+                    <Button type="submit" size="sm" className="w-full" loading={loading}>
+                      Activate Two-Factor Protection
+                    </Button>
                   </form>
                 )}
               </div>
@@ -1030,28 +1210,67 @@ export function UserAuthProfileModal({
                   </div>
                 )}
               </div>
-              <Input
-                label="Password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (feedback) setFeedback(null);
-                }}
-                placeholder="••••••••"
-              />
+              <div className="space-y-1">
+                <Input
+                  label="Password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (feedback) setFeedback(null);
+                  }}
+                  placeholder="••••••••"
+                />
+                <div className="flex justify-end pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('forgot-password');
+                      setResetEmail(email);
+                      setFeedback(null);
+                      setResetFeedback(null);
+                      setResetStep(1);
+                    }}
+                    className="text-xs text-[var(--lm-accent-primary)] hover:underline font-semibold"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              </div>
 
               {requiresMfa && (
-                <div className="animate-fade-in space-y-1.5 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                <div className="animate-fade-in space-y-2 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                    <span className="text-xs font-bold text-[var(--lm-text-primary)]">
+                      Authenticator OTP Required (2FA)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[var(--lm-text-secondary)] leading-relaxed">
+                    Open your authenticator app (Google Authenticator, Microsoft Authenticator, or 1Password) and enter the 6-digit verification code.
+                  </p>
                   <Input
-                    label="Two-Factor Authentication Code"
+                    label="6-Digit Authenticator Code"
                     value={totpToken}
                     onChange={(e) => setTotpToken(e.target.value)}
-                    placeholder="Enter 6-digit code"
+                    placeholder="000000"
                     maxLength={6}
+                    className="text-center font-mono text-lg tracking-[0.25em] font-bold"
                     required
+                    autoFocus
                   />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRequiresMfa(false);
+                      setTotpToken('');
+                      setFeedback(null);
+                    }}
+                    className="text-[11px] text-[var(--lm-text-tertiary)] hover:underline block text-center w-full pt-1"
+                  >
+                    ← Re-enter password or switch account
+                  </button>
                 </div>
               )}
 
@@ -1064,7 +1283,7 @@ export function UserAuthProfileModal({
               </div>
 
               <Button type="submit" size="md" className="w-full" loading={loading}>
-                {requiresMfa ? 'Verify & Sign In' : 'Sign In with Account Auth'}
+                {requiresMfa ? 'Verify OTP & Sign In' : 'Sign In with Account Auth'}
               </Button>
 
               <div className="pt-3 border-t border-[var(--lm-border-default)] flex items-center justify-between text-xs text-[var(--lm-text-secondary)]">
@@ -1081,6 +1300,139 @@ export function UserAuthProfileModal({
                 </button>
               </div>
             </form>
+          )}
+
+          {/* VIEW: FORGOT PASSWORD & OTP RESET */}
+          {mode === 'forgot-password' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--lm-border-default)]">
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--lm-text-primary)]">Password Recovery & Reset</h3>
+                  <p className="text-[11px] text-[var(--lm-text-secondary)]">
+                    {resetStep === 1
+                      ? 'Enter your registered email address to receive a 6-digit verification code.'
+                      : 'Verify your code and enter your new account password.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setResetFeedback(null);
+                    setResetStep(1);
+                  }}
+                  className="text-xs text-[var(--lm-accent-primary)] hover:underline font-bold"
+                >
+                  Back to Sign In
+                </button>
+              </div>
+
+              {resetFeedback && (
+                <div
+                  className={`p-3 rounded-2xl text-xs font-medium flex items-center gap-2 ${
+                    resetFeedback.type === 'success'
+                      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${resetFeedback.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                  <span className="flex-1">{resetFeedback.message}</span>
+                </div>
+              )}
+
+              {resetStep === 1 ? (
+                <form onSubmit={handleRequestResetOtp} className="space-y-3.5">
+                  <Input
+                    label="Account Email Address"
+                    type="email"
+                    required
+                    value={resetEmail || email}
+                    onChange={(e) => {
+                      setResetEmail(e.target.value);
+                      if (resetFeedback) setResetFeedback(null);
+                    }}
+                    placeholder="name@company.com"
+                  />
+
+                  <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-xs text-[var(--lm-text-secondary)] space-y-1">
+                    <span className="font-bold text-[var(--lm-text-primary)] block">Zero-Data-Loss Security:</span>
+                    <p className="text-[11px] leading-relaxed">
+                      Resetting your password will re-encrypt your access credentials without affecting your saved workspaces, uploaded files, or custom models.
+                    </p>
+                  </div>
+
+                  <Button type="submit" size="md" className="w-full" loading={resetLoading}>
+                    Send 6-Digit Verification Code
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleVerifyAndResetPassword} className="space-y-3.5 animate-fade-in">
+                  {resetBannerOtp && (
+                    <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-700 dark:text-emerald-300 block">
+                          Verification OTP Generated
+                        </span>
+                        <span className="font-mono text-base font-extrabold text-emerald-800 dark:text-emerald-200 tracking-widest">
+                          {resetBannerOtp}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-emerald-600 font-mono">Valid 15m</span>
+                    </div>
+                  )}
+
+                  <Input
+                    label="6-Digit Verification Code"
+                    value={resetOtp}
+                    onChange={(e) => setResetOtp(e.target.value)}
+                    placeholder="000000"
+                    maxLength={6}
+                    required
+                    className="text-center font-mono text-lg tracking-[0.25em] font-bold"
+                  />
+
+                  <Input
+                    label="New Password"
+                    type="password"
+                    required
+                    value={resetNewPassword}
+                    onChange={(e) => setResetNewPassword(e.target.value)}
+                    placeholder="Minimum 8 characters"
+                    hint="Must contain letters and numbers or special characters"
+                  />
+
+                  <Input
+                    label="Confirm New Password"
+                    type="password"
+                    required
+                    value={resetConfirmPassword}
+                    onChange={(e) => setResetConfirmPassword(e.target.value)}
+                    placeholder="Repeat new password"
+                  />
+
+                  <Button type="submit" size="md" className="w-full" loading={resetLoading}>
+                    Reset Password & Sign In
+                  </Button>
+
+                  <div className="flex items-center justify-between pt-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setResetStep(1)}
+                      className="text-[var(--lm-text-secondary)] hover:underline"
+                    >
+                      ← Change Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRequestResetOtp}
+                      className="text-[var(--lm-accent-primary)] hover:underline font-semibold"
+                    >
+                      Resend Code
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           )}
 
           {/* VIEW 6: REGISTER VIEW */}

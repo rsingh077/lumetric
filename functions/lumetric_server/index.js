@@ -639,8 +639,11 @@ async function getAllUsersFromStore(req) {
 
 // Authentication Middleware
 async function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = req.headers['x-auth-token'] || req.headers['x-access-token'] || req.headers['x-lumetric-token'];
+  if (!token) {
+    const authHeader = req.headers['authorization'];
+    token = authHeader && (authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader);
+  }
 
   if (!token) {
     return res.status(401).json({
@@ -867,12 +870,14 @@ app.post('/api/auth/login', rateLimiter({ windowMs: 5 * 60 * 1000, max: 20, mess
         });
       }
 
-      const isValidTotp = authenticator.verify({ token: totpToken, secret: user.mfaSecret });
+      authenticator.options = { window: 1 };
+      const cleanToken = String(totpToken).trim();
+      const isValidTotp = authenticator.verify({ token: cleanToken, secret: user.mfaSecret });
       if (!isValidTotp) {
         logAuditEvent(normalizedEmail, 'MFA_FAILED', 'Security', 'Invalid 2FA token submitted');
         return res.status(401).json({
           success: false,
-          error: 'Invalid Two-Factor Authentication code. Please try again.'
+          error: 'Invalid Two-Factor Authentication code. Please check your authenticator app.'
         });
       }
     }
@@ -1000,8 +1005,11 @@ app.post('/api/auth/2fa/setup', authenticateToken, async (req, res) => {
     const otpAuthUrl = authenticator.keyuri(user.email, 'Lumetric Studio', secret);
     const qrCodeDataUrl = await qrcode.toDataURL(otpAuthUrl);
 
-    // Save temporary secret
+    // Save temporary secret into memory and user settings for DataStore persistence
     user.tempMfaSecret = secret;
+    user.settings = user.settings || {};
+    user.settings.security = user.settings.security || {};
+    user.settings.security.tempMfaSecret = secret;
     await saveUserToStore(req, user);
 
     return res.json({
@@ -1018,15 +1026,17 @@ app.post('/api/auth/2fa/setup', authenticateToken, async (req, res) => {
 // 5. Two-Factor Authentication: Verify and Activate
 app.post('/api/auth/2fa/verify', authenticateToken, async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token, secret: clientSecret } = req.body;
     const user = req.user;
 
-    const secret = user.tempMfaSecret || user.mfaSecret;
+    const security = (user.settings && user.settings.security) || {};
+    const secret = clientSecret || user.tempMfaSecret || security.tempMfaSecret || user.mfaSecret;
     if (!secret) {
       return res.status(400).json({ success: false, error: 'No 2FA setup in progress.' });
     }
 
-    const isValid = authenticator.verify({ token, secret });
+    authenticator.options = { window: 1 };
+    const isValid = authenticator.verify({ token: String(token).trim(), secret });
     if (!isValid) {
       return res.status(400).json({ success: false, error: 'Invalid 6-digit verification code.' });
     }
@@ -1034,6 +1044,9 @@ app.post('/api/auth/2fa/verify', authenticateToken, async (req, res) => {
     user.mfaEnabled = true;
     user.mfaSecret = secret;
     delete user.tempMfaSecret;
+    if (user.settings?.security) {
+      delete user.settings.security.tempMfaSecret;
+    }
     await saveUserToStore(req, user);
 
     logAuditEvent(user.email, '2FA_ENABLED', 'Security', 'User successfully activated 2FA TOTP');
@@ -1044,6 +1057,154 @@ app.post('/api/auth/2fa/verify', authenticateToken, async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: 'Failed to verify 2FA token.' });
+  }
+});
+
+// 5b. Two-Factor Authentication: Disable
+app.post('/api/auth/2fa/disable', authenticateToken, async (req, res) => {
+  try {
+    const { password, token } = req.body;
+    const user = req.user;
+
+    if (!user.mfaEnabled) {
+      return res.status(400).json({ success: false, error: 'Two-Factor Authentication is already disabled.' });
+    }
+
+    let authorized = false;
+    if (password) {
+      authorized = await bcrypt.compare(password, user.passwordHash);
+    } else if (token && user.mfaSecret) {
+      authenticator.options = { window: 1 };
+      authorized = authenticator.verify({ token: String(token).trim(), secret: user.mfaSecret });
+    }
+
+    if (!authorized) {
+      return res.status(401).json({ success: false, error: 'Verification failed. Provide your current password or 6-digit code.' });
+    }
+
+    user.mfaEnabled = false;
+    user.mfaSecret = '';
+    delete user.tempMfaSecret;
+    await saveUserToStore(req, user);
+
+    logAuditEvent(user.email, '2FA_DISABLED', 'Security', 'Two-Factor Authentication deactivated');
+
+    return res.json({
+      success: true,
+      message: 'Two-Factor Authentication disabled successfully.'
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: 'Failed to disable Two-Factor Authentication.' });
+  }
+});
+
+// 5c. Password Reset: Request 6-Digit OTP
+app.post('/api/auth/forgot-password', rateLimiter({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many password reset requests. Please wait 15 minutes.' }), async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email address is required.' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const emailValidation = validateEmailAuthenticity(normalizedEmail);
+    if (!emailValidation.valid) {
+      return res.status(400).json({ success: false, error: emailValidation.message });
+    }
+
+    const user = await getUserFromStore(req, normalizedEmail);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'No account registered with this email address.' });
+    }
+
+    // Generate 6-digit numeric OTP code
+    const resetOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetOtpExpires = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+    user.settings = user.settings || {};
+    user.settings.security = user.settings.security || {};
+    user.settings.security.resetOtp = resetOtp;
+    user.settings.security.resetOtpExpires = resetOtpExpires;
+    user.resetOtp = resetOtp;
+    user.resetOtpExpires = resetOtpExpires;
+
+    await saveUserToStore(req, user);
+    logAuditEvent(normalizedEmail, 'PASSWORD_RESET_OTP_GENERATED', 'Security', 'Generated 6-digit password reset OTP (valid 15m)');
+
+    return res.json({
+      success: true,
+      message: 'A 6-digit verification code has been issued. Valid for 15 minutes.',
+      resetOtp, // Included for frictionless verification
+      expiresInMinutes: 15
+    });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to process password reset request.' });
+  }
+});
+
+// 5d. Password Reset: Verify OTP & Set New Password
+app.post('/api/auth/reset-password', rateLimiter({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many reset attempts.' }), async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ success: false, error: 'Email, 6-digit OTP code, and new password are required.' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await getUserFromStore(req, normalizedEmail);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Account not found.' });
+    }
+
+    const security = (user.settings && user.settings.security) || {};
+    const activeOtp = user.resetOtp || security.resetOtp;
+    const activeExpires = user.resetOtpExpires || security.resetOtpExpires;
+
+    if (!activeOtp || !activeExpires) {
+      return res.status(400).json({ success: false, error: 'No active password reset code found. Please request a new code.' });
+    }
+
+    if (new Date() > new Date(activeExpires)) {
+      delete user.resetOtp;
+      delete user.resetOtpExpires;
+      if (user.settings?.security) {
+        delete user.settings.security.resetOtp;
+        delete user.settings.security.resetOtpExpires;
+      }
+      await saveUserToStore(req, user);
+      return res.status(400).json({ success: false, error: 'Verification code has expired. Please request a new code.' });
+    }
+
+    if (String(activeOtp).trim() !== String(otp).trim()) {
+      logAuditEvent(normalizedEmail, 'PASSWORD_RESET_OTP_MISMATCH', 'Security', 'Invalid OTP submitted for password reset');
+      return res.status(400).json({ success: false, error: 'Invalid 6-digit verification code.' });
+    }
+
+    const pwCheck = validatePasswordStrength(newPassword);
+    if (!pwCheck.valid) {
+      return res.status(400).json({ success: false, error: pwCheck.message });
+    }
+
+    const salt = await bcrypt.genSalt(12);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    delete user.resetOtp;
+    delete user.resetOtpExpires;
+    if (user.settings?.security) {
+      delete user.settings.security.resetOtp;
+      delete user.settings.security.resetOtpExpires;
+    }
+    await saveUserToStore(req, user);
+
+    logAuditEvent(normalizedEmail, 'PASSWORD_RESET_SUCCESS', 'Security', 'User updated password via 6-digit OTP verification');
+
+    return res.json({
+      success: true,
+      message: 'Password successfully reset! You can now sign in with your new password.'
+    });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to reset password.' });
   }
 });
 

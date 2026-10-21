@@ -91,8 +91,8 @@ interface AppContextType {
   // Authentication Modal & Profile Controls
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
-  authModalMode: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db';
-  openAuthModal: (mode?: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db') => void;
+  authModalMode: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db' | 'forgot-password';
+  openAuthModal: (mode?: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db' | 'forgot-password') => void;
   closeAuthModal: () => void;
   logout: () => Promise<void>;
 
@@ -554,9 +554,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db'>('profile');
+  const [authModalMode, setAuthModalMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db' | 'forgot-password'>('profile');
 
-  const openAuthModal = (mode: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db' = 'profile') => {
+  const openAuthModal = (mode: 'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db' | 'forgot-password' = 'profile') => {
     setAuthModalMode(mode);
     setAuthModalOpen(true);
   };
