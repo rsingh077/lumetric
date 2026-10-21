@@ -47,37 +47,41 @@ jobs:
       - name: Copy APK to Root for Direct Repo Download
         run: |
           cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric.apk
-          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.3.3.apk
+          cp lumetric/android/app/build/outputs/apk/debug/app-debug.apk ./Lumetric-v2.3.4.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumetric-v2.3.3-debug-apk
-          path: Lumetric-v2.3.3.apk
+          name: lumetric-v2.3.4-debug-apk
+          path: Lumetric-v2.3.4.apk
 
-      - name: Create or Update GitHub Release v2.3.3
+      - name: Create or Update GitHub Release v2.3.4
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
         with:
-          tag_name: v2.3.3
-          name: "Lumetric v2.3.3 — Clean White-Label UI & Infrastructure Telemetry Purged"
+          tag_name: v2.3.4
+          name: "Lumetric v2.3.4 — Clean Slate Fresh Profiles & Expansive High-Res Charts"
           body: |
-            ### 🛡️ Lumetric Mobile v2.3.3 Release
+            ### 📊 Lumetric Mobile v2.3.4 Release
 
-            #### 🏛️ Clean White-Label UI & Telemetry Purge
-            - **Server Status Indicators Hidden**: All debug pills ("Server Live", latency ms, "Online 200 OK", and ping buttons) removed from header, sidebar, dashboard, and splash screen.
-            - **Infrastructure Neutralization**: Removed all external vendor tags (Zoho Catalyst, Lumi DataStore, Crystal) from user-facing screens in favor of clean enterprise terminology ("Enterprise Cloud Data Vault", "Encrypted Cloud Storage").
-            - **Polished Presentation**: Pristine header, clean profile controls, and distraction-free data analytics studio.
+            #### 📈 Enlarged, Expansive Charts & Visualizations
+            - **Dynamic Trajectory Curves**: Expanded container to `min-h-[320px]` / `h-80 sm:h-96` with wide 700x260 viewBox, bolder Bézier curves, larger data nodes, and crisp dashed grid lines.
+            - **Frequency Distribution Histogram & KDE**: Enlarged to `min-h-[320px]` with generous vertical scaling and high-definition bin bars.
+            - **Document Format Donut Chart**: Increased to `w-56 h-56 sm:w-64 sm:h-64` (>2x larger) for immediate readability.
+            - **Semi-Circle Attainment Speedometer Gauge**: Sized up to `w-64 h-40 sm:w-72 sm:h-44` with high-contrast zone arcs.
+            - **Ingestion Channels Progress Bars**: Increased track thickness from `h-2` to `h-3.5` with rounded capsule tracks.
 
-            #### 🏢 Multi-Tenant Profile Isolation
-            - Every user profile operates strictly within their dedicated database sandbox.
-            - Clean onboarding without mock data pollution.
+            #### 🧼 100% Clean Slate for Fresh Accounts (Zero Mock Data)
+            - **Automotive Mock Data Purged**: Completely deleted all car sales reference data (BMW, Audi, Mercedes, Tesla, Volvo, Porsche).
+            - **Zero Tutorial Explanations**: New users receive a pristine workspace without promotional cards explaining what each tool does.
+            - **Instant Drag-and-Drop Dropzone**: Immediate file ingestion on the home screen supporting CSV, TSV, TXT, JSON, and PDF dossiers with auto-schema profiling.
+            - **Multi-Tenant Server Isolation**: Every user profile is saved to its own isolated database sandbox on the server.
 
             #### 📱 Direct Download
-            - **Direct APK Download (v2.3.3)**: [Lumetric-v2.3.3.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.3/Lumetric-v2.3.3.apk)
-            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.3/Lumetric.apk)
+            - **Direct APK Download (v2.3.4)**: [Lumetric-v2.3.4.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.4/Lumetric-v2.3.4.apk)
+            - **Direct APK Download (Latest)**: [Lumetric.apk](https://github.com/rsingh077/lumetric/releases/download/v2.3.4/Lumetric.apk)
           files: |
             Lumetric.apk
-            Lumetric-v2.3.3.apk
+            Lumetric-v2.3.4.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

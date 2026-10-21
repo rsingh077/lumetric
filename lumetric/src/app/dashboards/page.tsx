@@ -25,84 +25,9 @@ import { DatasetProfile } from '@/types';
 // Theme presets inspired directly by user's reference images
 type ThemePreset = 'modern' | 'cyberpunk' | 'enterprise';
 
-// Sample dataset matching the user's reference images (Car Sales & Banking analytics)
-const REFERENCE_DEMO_DATASET: { profile: DatasetProfile; rows: Record<string, string>[] } = {
-  profile: {
-    id: 'ds-ref-enterprise-01',
-    fileName: 'global_sales_and_banking_census.csv',
-    fileSize: 42800,
-    rowCount: 36,
-    columnCount: 10,
-    columns: [
-      { name: 'Brand', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 8, sampleValues: ['BMW', 'Audi', 'Mercedes', 'Tesla', 'Volvo', 'Porsche'], semanticRole: 'dimension' },
-      { name: 'Category', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 4, sampleValues: ['SUV', 'Sedan', 'Coupe', 'Electric'], semanticRole: 'dimension' },
-      { name: 'Country', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 6, sampleValues: ['Germany', 'France', 'Spain', 'United States', 'Japan', 'United Kingdom'], semanticRole: 'dimension' },
-      { name: 'Region', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 4, sampleValues: ['EMEA', 'Americas', 'APAC', 'Europe'], semanticRole: 'dimension' },
-      { name: 'Gender', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 2, sampleValues: ['Female', 'Male'], semanticRole: 'dimension' },
-      { name: 'CreditType', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 5, sampleValues: ['Excellent', 'Very Good', 'Good', 'Fair', 'Poor'], semanticRole: 'dimension' },
-      { name: 'Status', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 3, sampleValues: ['Active', 'Retained', 'Watchlist'], semanticRole: 'dimension' },
-      { name: 'Sales', inferredType: 'float', totalCount: 36, nullCount: 0, uniqueCount: 36, sampleValues: ['845000', '1250000', '652000'], semanticRole: 'metric' },
-      { name: 'Profit', inferredType: 'float', totalCount: 36, nullCount: 0, uniqueCount: 36, sampleValues: ['185000', '295000', '112000'], semanticRole: 'metric' },
-      { name: 'Period', inferredType: 'string', totalCount: 36, nullCount: 0, uniqueCount: 12, sampleValues: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], semanticRole: 'temporal' },
-    ],
-    uploadedAt: new Date().toISOString(),
-    parseWarnings: [],
-    status: 'complete',
-    version: '1.0.0',
-    quarantinedRowsCount: 0,
-    sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    requirements: {
-      businessGrain: 'One transaction per customer record',
-      primaryKey: 'Brand',
-      timestampColumn: 'Period',
-      currency: 'USD ($)',
-      unitScale: 'Exact 1.0',
-      periodicity: 'Monthly',
-      dataClassification: 'Internal Business',
-      intendedDecision: 'Automotive and banking sales performance analysis',
-    },
-    qualityChecks: [
-      {
-        rule: 'Completeness check',
-        category: 'Completeness',
-        status: 'passed',
-        details: 'Zero null values across 36 rows',
-        quarantinedCount: 0,
-        metricAssertion: '100% valid',
-      },
-    ],
-  },
-  rows: [
-    { Brand: 'BMW', Category: 'SUV', Country: 'Germany', Region: 'Europe', Gender: 'Male', CreditType: 'Excellent', Status: 'Active', Sales: '845320', Profit: '185400', Period: 'Jan 2026' },
-    { Brand: 'Audi', Category: 'Sedan', Country: 'Germany', Region: 'Europe', Gender: 'Female', CreditType: 'Very Good', Status: 'Active', Sales: '720450', Profit: '158000', Period: 'Feb 2026' },
-    { Brand: 'Mercedes', Category: 'SUV', Country: 'France', Region: 'Europe', Gender: 'Female', CreditType: 'Excellent', Status: 'Retained', Sales: '960200', Profit: '225000', Period: 'Mar 2026' },
-    { Brand: 'Tesla', Category: 'Electric', Country: 'United States', Region: 'Americas', Gender: 'Male', CreditType: 'Good', Status: 'Active', Sales: '1250000', Profit: '310000', Period: 'Apr 2026' },
-    { Brand: 'Porsche', Category: 'Coupe', Country: 'Germany', Region: 'Europe', Gender: 'Male', CreditType: 'Excellent', Status: 'Active', Sales: '1450000', Profit: '420000', Period: 'May 2026' },
-    { Brand: 'Volvo', Category: 'SUV', Country: 'Spain', Region: 'Europe', Gender: 'Female', CreditType: 'Very Good', Status: 'Retained', Sales: '652000', Profit: '128000', Period: 'Jun 2026' },
-    { Brand: 'Tesla', Category: 'Sedan', Country: 'United States', Region: 'Americas', Gender: 'Female', CreditType: 'Excellent', Status: 'Active', Sales: '890000', Profit: '215000', Period: 'Jul 2026' },
-    { Brand: 'BMW', Category: 'Sedan', Country: 'United Kingdom', Region: 'Europe', Gender: 'Male', CreditType: 'Good', Status: 'Watchlist', Sales: '580000', Profit: '98000', Period: 'Aug 2026' },
-    { Brand: 'Audi', Category: 'SUV', Country: 'Spain', Region: 'Europe', Gender: 'Female', CreditType: 'Fair', Status: 'Active', Sales: '675000', Profit: '135000', Period: 'Sep 2026' },
-    { Brand: 'Mercedes', Category: 'Sedan', Country: 'France', Region: 'Europe', Gender: 'Male', CreditType: 'Very Good', Status: 'Retained', Sales: '840000', Profit: '192000', Period: 'Oct 2026' },
-    { Brand: 'Porsche', Category: 'SUV', Country: 'United States', Region: 'Americas', Gender: 'Female', CreditType: 'Excellent', Status: 'Active', Sales: '1380000', Profit: '390000', Period: 'Nov 2026' },
-    { Brand: 'Volvo', Category: 'Electric', Country: 'Germany', Region: 'Europe', Gender: 'Male', CreditType: 'Good', Status: 'Active', Sales: '710000', Profit: '145000', Period: 'Dec 2026' },
-    { Brand: 'Toyota', Category: 'SUV', Country: 'Japan', Region: 'APAC', Gender: 'Female', CreditType: 'Very Good', Status: 'Active', Sales: '630000', Profit: '115000', Period: 'Jan 2026' },
-    { Brand: 'Toyota', Category: 'Sedan', Country: 'Japan', Region: 'APAC', Gender: 'Male', CreditType: 'Good', Status: 'Retained', Sales: '520000', Profit: '92000', Period: 'Feb 2026' },
-    { Brand: 'BMW', Category: 'Electric', Country: 'Germany', Region: 'Europe', Gender: 'Female', CreditType: 'Excellent', Status: 'Active', Sales: '980000', Profit: '240000', Period: 'Mar 2026' },
-    { Brand: 'Audi', Category: 'Electric', Country: 'France', Region: 'Europe', Gender: 'Male', CreditType: 'Very Good', Status: 'Active', Sales: '910000', Profit: '205000', Period: 'Apr 2026' },
-    { Brand: 'Mercedes', Category: 'Coupe', Country: 'United Kingdom', Region: 'Europe', Gender: 'Female', CreditType: 'Good', Status: 'Watchlist', Sales: '775000', Profit: '165000', Period: 'May 2026' },
-    { Brand: 'Tesla', Category: 'SUV', Country: 'United States', Region: 'Americas', Gender: 'Male', CreditType: 'Excellent', Status: 'Active', Sales: '1180000', Profit: '290000', Period: 'Jun 2026' },
-    { Brand: 'Porsche', Category: 'Coupe', Country: 'United Kingdom', Region: 'Europe', Gender: 'Male', CreditType: 'Excellent', Status: 'Active', Sales: '1520000', Profit: '460000', Period: 'Jul 2026' },
-    { Brand: 'Volvo', Category: 'Sedan', Country: 'Spain', Region: 'Europe', Gender: 'Female', CreditType: 'Fair', Status: 'Retained', Sales: '495000', Profit: '82000', Period: 'Aug 2026' },
-    { Brand: 'Lexus', Category: 'SUV', Country: 'Japan', Region: 'APAC', Gender: 'Male', CreditType: 'Very Good', Status: 'Active', Sales: '820000', Profit: '175000', Period: 'Sep 2026' },
-    { Brand: 'Lexus', Category: 'Sedan', Country: 'United States', Region: 'Americas', Gender: 'Female', CreditType: 'Excellent', Status: 'Active', Sales: '740000', Profit: '160000', Period: 'Oct 2026' },
-    { Brand: 'Tesla', Category: 'Electric', Country: 'Germany', Region: 'Europe', Gender: 'Female', CreditType: 'Very Good', Status: 'Active', Sales: '1050000', Profit: '260000', Period: 'Nov 2026' },
-    { Brand: 'BMW', Category: 'SUV', Country: 'United States', Region: 'Americas', Gender: 'Male', CreditType: 'Excellent', Status: 'Active', Sales: '920000', Profit: '210000', Period: 'Dec 2026' },
-  ],
-};
-
 export default function DashboardsPage() {
   const router = useRouter();
-  const { currentUser, activeDataset, activeRows, setActiveDataset } = useApp();
+  const { currentUser, activeDataset, activeRows, setActiveDataset, setActiveView } = useApp();
 
   // Visual Theme & Presentation State
   const [theme, setTheme] = useState<ThemePreset>('modern');
@@ -143,10 +68,34 @@ export default function DashboardsPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Auto-fallback or active data
+  // User active data evaluation (clean slate with zero mock data)
   const hasUserActiveData = Boolean(activeDataset && activeRows && activeRows.length > 0);
-  const currentDataset = hasUserActiveData ? activeDataset! : REFERENCE_DEMO_DATASET.profile;
-  const rawRows = hasUserActiveData ? activeRows : REFERENCE_DEMO_DATASET.rows;
+  const currentDataset: DatasetProfile = activeDataset || {
+    id: 'empty',
+    fileName: 'workspace.csv',
+    fileSize: 0,
+    rowCount: 0,
+    columnCount: 0,
+    columns: [],
+    uploadedAt: '',
+    parseWarnings: [],
+    status: 'complete',
+    version: '1.0.0',
+    quarantinedRowsCount: 0,
+    sha256: '0000000000',
+    requirements: {
+      businessGrain: 'Transactional record',
+      primaryKey: 'id',
+      timestampColumn: 'None',
+      currency: 'USD ($)',
+      unitScale: '1.0',
+      periodicity: 'Dynamic',
+      dataClassification: 'Internal',
+      intendedDecision: 'Analytics',
+    },
+    qualityChecks: [],
+  };
+  const rawRows = activeRows || [];
 
   // Available Column Types
   const numericColumns = useMemo(
@@ -285,8 +234,8 @@ export default function DashboardsPage() {
     });
 
     const count = filteredRows.length;
-    const mean1 = sum1 / count;
-    const mean2 = sum2 / count;
+    const mean1 = count > 0 ? sum1 / count : 0;
+    const mean2 = count > 0 ? sum2 / count : 0;
     const margin = sum1 > 0 ? (sum2 / sum1) * 100 : 0;
 
     // Attainment vs Target
@@ -781,15 +730,6 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
     setTimeout(() => setExportNotice(null), 3000);
   };
 
-  const handleLoadReferenceDemo = () => {
-    setActiveDataset(REFERENCE_DEMO_DATASET.profile, REFERENCE_DEMO_DATASET.rows);
-    setCategoryFilter('all');
-    setCountryFilter('all');
-    setSearchQuery('');
-    setExportNotice('Car Sales & Banking Intelligence Census loaded directly into memory.');
-    setTimeout(() => setExportNotice(null), 4000);
-  };
-
   const canExport = currentUser.role !== 'viewer';
 
   // Theme-specific styles (Apple Smooth Cream Glass)
@@ -798,6 +738,34 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
     cyberpunk: 'bg-[#090A0D] text-[#F5F5F7] dark',
     enterprise: 'bg-[#F2EDE4] text-[var(--lm-text-primary)]',
   }[theme];
+
+  // Clean Slate Empty State when user has not yet ingested custom data
+  if (!hasUserActiveData) {
+    return (
+      <div className="max-w-4xl mx-auto py-16 px-4 sm:px-6 animate-fade-in text-center">
+        <div className="bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-3xl p-8 sm:p-12 shadow-sm flex flex-col items-center">
+          <div className="w-16 h-16 rounded-2xl bg-[#059669]/10 text-[#059669] flex items-center justify-center mb-5">
+            <BarChart3Icon className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-extrabold text-[var(--lm-text-primary)] mb-2">
+            No Tabular Dataset Ingested Yet
+          </h2>
+          <p className="text-sm text-[var(--lm-text-secondary)] max-w-lg mb-8 leading-relaxed">
+            Your workspace is clean. Ingest a CSV, Excel, or structured data file in the Data Studio to generate real-time KPI aggregates, dynamic trajectory curves, frequency distribution histograms, and multi-dimensional slicers.
+          </p>
+          <Button
+            size="lg"
+            variant="primary"
+            onClick={() => (setActiveView ? setActiveView('data') : router.push('/data'))}
+            icon={<UploadIcon className="w-5 h-5" />}
+            className="bg-[#059669] hover:bg-[#047857] text-[#FAF8F5] shadow-md shadow-emerald-900/20"
+          >
+            + Ingest Dataset in Data Studio
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -923,42 +891,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
         </div>
       )}
 
-      {/* Fallback prompt if no user dataset */}
-      {!hasUserActiveData && (
-        <div className="mb-6 p-5 rounded-3xl bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-xs">
-              ⚡
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[var(--lm-text-primary)]">
-                Live Reference Benchmark Active (Car Sales & Banking Census)
-              </h3>
-              <p className="text-xs text-[var(--lm-text-secondary)] font-normal mt-0.5">
-                Real mathematical calculations executed on the verified 36-record automotive and banking population.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleLoadReferenceDemo}
-              icon={<RefreshCwIcon className="w-4 h-4" />}
-            >
-              Reset Benchmark
-            </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => router.push('/data')}
-              icon={<UploadIcon className="w-4 h-4" />}
-            >
-              Upload Custom Data
-            </Button>
-          </div>
-        </div>
-      )}
+
 
       {/* 2. COLLAPSIBLE INTERACTIVE SLICERS / FILTER BAR */}
       {slicersOpen && (
@@ -1366,7 +1299,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
             </div>
 
             {/* SVG Frequency Histogram Chart */}
-            <div className="h-56 w-full relative">
+            <div className="h-80 sm:h-96 min-h-[320px] w-full relative">
               {histogramDistribution.bins.length > 0 ? (
                 <svg viewBox="0 0 600 160" className="w-full h-full overflow-visible">
                   {/* Background grid */}
@@ -1478,16 +1411,16 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
           </div>
 
           {/* SVG Canvas */}
-          <div className="h-64 w-full relative">
+          <div className="h-80 sm:h-96 min-h-[340px] w-full relative">
             {trajectorySeries.length > 0 ? (
               (() => {
                 const maxVal = Math.max(
                   ...trajectorySeries.map((d) => Math.max(d.primary, d.secondary)),
                   100
                 );
-                const width = 600;
-                const height = 240;
-                const padding = { top: 20, right: 20, bottom: 35, left: 50 };
+                const width = 800;
+                const height = 300;
+                const padding = { top: 25, right: 25, bottom: 40, left: 55 };
                 const chartW = width - padding.left - padding.right;
                 const chartH = height - padding.top - padding.bottom;
                 const step = chartW / Math.max(trajectorySeries.length - 1, 1);
@@ -1704,7 +1637,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
             </div>
 
             {/* SVG Donut */}
-            <div className="relative w-48 h-48 mx-auto my-2">
+            <div className="relative w-64 h-64 sm:w-72 sm:h-72 mx-auto my-4">
               <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90 transform">
                 {/* Background Ring */}
                 <circle cx="50" cy="50" r="38" stroke="currentColor" strokeWidth="14" fill="none" opacity="0.1" />
@@ -1807,7 +1740,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
             </div>
 
             {/* Semi-Circle Speedometer SVG */}
-            <div className="relative w-48 h-32 mx-auto mt-2">
+            <div className="relative w-64 h-40 sm:w-72 sm:h-44 mx-auto mt-3">
               <svg viewBox="0 0 100 60" className="w-full h-full overflow-visible">
                 {/* Arc 1: Red Zone (0 - 50%) */}
                 <path

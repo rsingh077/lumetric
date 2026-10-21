@@ -22,7 +22,7 @@ const getInitialNodes = (datasetName?: string, rowCount?: number, hash?: string)
     type: 'source',
     status: 'valid',
     inputs: [datasetName ? `local://${datasetName}` : 'data_source_snapshot.parquet'],
-    outputRows: rowCount ? `${rowCount.toLocaleString()} rows` : '36 census rows',
+    outputRows: rowCount ? `${rowCount.toLocaleString()} rows` : '0 rows (Awaiting ingestion)',
     desc: `Cryptographic SHA-256: ${hash ? hash.substring(0, 10) + '...' : 'verified'} (0 quarantine records)`,
   },
   {
@@ -31,7 +31,7 @@ const getInitialNodes = (datasetName?: string, rowCount?: number, hash?: string)
     type: 'filter',
     status: 'valid',
     inputs: ['node-1'],
-    outputRows: rowCount ? `${rowCount.toLocaleString()} rows (0 duplicates)` : '36 verified rows',
+    outputRows: rowCount ? `${rowCount.toLocaleString()} rows (0 duplicates)` : '0 verified rows',
     desc: 'Deterministic timestamp precedence deduplication',
   },
   {
@@ -40,7 +40,7 @@ const getInitialNodes = (datasetName?: string, rowCount?: number, hash?: string)
     type: 'join',
     status: 'valid',
     inputs: ['node-2'],
-    outputRows: 'Computed Column: [Profit_Margin_Pct]',
+    outputRows: rowCount ? 'Computed Column: [Profit_Margin_Pct]' : 'Awaiting Data',
     desc: 'Ratio: (Profit / Sales) * 100 with zero-division safeguard',
   },
   {
@@ -82,17 +82,9 @@ export default function PipelinesPage() {
     sampleRows: Record<string, string>[];
   } | null>(null);
 
-  // Compute live transform preview from active rows or benchmark
+  // Compute live transform preview strictly from active rows (zero mock data)
   const liveTransformedSample = useMemo(() => {
-    const base = activeRows.length > 0 ? activeRows : [
-      { Brand: 'BMW', Category: 'SUV', Region: 'Europe', Sales: '845320', Profit: '185400', Profit_Margin_Pct: '21.9%' },
-      { Brand: 'Tesla', Category: 'Electric', Region: 'Americas', Sales: '1250000', Profit: '310000', Profit_Margin_Pct: '24.8%' },
-      { Brand: 'Mercedes', Category: 'SUV', Region: 'Europe', Sales: '960200', Profit: '225000', Profit_Margin_Pct: '23.4%' },
-      { Brand: 'Porsche', Category: 'Coupe', Region: 'Europe', Sales: '1450000', Profit: '420000', Profit_Margin_Pct: '28.9%' },
-      { Brand: 'Volvo', Category: 'SUV', Region: 'Europe', Sales: '652000', Profit: '128000', Profit_Margin_Pct: '19.6%' },
-      { Brand: 'Toyota', Category: 'Sedan', Region: 'APAC', Sales: '520000', Profit: '92000', Profit_Margin_Pct: '17.7%' },
-    ];
-    return base.slice(0, 8);
+    return activeRows.slice(0, 8);
   }, [activeRows]);
 
   const handleAddNode = (e: React.FormEvent) => {
@@ -105,7 +97,7 @@ export default function PipelinesPage() {
       type: newNodeType,
       status: 'valid',
       inputs: [`node-${nodes.length}`],
-      outputRows: activeRows.length ? `${activeRows.length} rows` : '36 rows',
+      outputRows: activeRows.length ? `${activeRows.length} rows` : '0 rows (Pending data)',
       desc: newNodeDesc.trim() || 'Custom transformation step in DAG execution',
     };
 
@@ -288,30 +280,38 @@ export default function PipelinesPage() {
               </span>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-xl">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 font-bold text-[10px] text-slate-500 uppercase tracking-wider">
-                  <tr>
-                    {Object.keys(liveTransformedSample[0] || {}).map((col) => (
-                      <th key={col} className="px-3 py-2">
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
-                  {liveTransformedSample.map((row, i) => (
-                    <tr key={i} className="hover:bg-slate-50">
-                      {Object.values(row).map((val, vi) => (
-                        <td key={vi} className="px-3 py-2 text-slate-700">
-                          {val}
-                        </td>
+            {liveTransformedSample.length > 0 ? (
+              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 font-bold text-[10px] text-slate-500 uppercase tracking-wider">
+                    <tr>
+                      {Object.keys(liveTransformedSample[0] || {}).map((col) => (
+                        <th key={col} className="px-3 py-2">
+                          {col}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                    {liveTransformedSample.map((row, i) => (
+                      <tr key={i} className="hover:bg-slate-50">
+                        {Object.values(row).map((val, vi) => (
+                          <td key={vi} className="px-3 py-2 text-slate-700">
+                            {val}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-8 px-4 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200">
+                <p className="text-xs text-slate-500">
+                  No active dataset loaded. Ingest data in the Data Studio to view live pipeline node outputs.
+                </p>
+              </div>
+            )}
           </Card>
         </div>
 
