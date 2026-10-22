@@ -166,6 +166,29 @@ export function BillingSection() {
     }).catch(() => {});
   }, []);
 
+  // Real-time automatic payment confirmation poller
+  useEffect(() => {
+    if (!orderData?.orderId || checkoutStep !== 'qr') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await LumetricAuthService.checkOrderStatus(orderData.orderId);
+        if (res.success && res.status === 'paid' && res.subscription) {
+          setCurrentSubscription(res.subscription);
+          setCheckoutStep('success');
+          setToastMessage(`✓ Payment confirmed! Account automatically upgraded to ${res.subscription.tier?.toUpperCase()}.`);
+          clearInterval(interval);
+
+          LumetricAuthService.getInvoices().then((invRes) => {
+            if (invRes.success && invRes.invoices) setInvoices(invRes.invoices);
+          }).catch(() => {});
+        }
+      } catch {}
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [orderData?.orderId, checkoutStep]);
+
   // Initiate Checkout & Generate Dynamic UPI QR INSTANTLY (< 10ms)
   const handleOpenCheckout = async (plan: PlanConfig) => {
     setSelectedPlanForUpgrade(plan);
@@ -570,9 +593,15 @@ export function BillingSection() {
                   <h3 className="text-xl font-extrabold text-[var(--lm-text-primary)]">
                     Upgrade to {selectedPlanForUpgrade.name}
                   </h3>
-                  <p className="text-xs text-[var(--lm-text-secondary)] mt-0.5">
-                    Order Reference: <span className="font-mono font-bold">{orderData?.orderId || 'Generating...'}</span>
-                  </p>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-xs text-[var(--lm-text-secondary)]">
+                      Order Reference: <span className="font-mono font-bold">{orderData?.orderId || 'Generating...'}</span>
+                    </p>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                      Auto-Upgrade Active
+                    </span>
+                  </div>
                 </div>
 
                 {/* Payment Method Tabs */}

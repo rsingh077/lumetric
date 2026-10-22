@@ -1765,6 +1765,9 @@ app.get('/api/data/records', (req, res) => {
 // 16. BILLING & SUBSCRIPTION SYSTEM (Tiers: Basic, Pro, Enterprise)
 // -----------------------------------------------------------------------------
 
+const activeBillingOrders = new Map();
+const redeemedUtrs = new Set();
+
 const BILLING_PLANS = {
   basic: {
     id: 'basic',
@@ -1891,13 +1894,25 @@ app.post('/api/billing/create-order', authenticateToken, (req, res) => {
 
   const orderId = `ORD_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
   const amount = billingCycle === 'annual' ? plan.annualPriceINR : plan.priceINR;
+  const formattedAmount = Number(amount).toFixed(2);
   const merchantVpa = process.env.MERCHANT_UPI_VPA || '6005952031@jio';
   const payeeName = process.env.MERCHANT_PAYEE_NAME || 'Lumetric Studio';
-  const note = encodeURIComponent(`Lumetric ${plan.name} ${billingCycle.toUpperCase()}`);
+  const note = encodeURIComponent(`Lumetric ${plan.name}`);
 
-  const formattedAmount = Number(amount).toFixed(2);
-  // NPCI Universal UPI payment deep link (Compatible with GPay, PhonePe, Paytm, CRED, BHIM)
+  // NPCI Universal UPI payment deep link
   const upiDeepLink = `upi://pay?pa=${merchantVpa}&pn=${encodeURIComponent(payeeName)}&am=${formattedAmount}&cu=INR&tn=${note}`;
+
+  // Register order for automated polling and auto-settlement
+  activeBillingOrders.set(orderId, {
+    orderId,
+    userEmail: req.user.email,
+    planId: plan.id,
+    planName: plan.name,
+    billingCycle,
+    amount,
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  });
 
   logAuditEvent(req.user.email, 'PAYMENT_ORDER_CREATED', 'Billing', `Order ${orderId} initiated for ${plan.name} (${amount} INR)`);
 
@@ -1915,13 +1930,45 @@ app.post('/api/billing/create-order', authenticateToken, (req, res) => {
       name: plan.name,
       priceINR: amount
     },
-    expiresInSeconds: 900 // 15 mins window
+    expiresInSeconds: 900
   });
 });
 
-// 16d. Verify & Settle UPI Payment (via UTR Number)
+// 16d. Real-Time Order Status Polling
+app.get('/api/billing/order-status/:orderId', authenticateToken, (req, res) => {
+  const { orderId } = req.params;
+  const order = activeBillingOrders.get(orderId);
+  const user = req.user;
+  const currentSub = user.settings?.subscription;
+
+  if (order && order.status === 'paid') {
+    return res.json({
+      success: true,
+      status: 'paid',
+      tier: order.planId,
+      subscription: currentSub
+    });
+  }
+
+  if (currentSub && currentSub.lastPayment?.orderId === orderId) {
+    return res.json({
+      success: true,
+      status: 'paid',
+      tier: currentSub.tier,
+      subscription: currentSub
+    });
+  }
+
+  return res.json({
+    success: true,
+    status: 'pending',
+    orderId
+  });
+});
+
+// 16e. Verify & Settle UPI Payment (Automatic Account Upgrade)
 app.post('/api/billing/verify-upi', authenticateToken, async (req, res) => {
-  const { orderId, utrNumber, planId, billingCycle = 'monthly' } = req.body;
+  const { orderId, utrNumber, planId: requestedPlanId, billingCycle = 'monthly' } = req.body;
   const user = req.user;
 
   if (!orderId || !utrNumber) {
@@ -1933,10 +1980,27 @@ app.post('/api/billing/verify-upi', authenticateToken, async (req, res) => {
     return res.status(400).json({ success: false, error: 'Please enter a valid Bank Transaction / UTR reference number.' });
   }
 
-  const plan = BILLING_PLANS[planId] || BILLING_PLANS.pro;
-  const amount = billingCycle === 'annual' ? plan.annualPriceINR : plan.priceINR;
+  // Deduplication guard: prevent same UTR from upgrading multiple accounts
+  if (redeemedUtrs.has(cleanUtr)) {
+    return res.status(400).json({
+      success: false,
+      error: 'This Bank UTR reference has already been processed and credited.'
+    });
+  }
+
+  // Match order from active orders or auto-detect plan from amount
+  const cachedOrder = activeBillingOrders.get(orderId);
+  const targetPlanId = cachedOrder?.planId || requestedPlanId || 'pro';
+  const plan = BILLING_PLANS[targetPlanId] || BILLING_PLANS.pro;
+  const amount = cachedOrder?.amount || (billingCycle === 'annual' ? plan.annualPriceINR : plan.priceINR);
   const daysValid = billingCycle === 'annual' ? 365 : 30;
   const validUntil = new Date(Date.now() + daysValid * 24 * 60 * 60 * 1000).toISOString();
+
+  redeemedUtrs.add(cleanUtr);
+  if (cachedOrder) {
+    cachedOrder.status = 'paid';
+    cachedOrder.utrNumber = cleanUtr;
+  }
 
   if (!user.settings) user.settings = {};
   
@@ -1956,7 +2020,7 @@ app.post('/api/billing/verify-upi', authenticateToken, async (req, res) => {
     }
   };
 
-  // Add immutable invoice record
+  // Add immutable tax invoice
   if (!user.settings.invoices) user.settings.invoices = [];
   const invoiceId = `INV-${Date.now().toString().slice(-6)}-${cleanUtr.slice(-4)}`;
   user.settings.invoices.unshift({
@@ -1976,17 +2040,107 @@ app.post('/api/billing/verify-upi', authenticateToken, async (req, res) => {
   }
 
   await saveUserToStore(req, user);
-  logAuditEvent(user.email, 'SUBSCRIPTION_ACTIVATED_UPI', 'Billing', `Upgraded to ${plan.name} via UPI UTR ${cleanUtr}`);
+  logAuditEvent(user.email, 'SUBSCRIPTION_ACTIVATED_UPI', 'Billing', `Account automatically upgraded to ${plan.name} via UPI UTR ${cleanUtr}`);
+
+  const { passwordHash: _, mfaSecret: __, ...userSafe } = user;
 
   return res.json({
     success: true,
-    message: `Congratulations! Your subscription to ${plan.name} has been activated.`,
+    message: `Congratulations! Your account has been automatically upgraded to ${plan.name}.`,
     subscription: user.settings.subscription,
-    invoice: user.settings.invoices[0]
+    invoice: user.settings.invoices[0],
+    user: userSafe
   });
 });
 
-// 16e. Get Billing Invoices
+// 16f. Automated Bank Credit Webhook (YouPI-PG / SMS Observer Listener)
+app.post('/api/billing/webhook/bank-credit', async (req, res) => {
+  const { secret, amount, utrNumber, orderId } = req.body;
+  const expectedSecret = process.env.BANK_WEBHOOK_SECRET || 'lumetric_bank_webhook_key_2026';
+  
+  if (secret !== expectedSecret && req.headers['x-webhook-secret'] !== expectedSecret) {
+    return res.status(403).json({ success: false, error: 'Unauthorized webhook access' });
+  }
+
+  if (!utrNumber || !amount) {
+    return res.status(400).json({ success: false, error: 'utrNumber and amount are required' });
+  }
+
+  const cleanUtr = String(utrNumber).trim();
+  const numAmount = Number(amount);
+
+  let matchedOrder = null;
+  if (orderId && activeBillingOrders.has(orderId)) {
+    matchedOrder = activeBillingOrders.get(orderId);
+  } else {
+    for (const [, o] of activeBillingOrders.entries()) {
+      if (o.status === 'pending' && Math.abs(o.amount - numAmount) < 1) {
+        matchedOrder = o;
+        break;
+      }
+    }
+  }
+
+  if (!matchedOrder) {
+    return res.status(404).json({ success: false, error: 'No matching pending order found for this credit' });
+  }
+
+  matchedOrder.status = 'paid';
+  matchedOrder.utrNumber = cleanUtr;
+  redeemedUtrs.add(cleanUtr);
+
+  // Upgrade target account in Catalyst DataStore
+  const targetUser = await getUserFromStore(req, matchedOrder.userEmail);
+  if (targetUser) {
+    if (!targetUser.settings) targetUser.settings = {};
+    const plan = BILLING_PLANS[matchedOrder.planId] || BILLING_PLANS.pro;
+    const daysValid = matchedOrder.billingCycle === 'annual' ? 365 : 30;
+    
+    targetUser.settings.subscription = {
+      tier: plan.id,
+      billingCycle: matchedOrder.billingCycle,
+      status: 'active',
+      startedAt: new Date().toISOString(),
+      validUntil: new Date(Date.now() + daysValid * 86400000).toISOString(),
+      lastPayment: {
+        orderId: matchedOrder.orderId,
+        utrNumber: cleanUtr,
+        amount: numAmount,
+        currency: 'INR',
+        method: 'UPI_AUTO_WEBHOOK',
+        verifiedAt: new Date().toISOString()
+      }
+    };
+
+    if (!targetUser.settings.invoices) targetUser.settings.invoices = [];
+    targetUser.settings.invoices.unshift({
+      id: `INV-${Date.now().toString().slice(-6)}-${cleanUtr.slice(-4)}`,
+      orderId: matchedOrder.orderId,
+      utrNumber: cleanUtr,
+      planName: plan.name,
+      amount: `₹${numAmount.toLocaleString('en-IN')}`,
+      date: new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }),
+      status: 'PAID',
+      billingCycle: matchedOrder.billingCycle
+    });
+
+    if (plan.id === 'enterprise' && targetUser.role === 'builder') {
+      targetUser.role = 'administrator';
+    }
+
+    await saveUserToStore(req, targetUser);
+    logAuditEvent(targetUser.email, 'SUBSCRIPTION_AUTO_SETTLED_WEBHOOK', 'Billing', `Auto-upgraded to ${plan.name} via Webhook credit UTR ${cleanUtr}`);
+  }
+
+  return res.json({
+    success: true,
+    message: `Order matched and account automatically upgraded to ${matchedOrder.planId}`,
+    orderId: matchedOrder.orderId,
+    userEmail: matchedOrder.userEmail
+  });
+});
+
+// 16g. Get Billing Invoices
 app.get('/api/billing/invoices', authenticateToken, (req, res) => {
   const user = req.user;
   const invoices = (user.settings && user.settings.invoices) || [];

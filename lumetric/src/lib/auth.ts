@@ -976,6 +976,26 @@ export class LumetricAuthService {
     }
   }
 
+  public static async checkOrderStatus(orderId: string): Promise<{
+    success: boolean;
+    status?: 'pending' | 'paid';
+    tier?: string;
+    subscription?: any;
+    error?: string;
+  }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/order-status/${encodeURIComponent(orderId)}`, {
+        headers: { ...this.getAuthHeaders(token) }
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to check order status' };
+    }
+  }
+
   public static async saveWorkspaceData(workspaceData: any): Promise<{ success: boolean; message?: string; error?: string }> {
     const token = this.getStoredToken();
     if (!token) return { success: false, error: 'Not authenticated' };
