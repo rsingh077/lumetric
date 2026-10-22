@@ -546,6 +546,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             createdAt: res.user.createdAt
           });
           setIsAuthenticated(true);
+          if (res.user.settings?.subscription) {
+            try {
+              localStorage.setItem('lumetric_active_subscription', JSON.stringify(res.user.settings.subscription));
+            } catch {}
+          }
         } else if (res.error && (res.error.includes('expired') || res.error.includes('no longer exists') || res.error.includes('401') || res.error.includes('403'))) {
           LumetricAuthService.clearSession();
           setIsAuthenticated(false);

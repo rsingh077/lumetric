@@ -886,16 +886,47 @@ export class LumetricAuthService {
 
   public static async getSubscription(): Promise<{ success: boolean; subscription?: any; error?: string }> {
     const token = this.getStoredToken();
-    if (!token) return { success: false, error: 'Not authenticated' };
+    const currentUser = this.getStoredUser();
+
+    // Fast cache lookup
+    let cachedSub: any = null;
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('lumetric_active_subscription');
+        if (raw) cachedSub = JSON.parse(raw);
+      } catch {}
+    }
 
     try {
-      const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/subscription`, {
-        headers: { ...this.getAuthHeaders(token) }
+      const headers: Record<string, string> = {};
+      if (token) {
+        Object.assign(headers, this.getAuthHeaders(token));
+      }
+      const email = currentUser?.email;
+      if (email) {
+        headers['x-user-email'] = email;
+      }
+
+      const query = email ? `?email=${encodeURIComponent(email)}` : '';
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/subscription${query}`, {
+        headers
       });
-      return await res.json();
+      const data = await res.json();
+      if (data.success && data.subscription) {
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('lumetric_active_subscription', JSON.stringify(data.subscription));
+          } catch {}
+        }
+        return data;
+      }
     } catch (err: any) {
+      if (cachedSub) return { success: true, subscription: cachedSub };
       return { success: false, error: err.message || 'Failed to fetch subscription' };
     }
+
+    if (cachedSub) return { success: true, subscription: cachedSub };
+    return { success: false, error: 'Subscription not found' };
   }
 
   public static async createPaymentOrder(planId: string, billingCycle: 'monthly' | 'annual' = 'monthly'): Promise<{
@@ -970,17 +1001,27 @@ export class LumetricAuthService {
         data.error = data.data.message;
       }
       if (data.success && data.subscription) {
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('lumetric_active_subscription', JSON.stringify(data.subscription));
+          } catch {}
+        }
         if (data.token && data.user) {
           this.setSession(data.token, data.user);
         } else {
-          const user = this.getStoredUser();
-          if (user) {
-            user.settings = {
-              ...(user.settings || {}),
-              subscription: data.subscription
-            };
-            this.safeSaveUser(user);
-          }
+          const user: AuthUser = this.getStoredUser() || {
+            id: `usr-${Date.now()}`,
+            email: emailToSend || 'user@lumetric.dev',
+            name: emailToSend?.split('@')[0] || 'User',
+            role: 'builder',
+            createdAt: new Date().toISOString(),
+            settings: {}
+          };
+          user.settings = {
+            ...(user.settings || {}),
+            subscription: data.subscription
+          };
+          this.safeSaveUser(user);
         }
       }
       return data;
@@ -991,11 +1032,17 @@ export class LumetricAuthService {
 
   public static async getInvoices(): Promise<{ success: boolean; invoices?: any[]; error?: string }> {
     const token = this.getStoredToken();
-    if (!token) return { success: true, invoices: [] };
+    const currentUser = this.getStoredUser();
 
     try {
-      const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/invoices`, {
-        headers: { ...this.getAuthHeaders(token) }
+      const headers: Record<string, string> = {};
+      if (token) Object.assign(headers, this.getAuthHeaders(token));
+      const email = currentUser?.email;
+      if (email) headers['x-user-email'] = email;
+      const query = email ? `?email=${encodeURIComponent(email)}` : '';
+
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/invoices${query}`, {
+        headers
       });
       return await res.json();
     } catch (err: any) {

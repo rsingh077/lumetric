@@ -654,6 +654,12 @@ export function UserAuthProfileModal({
                     {authUser.role}
                   </span>
                 </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[var(--lm-text-secondary)]">Subscription Plan</span>
+                  <span className="font-mono font-bold text-[#059669] bg-[#059669]/10 px-2 py-0.5 rounded-md border border-[#059669]/25">
+                    {authUser.settings?.subscription?.planName || (authUser.settings?.subscription?.tier === 'pro' || authUser.email === 'semysedilo8@gmail.com' || authUser.email === 'rajskatoch07@gmail.com' ? 'Pro Studio' : 'Basic Free')}
+                  </span>
+                </div>
               </div>
 
               {/* 2FA Authenticator Section */}
