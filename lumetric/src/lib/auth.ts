@@ -910,16 +910,24 @@ export class LumetricAuthService {
     error?: string;
   }> {
     const token = this.getStoredToken();
-    if (!token) return { success: false, error: 'Not authenticated' };
+    const currentUser = this.getStoredUser();
 
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        Object.assign(headers, this.getAuthHeaders(token));
+      }
+
       const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/create-order`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getAuthHeaders(token)
-        },
-        body: JSON.stringify({ planId, billingCycle })
+        headers,
+        body: JSON.stringify({
+          planId,
+          billingCycle,
+          userEmail: currentUser?.email || undefined
+        })
       });
       return await res.json();
     } catch (err: any) {
@@ -932,28 +940,41 @@ export class LumetricAuthService {
     utrNumber: string;
     planId: string;
     billingCycle?: string;
-  }): Promise<{ success: boolean; message?: string; subscription?: any; invoice?: any; error?: string }> {
+    userEmail?: string;
+  }): Promise<{ success: boolean; message?: string; subscription?: any; invoice?: any; token?: string; user?: any; error?: string }> {
     const token = this.getStoredToken();
-    if (!token) return { success: false, error: 'Not authenticated' };
+    const currentUser = this.getStoredUser();
+    const emailToSend = payload.userEmail || currentUser?.email;
 
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        Object.assign(headers, this.getAuthHeaders(token));
+      }
+
       const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/verify-upi`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getAuthHeaders(token)
-        },
-        body: JSON.stringify(payload)
+        headers,
+        body: JSON.stringify({
+          ...payload,
+          userEmail: emailToSend
+        })
       });
       const data = await res.json();
       if (data.success && data.subscription) {
-        const currentUser = this.getStoredUser();
-        if (currentUser) {
-          currentUser.settings = {
-            ...(currentUser.settings || {}),
-            subscription: data.subscription
-          };
-          this.safeSaveUser(currentUser);
+        if (data.token && data.user) {
+          this.setSession(data.token, data.user);
+        } else {
+          const user = this.getStoredUser();
+          if (user) {
+            user.settings = {
+              ...(user.settings || {}),
+              subscription: data.subscription
+            };
+            this.safeSaveUser(user);
+          }
         }
       }
       return data;
@@ -964,7 +985,7 @@ export class LumetricAuthService {
 
   public static async getInvoices(): Promise<{ success: boolean; invoices?: any[]; error?: string }> {
     const token = this.getStoredToken();
-    if (!token) return { success: false, error: 'Not authenticated' };
+    if (!token) return { success: true, invoices: [] };
 
     try {
       const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/invoices`, {
@@ -984,11 +1005,14 @@ export class LumetricAuthService {
     error?: string;
   }> {
     const token = this.getStoredToken();
-    if (!token) return { success: false, error: 'Not authenticated' };
+    const headers: Record<string, string> = {};
+    if (token) {
+      Object.assign(headers, this.getAuthHeaders(token));
+    }
 
     try {
       const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/order-status/${encodeURIComponent(orderId)}`, {
-        headers: { ...this.getAuthHeaders(token) }
+        headers
       });
       return await res.json();
     } catch (err: any) {

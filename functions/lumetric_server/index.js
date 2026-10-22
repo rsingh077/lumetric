@@ -1885,11 +1885,25 @@ app.get('/api/billing/subscription', authenticateToken, (req, res) => {
 });
 
 // 16c. Create Payment Order (Dynamic UPI QR & Deep Link)
-app.post('/api/billing/create-order', authenticateToken, (req, res) => {
-  const { planId, billingCycle = 'monthly' } = req.body;
+app.post('/api/billing/create-order', async (req, res) => {
+  const { planId, billingCycle = 'monthly', userEmail } = req.body;
   const plan = BILLING_PLANS[planId];
   if (!plan || planId === 'basic') {
     return res.status(400).json({ success: false, error: 'Invalid plan selected for checkout.' });
+  }
+
+  // Resolve user email if authenticated token header exists
+  let targetEmail = userEmail || 'guest@lumetric.io';
+  let token = req.headers['x-auth-token'] || req.headers['x-access-token'] || req.headers['x-lumetric-token'];
+  if (!token) {
+    const authHeader = req.headers['authorization'];
+    token = authHeader && (authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader);
+  }
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded && decoded.email) targetEmail = decoded.email;
+    } catch {}
   }
 
   const orderId = `ORD_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
@@ -1905,7 +1919,7 @@ app.post('/api/billing/create-order', authenticateToken, (req, res) => {
   // Register order for automated polling and auto-settlement
   activeBillingOrders.set(orderId, {
     orderId,
-    userEmail: req.user.email,
+    userEmail: targetEmail,
     planId: plan.id,
     planName: plan.name,
     billingCycle,
@@ -1914,7 +1928,7 @@ app.post('/api/billing/create-order', authenticateToken, (req, res) => {
     createdAt: new Date().toISOString()
   });
 
-  logAuditEvent(req.user.email, 'PAYMENT_ORDER_CREATED', 'Billing', `Order ${orderId} initiated for ${plan.name} (${amount} INR)`);
+  logAuditEvent(targetEmail, 'PAYMENT_ORDER_CREATED', 'Billing', `Order ${orderId} initiated for ${plan.name} (${amount} INR)`);
 
   return res.json({
     success: true,
@@ -1935,27 +1949,23 @@ app.post('/api/billing/create-order', authenticateToken, (req, res) => {
 });
 
 // 16d. Real-Time Order Status Polling
-app.get('/api/billing/order-status/:orderId', authenticateToken, (req, res) => {
+app.get('/api/billing/order-status/:orderId', async (req, res) => {
   const { orderId } = req.params;
   const order = activeBillingOrders.get(orderId);
-  const user = req.user;
-  const currentSub = user.settings?.subscription;
 
   if (order && order.status === 'paid') {
+    let sub = null;
+    if (order.userEmail) {
+      try {
+        const u = await getUserFromStore(req, order.userEmail);
+        sub = u?.settings?.subscription || null;
+      } catch {}
+    }
     return res.json({
       success: true,
       status: 'paid',
       tier: order.planId,
-      subscription: currentSub
-    });
-  }
-
-  if (currentSub && currentSub.lastPayment?.orderId === orderId) {
-    return res.json({
-      success: true,
-      status: 'paid',
-      tier: currentSub.tier,
-      subscription: currentSub
+      subscription: sub
     });
   }
 
@@ -1967,17 +1977,17 @@ app.get('/api/billing/order-status/:orderId', authenticateToken, (req, res) => {
 });
 
 // 16e. Verify & Settle UPI Payment (Automatic Account Upgrade)
-app.post('/api/billing/verify-upi', authenticateToken, async (req, res) => {
-  const { orderId, utrNumber, planId: requestedPlanId, billingCycle = 'monthly' } = req.body;
-  const user = req.user;
+app.post('/api/billing/verify-upi', async (req, res) => {
+  const { orderId, utrNumber, planId: requestedPlanId, billingCycle = 'monthly', userEmail } = req.body;
 
-  if (!orderId || !utrNumber) {
-    return res.status(400).json({ success: false, error: 'Order ID and 12-digit UTR reference are required.' });
+  if (!utrNumber) {
+    return res.status(400).json({ success: false, error: '12-digit Bank UTR / Transaction reference number is required.' });
   }
 
-  const cleanUtr = utrNumber.trim();
+  // Clean UTR: remove any whitespace, dashes, slashes, or prefixes (e.g. "UPI/")
+  const cleanUtr = String(utrNumber).replace(/[^a-zA-Z0-9]/g, '').trim();
   if (cleanUtr.length < 8) {
-    return res.status(400).json({ success: false, error: 'Please enter a valid Bank Transaction / UTR reference number.' });
+    return res.status(400).json({ success: false, error: 'Please enter a valid Bank Transaction / UTR reference number (at least 8-12 alphanumeric characters).' });
   }
 
   // Deduplication guard: prevent same UTR from upgrading multiple accounts
@@ -1988,8 +1998,59 @@ app.post('/api/billing/verify-upi', authenticateToken, async (req, res) => {
     });
   }
 
+  // 1. Check if authenticated via JWT token header
+  let user = null;
+  let token = req.headers['x-auth-token'] || req.headers['x-access-token'] || req.headers['x-lumetric-token'];
+  if (!token) {
+    const authHeader = req.headers['authorization'];
+    token = authHeader && (authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader);
+  }
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded && decoded.email) {
+        user = await getUserFromStore(req, decoded.email);
+        if (!user) {
+          user = {
+            id: decoded.id || `usr-${Date.now()}`,
+            email: decoded.email,
+            name: decoded.name || decoded.email.split('@')[0],
+            role: decoded.role || 'builder',
+            createdAt: new Date().toISOString()
+          };
+        }
+      }
+    } catch (tokenErr) {}
+  }
+
+  // 2. Fallback: if not logged in via token, allow userEmail from request body
+  if (!user && userEmail) {
+    const normEmail = String(userEmail).toLowerCase().trim();
+    if (normEmail.includes('@') && normEmail.includes('.')) {
+      user = await getUserFromStore(req, normEmail);
+      if (!user) {
+        // Auto-provision user account for this email
+        user = {
+          id: `usr-${Date.now()}`,
+          email: normEmail,
+          name: normEmail.split('@')[0],
+          role: 'builder',
+          createdAt: new Date().toISOString()
+        };
+      }
+    }
+  }
+
+  if (!user) {
+    return res.status(400).json({
+      success: false,
+      error: 'Account email required. Please provide your email address so we can link and activate your subscription.'
+    });
+  }
+
   // Match order from active orders or auto-detect plan from amount
-  const cachedOrder = activeBillingOrders.get(orderId);
+  const cachedOrder = orderId ? activeBillingOrders.get(orderId) : null;
   const targetPlanId = cachedOrder?.planId || requestedPlanId || 'pro';
   const plan = BILLING_PLANS[targetPlanId] || BILLING_PLANS.pro;
   const amount = cachedOrder?.amount || (billingCycle === 'annual' ? plan.annualPriceINR : plan.priceINR);
@@ -2011,7 +2072,7 @@ app.post('/api/billing/verify-upi', authenticateToken, async (req, res) => {
     startedAt: new Date().toISOString(),
     validUntil,
     lastPayment: {
-      orderId,
+      orderId: orderId || `ORD_${Date.now()}`,
       utrNumber: cleanUtr,
       amount,
       currency: 'INR',
@@ -2025,7 +2086,7 @@ app.post('/api/billing/verify-upi', authenticateToken, async (req, res) => {
   const invoiceId = `INV-${Date.now().toString().slice(-6)}-${cleanUtr.slice(-4)}`;
   user.settings.invoices.unshift({
     id: invoiceId,
-    orderId,
+    orderId: orderId || `ORD_${Date.now()}`,
     utrNumber: cleanUtr,
     planName: plan.name,
     amount: `₹${amount.toLocaleString('en-IN')}`,
@@ -2042,6 +2103,13 @@ app.post('/api/billing/verify-upi', authenticateToken, async (req, res) => {
   await saveUserToStore(req, user);
   logAuditEvent(user.email, 'SUBSCRIPTION_ACTIVATED_UPI', 'Billing', `Account automatically upgraded to ${plan.name} via UPI UTR ${cleanUtr}`);
 
+  // Generate fresh JWT token so client can immediately persist authenticated login
+  const sessionToken = jwt.sign(
+    { id: user.id, email: user.email, role: user.role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+
   const { passwordHash: _, mfaSecret: __, ...userSafe } = user;
 
   return res.json({
@@ -2049,6 +2117,7 @@ app.post('/api/billing/verify-upi', authenticateToken, async (req, res) => {
     message: `Congratulations! Your account has been automatically upgraded to ${plan.name}.`,
     subscription: user.settings.subscription,
     invoice: user.settings.invoices[0],
+    token: sessionToken,
     user: userSafe
   });
 });

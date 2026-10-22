@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { Card, CardHeader, CardTitle, StatusBadge, Button, Input } from '@/components/ui';
 import { LumetricAuthService } from '@/lib/auth';
+import { useApp } from '@/contexts/AppContext';
 
 interface PlanConfig {
   id: 'basic' | 'pro' | 'enterprise';
@@ -108,6 +109,7 @@ const DEFAULT_PLANS: PlanConfig[] = [
 ];
 
 export function BillingSection() {
+  const { currentUser, setCurrentUser } = useApp();
   const [plans, setPlans] = useState<PlanConfig[]>(DEFAULT_PLANS);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [currentSubscription, setCurrentSubscription] = useState<any>({
@@ -140,10 +142,17 @@ export function BillingSection() {
     upiDeepLink: string;
   } | null>(null);
 
+  const [checkoutEmail, setCheckoutEmail] = useState(currentUser?.email || '');
   const [utrNumber, setUtrNumber] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentUser?.email) {
+      setCheckoutEmail(currentUser.email);
+    }
+  }, [currentUser?.email]);
 
   // Load live subscription & plans
   useEffect(() => {
@@ -282,9 +291,16 @@ export function BillingSection() {
     e.preventDefault();
     if (!orderData || !selectedPlanForUpgrade) return;
 
-    const cleanUtr = utrNumber.trim();
+    // Clean UTR: remove any spaces, dashes, or "UPI/" prefixes
+    const cleanUtr = utrNumber.replace(/[^a-zA-Z0-9]/g, '').trim();
     if (!cleanUtr || cleanUtr.length < 8) {
       setVerificationError('Please enter a valid 12-digit UTR or Bank Transaction reference number.');
+      return;
+    }
+
+    const emailToUse = currentUser?.email || checkoutEmail.trim();
+    if (!emailToUse || !emailToUse.includes('@')) {
+      setVerificationError('Please enter your account email address below so we can link your Pro Studio subscription.');
       return;
     }
 
@@ -295,16 +311,20 @@ export function BillingSection() {
       orderId: orderData.orderId,
       utrNumber: cleanUtr,
       planId: selectedPlanForUpgrade.id,
-      billingCycle
+      billingCycle,
+      userEmail: emailToUse
     });
 
     setIsVerifying(false);
 
     if (res.success && res.subscription) {
       setCurrentSubscription(res.subscription);
+      if (res.user) {
+        setCurrentUser(res.user);
+      }
       setCheckoutStep('success');
       setToastMessage(`✓ ${res.message || 'Subscription activated successfully!'}`);
-      setTimeout(() => setToastMessage(null), 5000);
+      setTimeout(() => setToastMessage(null), 6000);
 
       // Refresh invoices
       LumetricAuthService.getInvoices().then((invRes) => {
@@ -701,13 +721,38 @@ export function BillingSection() {
                     </div>
 
                     {/* Step 2: Verification Form */}
-                    <form onSubmit={handleVerifyUpi} className="space-y-3 pt-2 border-t border-[var(--lm-border-default)]">
+                    <form onSubmit={handleVerifyUpi} className="space-y-3.5 pt-3 border-t border-[var(--lm-border-default)]">
+                      {currentUser?.email ? (
+                        <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                          <span className="text-[var(--lm-text-secondary)]">Upgrading account:</span>
+                          <strong className="text-[var(--lm-text-primary)] font-mono">{currentUser.email}</strong>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-[var(--lm-text-primary)] block">
+                            Your Account Email Address *
+                          </label>
+                          <Input
+                            label=""
+                            type="email"
+                            placeholder="e.g. you@example.com"
+                            value={checkoutEmail}
+                            onChange={(e) => setCheckoutEmail(e.target.value)}
+                            className="text-xs"
+                            required
+                          />
+                          <p className="text-[10px] text-[var(--lm-text-tertiary)]">
+                            Your Pro Studio subscription and official tax invoice will be assigned to this email.
+                          </p>
+                        </div>
+                      )}
+
                       <div>
                         <label className="text-xs font-bold text-[var(--lm-text-primary)] block mb-1">
-                          Step 2: Enter 12-Digit Bank UTR / Reference Number
+                          Enter 12-Digit Bank UTR / Reference Number *
                         </label>
                         <p className="text-[11px] text-[var(--lm-text-secondary)] mb-2">
-                          Once payment completes in your UPI app, copy the 12-digit UTR from your bank transaction details to activate your plan instantly.
+                          Once payment completes in your UPI app (GPay, PhonePe, Paytm), copy the 12-digit UTR from your transaction details to activate your plan instantly.
                         </p>
                         <Input
                           label=""
@@ -720,7 +765,9 @@ export function BillingSection() {
                       </div>
 
                       {verificationError && (
-                        <p className="text-xs text-red-600 font-semibold">{verificationError}</p>
+                        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-600 dark:text-red-400 font-semibold">
+                          ⚠️ {verificationError}
+                        </div>
                       )}
 
                       <Button
