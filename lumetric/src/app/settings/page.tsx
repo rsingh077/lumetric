@@ -5,6 +5,7 @@ import { useApp } from '@/contexts/AppContext';
 import { Card, CardHeader, CardTitle, StatusBadge, Button, Input } from '@/components/ui';
 import { UserRole } from '@/types';
 import { TwoFactorSetupModal } from '@/components/auth/TwoFactorSetupModal';
+import { BillingSection } from '@/components/settings/BillingSection';
 
 interface PermissionEntry {
   capability: string;
@@ -89,7 +90,7 @@ const PERMISSIONS_MATRIX: PermissionEntry[] = [
 export default function SettingsPage() {
   const { currentUser, setRole, currentWorkspace, language, setLanguage } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'rbac' | 'tenant' | 'security' | 'language'>('language');
+  const [activeTab, setActiveTab] = useState<'billing' | 'rbac' | 'tenant' | 'security' | 'language'>('billing');
   const [roleNotice, setRoleNotice] = useState<string | null>(null);
   const [secrets, setSecrets] = useState<SecretPointer[]>(INITIAL_SECRETS);
   const [addSecretOpen, setAddSecretOpen] = useState(false);
@@ -199,6 +200,17 @@ export default function SettingsPage() {
       {/* Settings Navigation Tabs */}
       <div className="flex items-center gap-2 border-b border-[var(--lm-border-default)]">
         <button
+          onClick={() => setActiveTab('billing')}
+          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
+            activeTab === 'billing'
+              ? 'border-[#059669] text-[#059669]'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span>💳</span>
+          <span>Billing &amp; Subscriptions</span>
+        </button>
+        <button
           onClick={() => setActiveTab('rbac')}
           className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors ${
             activeTab === 'rbac'
@@ -240,6 +252,9 @@ export default function SettingsPage() {
           <span>Language &amp; Localization</span>
         </button>
       </div>
+
+      {/* TAB: BILLING & SUBSCRIPTIONS */}
+      {activeTab === 'billing' && <BillingSection />}
 
       {/* TAB 0: LANGUAGE & LOCALIZATION */}
       {activeTab === 'language' && (

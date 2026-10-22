@@ -18,6 +18,9 @@ export interface AuthUser {
     currency?: string;
     emailNotifications?: boolean;
     hapticsEnabled?: boolean;
+    subscription?: any;
+    invoices?: any[];
+    [key: string]: any;
   };
 }
 
@@ -524,6 +527,7 @@ export class LumetricAuthService {
     const activeToken = token || this.getStoredToken();
     if (!activeToken) return {};
     return {
+      'Authorization': `Bearer ${activeToken}`,
       'x-auth-token': activeToken,
       'x-access-token': activeToken
     };
@@ -867,6 +871,108 @@ export class LumetricAuthService {
       return await res.json();
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to fetch workspace data' };
+    }
+  }
+
+
+  public static async getBillingPlans(): Promise<{ success: boolean; plans?: any[]; error?: string }> {
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/plans`);
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to fetch billing plans' };
+    }
+  }
+
+  public static async getSubscription(): Promise<{ success: boolean; subscription?: any; error?: string }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/subscription`, {
+        headers: { ...this.getAuthHeaders(token) }
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to fetch subscription' };
+    }
+  }
+
+  public static async createPaymentOrder(planId: string, billingCycle: 'monthly' | 'annual' = 'monthly'): Promise<{
+    success: boolean;
+    orderId?: string;
+    amount?: number;
+    currency?: string;
+    merchantVpa?: string;
+    payeeName?: string;
+    upiDeepLink?: string;
+    plan?: any;
+    error?: string;
+  }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/create-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.getAuthHeaders(token)
+        },
+        body: JSON.stringify({ planId, billingCycle })
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to create payment order' };
+    }
+  }
+
+  public static async verifyUpiPayment(payload: {
+    orderId: string;
+    utrNumber: string;
+    planId: string;
+    billingCycle?: string;
+  }): Promise<{ success: boolean; message?: string; subscription?: any; invoice?: any; error?: string }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/verify-upi`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.getAuthHeaders(token)
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success && data.subscription) {
+        const currentUser = this.getStoredUser();
+        if (currentUser) {
+          currentUser.settings = {
+            ...(currentUser.settings || {}),
+            subscription: data.subscription
+          };
+          this.safeSaveUser(currentUser);
+        }
+      }
+      return data;
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to verify UPI payment' };
+    }
+  }
+
+  public static async getInvoices(): Promise<{ success: boolean; invoices?: any[]; error?: string }> {
+    const token = this.getStoredToken();
+    if (!token) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/billing/invoices`, {
+        headers: { ...this.getAuthHeaders(token) }
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to fetch invoices' };
     }
   }
 
