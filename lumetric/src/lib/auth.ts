@@ -527,9 +527,9 @@ export class LumetricAuthService {
     const activeToken = token || this.getStoredToken();
     if (!activeToken) return {};
     return {
-      'Authorization': `Bearer ${activeToken}`,
       'x-auth-token': activeToken,
-      'x-access-token': activeToken
+      'x-access-token': activeToken,
+      'x-lumetric-token': activeToken
     };
   }
 
@@ -963,6 +963,12 @@ export class LumetricAuthService {
         })
       });
       const data = await res.json();
+      if (!data.error && data.message && !data.success) {
+        data.error = data.message;
+      }
+      if (!data.error && data.data && data.data.message) {
+        data.error = data.data.message;
+      }
       if (data.success && data.subscription) {
         if (data.token && data.user) {
           this.setSession(data.token, data.user);

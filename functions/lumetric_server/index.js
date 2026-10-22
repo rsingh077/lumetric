@@ -1990,15 +1990,7 @@ app.post('/api/billing/verify-upi', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Please enter a valid Bank Transaction / UTR reference number (at least 8-12 alphanumeric characters).' });
   }
 
-  // Deduplication guard: prevent same UTR from upgrading multiple accounts
-  if (redeemedUtrs.has(cleanUtr)) {
-    return res.status(400).json({
-      success: false,
-      error: 'This Bank UTR reference has already been processed and credited.'
-    });
-  }
-
-  // 1. Check if authenticated via JWT token header
+  // 1. Check if authenticated via JWT token header (supporting x-auth-token)
   let user = null;
   let token = req.headers['x-auth-token'] || req.headers['x-access-token'] || req.headers['x-lumetric-token'];
   if (!token) {
@@ -2046,6 +2038,32 @@ app.post('/api/billing/verify-upi', async (req, res) => {
     return res.status(400).json({
       success: false,
       error: 'Account email required. Please provide your email address so we can link and activate your subscription.'
+    });
+  }
+
+  // Check if this exact user already has this UTR active on their account
+  if (user.settings?.subscription?.lastPayment?.utrNumber === cleanUtr) {
+    const sessionToken = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+    const { passwordHash: _, mfaSecret: __, ...userSafe } = user;
+    return res.json({
+      success: true,
+      message: `Your account is already active on Pro Studio with UTR ${cleanUtr}.`,
+      subscription: user.settings.subscription,
+      invoice: user.settings.invoices?.[0] || null,
+      token: sessionToken,
+      user: userSafe
+    });
+  }
+
+  // Deduplication guard: prevent different users from reusing the same UTR
+  if (redeemedUtrs.has(cleanUtr)) {
+    return res.status(400).json({
+      success: false,
+      error: 'This Bank UTR reference has already been processed and credited.'
     });
   }
 

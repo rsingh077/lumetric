@@ -476,10 +476,10 @@ export function BillingSection() {
           return (
             <div
               key={plan.id}
-              className={`relative rounded-3xl p-6 flex flex-col justify-between transition-all duration-200 ${
+              className={`relative rounded-3xl p-6 flex flex-col justify-between transition-all duration-200 bg-[var(--lm-bg-elevated)] ${
                 isPro
-                  ? 'bg-gradient-to-b from-[#FAF8F5] to-emerald-50/50 dark:from-slate-900 dark:to-emerald-950/20 border-2 border-[#059669] shadow-xl shadow-emerald-950/10'
-                  : 'bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] shadow-xs'
+                  ? 'border-2 border-[#059669] shadow-xl shadow-emerald-950/10 ring-1 ring-[#059669]/20'
+                  : 'border border-[var(--lm-border-default)] shadow-xs hover:border-[var(--lm-border-strong)]'
               }`}
             >
               {isPro && (
@@ -524,9 +524,9 @@ export function BillingSection() {
 
               <div>
                 {isCurrent ? (
-                  <Button variant="secondary" disabled className="w-full font-bold">
-                    Current Active Plan
-                  </Button>
+                  <div className="w-full py-2.5 px-4 rounded-xl text-center font-bold text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-1.5">
+                    <span>✓ Current Active Plan</span>
+                  </div>
                 ) : (
                   <Button
                     variant={isPro ? 'primary' : 'secondary'}
@@ -594,12 +594,12 @@ export function BillingSection() {
 
       {/* 5. CHECKOUT & DYNAMIC UPI QR MODAL */}
       {selectedPlanForUpgrade && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="w-full max-w-lg bg-[#FAF8F5] dark:bg-[#111C17] border border-[#E5D9C8]/40 dark:border-emerald-900/40 rounded-3xl p-6 sm:p-8 shadow-2xl relative text-[var(--lm-text-primary)] max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl relative text-slate-900 max-h-[90vh] overflow-y-auto">
             {/* Close Button */}
             <button
               onClick={() => setSelectedPlanForUpgrade(null)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold p-1 cursor-pointer"
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-800 text-lg font-bold p-1 cursor-pointer"
             >
               ✕
             </button>
@@ -610,14 +610,14 @@ export function BillingSection() {
                   <span className="text-[10px] font-mono uppercase font-bold text-[#059669] tracking-wider block">
                     Zero-Fee Direct Payment Gateway
                   </span>
-                  <h3 className="text-xl font-extrabold text-[var(--lm-text-primary)]">
+                  <h3 className="text-xl font-extrabold text-slate-900">
                     Upgrade to {selectedPlanForUpgrade.name}
                   </h3>
                   <div className="flex items-center justify-between mt-1">
-                    <p className="text-xs text-[var(--lm-text-secondary)]">
-                      Order Reference: <span className="font-mono font-bold">{orderData?.orderId || 'Generating...'}</span>
+                    <p className="text-xs text-slate-500">
+                      Order Reference: <span className="font-mono font-bold text-slate-800">{orderData?.orderId || 'Generating...'}</span>
                     </p>
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                       Auto-Upgrade Active
                     </span>
@@ -625,14 +625,14 @@ export function BillingSection() {
                 </div>
 
                 {/* Payment Method Tabs */}
-                <div className="grid grid-cols-2 p-1 bg-[var(--lm-bg-secondary)] rounded-2xl border border-[var(--lm-border-default)]">
+                <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('upi')}
                     className={`py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                       paymentMethod === 'upi'
                         ? 'bg-[#059669] text-white shadow-sm'
-                        : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     ⚡ Universal Indian UPI (0% Fee)
@@ -643,7 +643,7 @@ export function BillingSection() {
                     className={`py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                       paymentMethod === 'card'
                         ? 'bg-[#059669] text-white shadow-sm'
-                        : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     💳 Card / Net Banking
@@ -653,27 +653,27 @@ export function BillingSection() {
                 {paymentMethod === 'upi' ? (
                   <div className="space-y-4">
                     {/* Amount Highlight */}
-                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40">
+                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
                       <div>
-                        <span className="text-xs text-emerald-900 dark:text-emerald-200 font-semibold block">Total Payable</span>
-                        <span className="text-xs text-emerald-700 dark:text-emerald-400">Zero surcharge / platform cuts</span>
+                        <span className="text-xs text-emerald-950 font-bold block">Total Payable</span>
+                        <span className="text-xs text-emerald-800 font-medium">Zero surcharge / platform cuts</span>
                       </div>
-                      <span className="text-2xl font-black text-[#059669] font-mono">
+                      <span className="text-3xl font-black text-[#059669] font-mono">
                         ₹{orderData?.amount?.toLocaleString('en-IN') || selectedPlanForUpgrade.priceINR}
                       </span>
                     </div>
 
                     {/* QR Code Container */}
-                    <div className="flex flex-col items-center justify-center p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner">
+                    <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
                       {qrDataUrl ? (
                         <img src={qrDataUrl} alt="UPI Dynamic QR Code" className="w-52 h-52 rounded-xl shadow-xs" />
                       ) : (
-                        <div className="w-52 h-52 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-400">
+                        <div className="w-52 h-52 rounded-xl bg-slate-100 flex items-center justify-center text-xs text-slate-400">
                           Generating Dynamic UPI QR...
                         </div>
                       )}
-                      <span className="text-[11px] font-mono text-slate-600 dark:text-slate-400 mt-2.5">
-                        UPI VPA: <strong className="text-slate-900 dark:text-white">{orderData?.merchantVpa || '6005952031@jio'}</strong>
+                      <span className="text-xs font-mono text-slate-700 mt-2.5">
+                        UPI VPA: <strong className="text-slate-950 font-bold">{orderData?.merchantVpa || '6005952031@jio'}</strong>
                       </span>
                     </div>
 
@@ -688,14 +688,14 @@ export function BillingSection() {
                       </button>
 
                       <div className="space-y-1.5 pt-1">
-                        <span className="text-[10px] font-bold text-[var(--lm-text-secondary)] uppercase tracking-wider block text-center">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block text-center">
                           Or open directly in your preferred app:
                         </span>
                         <div className="grid grid-cols-3 gap-2">
                           <button
                             type="button"
                             onClick={() => handleLaunchUpiApp('phonepe')}
-                            className="py-2.5 px-2 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                            className="py-2.5 px-2 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
                           >
                             <span>🟣</span>
                             <span>PhonePe</span>
@@ -703,7 +703,7 @@ export function BillingSection() {
                           <button
                             type="button"
                             onClick={() => handleLaunchUpiApp('gpay')}
-                            className="py-2.5 px-2 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                            className="py-2.5 px-2 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
                           >
                             <span>🔵</span>
                             <span>GPay</span>
@@ -711,7 +711,7 @@ export function BillingSection() {
                           <button
                             type="button"
                             onClick={() => handleLaunchUpiApp('paytm')}
-                            className="py-2.5 px-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                            className="py-2.5 px-2 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
                           >
                             <span>🔷</span>
                             <span>Paytm</span>
@@ -721,15 +721,15 @@ export function BillingSection() {
                     </div>
 
                     {/* Step 2: Verification Form */}
-                    <form onSubmit={handleVerifyUpi} className="space-y-3.5 pt-3 border-t border-[var(--lm-border-default)]">
+                    <form onSubmit={handleVerifyUpi} className="space-y-3.5 pt-3 border-t border-slate-200">
                       {currentUser?.email ? (
-                        <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
-                          <span className="text-[var(--lm-text-secondary)]">Upgrading account:</span>
-                          <strong className="text-[var(--lm-text-primary)] font-mono">{currentUser.email}</strong>
+                        <div className="p-2.5 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-between text-xs">
+                          <span className="text-slate-600">Upgrading account:</span>
+                          <strong className="text-slate-950 font-mono font-bold">{currentUser.email}</strong>
                         </div>
                       ) : (
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-[var(--lm-text-primary)] block">
+                          <label className="text-xs font-bold text-slate-900 block">
                             Your Account Email Address *
                           </label>
                           <Input
@@ -738,34 +738,34 @@ export function BillingSection() {
                             placeholder="e.g. you@example.com"
                             value={checkoutEmail}
                             onChange={(e) => setCheckoutEmail(e.target.value)}
-                            className="text-xs"
+                            className="text-xs bg-white text-slate-900 border-slate-300"
                             required
                           />
-                          <p className="text-[10px] text-[var(--lm-text-tertiary)]">
+                          <p className="text-[10px] text-slate-500">
                             Your Pro Studio subscription and official tax invoice will be assigned to this email.
                           </p>
                         </div>
                       )}
 
                       <div>
-                        <label className="text-xs font-bold text-[var(--lm-text-primary)] block mb-1">
+                        <label className="text-xs font-bold text-slate-900 block mb-1">
                           Enter 12-Digit Bank UTR / Reference Number *
                         </label>
-                        <p className="text-[11px] text-[var(--lm-text-secondary)] mb-2">
+                        <p className="text-[11px] text-slate-500 mb-2">
                           Once payment completes in your UPI app (GPay, PhonePe, Paytm), copy the 12-digit UTR from your transaction details to activate your plan instantly.
                         </p>
-                        <Input
-                          label=""
-                          placeholder="e.g. 429810293812"
+                        <input
+                          type="text"
+                          placeholder="e.g. 666103816203"
                           value={utrNumber}
                           onChange={(e) => setUtrNumber(e.target.value)}
-                          className="font-mono text-sm tracking-widest font-bold"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-950 font-mono text-base font-bold tracking-widest focus:ring-2 focus:ring-[#059669] focus:outline-none"
                           required
                         />
                       </div>
 
                       {verificationError && (
-                        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-600 dark:text-red-400 font-semibold">
+                        <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-semibold">
                           ⚠️ {verificationError}
                         </div>
                       )}
@@ -774,17 +774,17 @@ export function BillingSection() {
                         type="submit"
                         variant="primary"
                         loading={isVerifying}
-                        className="w-full bg-[#059669] hover:bg-[#047857] text-white font-bold py-2.5 cursor-pointer shadow-md"
+                        className="w-full bg-[#059669] hover:bg-[#047857] text-white font-bold py-2.5 cursor-pointer shadow-md text-sm"
                       >
                         {isVerifying ? 'Verifying Bank UTR...' : 'Verify Payment & Unlock Entitlements →'}
                       </Button>
                     </form>
                   </div>
                 ) : (
-                  <div className="space-y-4 p-5 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-center">
+                  <div className="space-y-4 p-5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
                     <span className="text-2xl block mb-2">🏢</span>
-                    <h4 className="text-sm font-bold text-[var(--lm-text-primary)]">Corporate Card &amp; Global Invoicing</h4>
-                    <p className="text-xs text-[var(--lm-text-secondary)] leading-relaxed">
+                    <h4 className="text-sm font-bold text-slate-900">Corporate Card &amp; Global Invoicing</h4>
+                    <p className="text-xs text-slate-600 leading-relaxed">
                       For corporate procurement cards, wire transfers, and GST compliant corporate invoicing, please contact our enterprise team or use the direct UPI option above.
                     </p>
                     <Button
@@ -799,11 +799,11 @@ export function BillingSection() {
               </div>
             ) : (
               <div className="text-center py-6 space-y-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center text-3xl mx-auto shadow-lg">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl mx-auto shadow-lg">
                   ✓
                 </div>
-                <h3 className="text-2xl font-black text-[var(--lm-text-primary)]">Payment Confirmed!</h3>
-                <p className="text-xs text-[var(--lm-text-secondary)] max-w-sm mx-auto">
+                <h3 className="text-2xl font-black text-slate-900">Payment Confirmed!</h3>
+                <p className="text-xs text-slate-600 max-w-sm mx-auto">
                   Your account has been elevated to <strong className="text-[#059669]">{selectedPlanForUpgrade.name}</strong>. High-capacity datasets, 2FA, and executive exports are now fully unlocked.
                 </p>
                 <Button
