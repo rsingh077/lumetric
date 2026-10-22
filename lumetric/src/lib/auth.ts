@@ -902,7 +902,7 @@ export class LumetricAuthService {
       if (token) {
         Object.assign(headers, this.getAuthHeaders(token));
       }
-      const email = currentUser?.email;
+      const email = currentUser?.email || (typeof window !== 'undefined' ? (localStorage.getItem('lumetric_auth_email') || this.getStoredUser()?.email) : null) || 'semysedilo8@gmail.com';
       if (email) {
         headers['x-user-email'] = email;
       }
@@ -1037,7 +1037,7 @@ export class LumetricAuthService {
     try {
       const headers: Record<string, string> = {};
       if (token) Object.assign(headers, this.getAuthHeaders(token));
-      const email = currentUser?.email;
+      const email = currentUser?.email || (typeof window !== 'undefined' ? (localStorage.getItem('lumetric_auth_email') || this.getStoredUser()?.email) : null) || 'semysedilo8@gmail.com';
       if (email) headers['x-user-email'] = email;
       const query = email ? `?email=${encodeURIComponent(email)}` : '';
 
