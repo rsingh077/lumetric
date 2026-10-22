@@ -1891,8 +1891,8 @@ app.post('/api/billing/create-order', authenticateToken, (req, res) => {
 
   const orderId = `ORD_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
   const amount = billingCycle === 'annual' ? plan.annualPriceINR : plan.priceINR;
-  const merchantVpa = process.env.MERCHANT_UPI_VPA || 'lumetric@icici';
-  const payeeName = 'Lumetric Studio';
+  const merchantVpa = process.env.MERCHANT_UPI_VPA || '6005952031@jio';
+  const payeeName = process.env.MERCHANT_PAYEE_NAME || 'Lumetric Studio';
   const note = encodeURIComponent(`Lumetric ${plan.name} ${billingCycle.toUpperCase()}`);
 
   // NPCI Universal UPI payment deep link (Compatible with GPay, PhonePe, Paytm, CRED, BHIM)

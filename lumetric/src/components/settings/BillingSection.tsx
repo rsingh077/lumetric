@@ -178,7 +178,7 @@ export function BillingSection() {
       setOrderData({
         orderId: res.orderId,
         amount: res.amount,
-        merchantVpa: res.merchantVpa || 'lumetric@icici',
+        merchantVpa: res.merchantVpa || '6005952031@jio',
         upiDeepLink: res.upiDeepLink
       });
 
@@ -568,7 +568,7 @@ export function BillingSection() {
                         </div>
                       )}
                       <span className="text-[11px] font-mono text-slate-600 dark:text-slate-400 mt-2.5">
-                        UPI VPA: <strong className="text-slate-900 dark:text-white">{orderData?.merchantVpa || 'lumetric@icici'}</strong>
+                        UPI VPA: <strong className="text-slate-900 dark:text-white">{orderData?.merchantVpa || '6005952031@jio'}</strong>
                       </span>
                     </div>
 
