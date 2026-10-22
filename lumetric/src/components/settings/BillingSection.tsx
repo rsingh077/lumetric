@@ -56,10 +56,10 @@ const DEFAULT_PLANS: PlanConfig[] = [
     name: 'Pro Studio',
     badge: 'Most Popular',
     tagline: 'High-capacity predictive intelligence for data engineers & analysts',
-    priceINR: 799,
-    annualPriceINR: 7990,
-    priceUSD: 12,
-    annualPriceUSD: 120,
+    priceINR: 1,
+    annualPriceINR: 1,
+    priceUSD: 1,
+    annualPriceUSD: 1,
     limits: {
       maxDatasets: 999999,
       maxRows: 500000,
@@ -358,10 +358,10 @@ export function BillingSection() {
             {activeTier === 'basic' ? (
               <Button
                 variant="primary"
-                onClick={() => handleOpenCheckout(DEFAULT_PLANS[1])}
+                onClick={() => handleOpenCheckout(plans.find((p) => p.id === 'pro') || DEFAULT_PLANS[1])}
                 className="bg-gradient-to-r from-[#059669] to-[#047857] hover:from-[#047857] hover:to-[#065f46] text-white shadow-md shadow-emerald-950/20"
               >
-                Upgrade to Pro (₹799/mo) →
+                Upgrade to Pro (₹{plans.find((p) => p.id === 'pro')?.priceINR ?? 1}/mo) →
               </Button>
             ) : (
               <Button
