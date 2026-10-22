@@ -341,7 +341,7 @@ export class LumetricAuthService {
     const start = Date.now();
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
       const res = await fetch(`${CATALYST_SERVER_URL}/api/health`, {
         signal: controller.signal,
         cache: 'no-store'
@@ -385,7 +385,7 @@ export class LumetricAuthService {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
       const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -426,7 +426,7 @@ export class LumetricAuthService {
     }
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
       const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -474,7 +474,7 @@ export class LumetricAuthService {
     }
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
       const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

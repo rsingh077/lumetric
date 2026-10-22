@@ -34,6 +34,7 @@ export function UserAuthProfileModal({
     loadSampleDataIntoProfile,
     clearProfileData,
     setActiveView,
+    setIsAuthenticated,
   } = useApp();
   const [mode, setMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db' | 'forgot-password'>(initialMode || 'profile');
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -396,6 +397,12 @@ export function UserAuthProfileModal({
       setAuthUser(res.user);
       setCurrentUser(res.user);
       setRole(res.user.role);
+      setIsAuthenticated(true);
+      if (res.user.settings?.subscription) {
+        try {
+          localStorage.setItem('lumetric_active_subscription', JSON.stringify(res.user.settings.subscription));
+        } catch {}
+      }
       setRequiresMfa(false);
       setTotpToken('');
       setFeedback({ type: 'success', message: 'Signed in successfully. Live session active.' });
@@ -443,6 +450,12 @@ export function UserAuthProfileModal({
       setAuthUser(res.user);
       setCurrentUser(res.user);
       setRole(res.user.role);
+      setIsAuthenticated(true);
+      if (res.user.settings?.subscription) {
+        try {
+          localStorage.setItem('lumetric_active_subscription', JSON.stringify(res.user.settings.subscription));
+        } catch {}
+      }
       setFeedback({ type: 'success', message: 'Account registered and persisted to database!' });
       setTimeout(() => {
         setMode('profile');

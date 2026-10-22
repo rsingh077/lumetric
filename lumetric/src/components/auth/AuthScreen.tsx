@@ -85,6 +85,11 @@ export function AuthScreen() {
       setSuccessMessage('Signed in successfully. Launching Lumetric Studio...');
       setCurrentUser(res.user);
       setIsAuthenticated(true);
+      if (res.user.settings?.subscription) {
+        try {
+          localStorage.setItem('lumetric_active_subscription', JSON.stringify(res.user.settings.subscription));
+        } catch {}
+      }
     } else {
       setErrorMessage(res.error || 'Invalid credentials or user not found. Please verify your email and password.');
     }
@@ -142,6 +147,11 @@ export function AuthScreen() {
       setSuccessMessage(res.message || 'Account successfully created! Entering Studio...');
       setCurrentUser(res.user);
       setIsAuthenticated(true);
+      if (res.user.settings?.subscription) {
+        try {
+          localStorage.setItem('lumetric_active_subscription', JSON.stringify(res.user.settings.subscription));
+        } catch {}
+      }
     } else {
       if (res.error?.includes('already exists') || (res as any).code === 'USER_EXISTS') {
         // Attempt login if password matches existing account
@@ -150,6 +160,11 @@ export function AuthScreen() {
           setSuccessMessage('Account authenticated successfully.');
           setCurrentUser(loginRes.user);
           setIsAuthenticated(true);
+          if (loginRes.user.settings?.subscription) {
+            try {
+              localStorage.setItem('lumetric_active_subscription', JSON.stringify(loginRes.user.settings.subscription));
+            } catch {}
+          }
           return;
         }
         setErrorMessage('An account with this email address already exists. Please sign in or use a different email.');
