@@ -173,17 +173,18 @@ export function BillingSection() {
     setVerificationError(null);
     setUtrNumber('');
 
-    const amount = billingCycle === 'annual' ? plan.annualPriceINR : plan.priceINR;
+    const rawAmount = billingCycle === 'annual' ? plan.annualPriceINR : plan.priceINR;
+    const formattedAmount = Number(rawAmount).toFixed(2);
     const initialOrderId = `ORD_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
     const merchantVpa = '6005952031@jio';
     const payeeName = 'Lumetric Studio';
-    const note = encodeURIComponent(`Lumetric ${plan.name} ${billingCycle.toUpperCase()}`);
-    const initialDeepLink = `upi://pay?pa=${merchantVpa}&pn=${encodeURIComponent(payeeName)}&am=${amount}&tr=${initialOrderId}&cu=INR&tn=${note}`;
+    const note = encodeURIComponent(`Lumetric ${plan.name}`);
+    const initialDeepLink = `upi://pay?pa=${merchantVpa}&pn=${encodeURIComponent(payeeName)}&am=${formattedAmount}&cu=INR&tn=${note}`;
 
     // 1. Immediately set order data so the UI has zero waiting time
     setOrderData({
       orderId: initialOrderId,
-      amount,
+      amount: rawAmount,
       merchantVpa,
       upiDeepLink: initialDeepLink
     });
@@ -214,6 +215,43 @@ export function BillingSection() {
         } : null);
       }
     }).catch(() => {});
+  };
+
+  // Open directly in installed UPI mobile apps (GPay, PhonePe, Paytm, BHIM)
+  const handleLaunchUpiApp = (appChoice: 'any' | 'gpay' | 'phonepe' | 'paytm') => {
+    if (!orderData) return;
+    const packPrice = Number(orderData.amount).toFixed(2);
+    const payee = encodeURIComponent('Lumetric Studio');
+    const note = encodeURIComponent(`Lumetric ${selectedPlanForUpgrade?.name || 'Subscription'}`);
+    const vpa = orderData.merchantVpa || '6005952031@jio';
+
+    const baseQuery = `pa=${vpa}&pn=${payee}&am=${packPrice}&cu=INR&tn=${note}`;
+
+    let targetUri = `upi://pay?${baseQuery}`;
+    if (appChoice === 'gpay') {
+      targetUri = `tez://upi/pay?${baseQuery}`;
+    } else if (appChoice === 'phonepe') {
+      targetUri = `phonepe://pay?${baseQuery}`;
+    } else if (appChoice === 'paytm') {
+      targetUri = `paytmmp://pay?${baseQuery}`;
+    }
+
+    // Try opening via location navigation (standard across mobile browsers)
+    try {
+      window.location.href = targetUri;
+    } catch {
+      window.open(targetUri, '_self');
+    }
+
+    // On Android, if upi:// doesn't trigger app chooser, fallback to Android intent after 350ms
+    if (appChoice === 'any' && typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent)) {
+      setTimeout(() => {
+        const intentUri = `intent://pay?${baseQuery}#Intent;scheme=upi;end;`;
+        try {
+          window.location.href = intentUri;
+        } catch {}
+      }, 350);
+    }
   };
 
   // Submit & Verify UPI Payment
@@ -590,15 +628,48 @@ export function BillingSection() {
                       </span>
                     </div>
 
-                    {/* Mobile UPI Deep Link */}
-                    {orderData?.upiDeepLink && (
-                      <a
-                        href={orderData.upiDeepLink}
-                        className="block w-full py-2.5 px-4 rounded-xl text-center font-bold text-xs bg-slate-900 dark:bg-slate-800 text-white hover:bg-black transition-all shadow-sm"
+                    {/* Launch in Installed Mobile Apps */}
+                    <div className="space-y-2.5">
+                      <button
+                        type="button"
+                        onClick={() => handleLaunchUpiApp('any')}
+                        className="w-full py-3 px-4 rounded-xl text-center font-extrabold text-xs bg-gradient-to-r from-[#059669] via-[#10B981] to-[#047857] text-white hover:opacity-95 transition-all shadow-md shadow-emerald-950/20 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                       >
-                        📲 Tap to Pay via GPay / PhonePe / Paytm / BHIM
-                      </a>
-                    )}
+                        <span>📲 Tap to Pay ₹{Number(orderData?.amount || selectedPlanForUpgrade.priceINR).toFixed(2)} (Any UPI App)</span>
+                      </button>
+
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] font-bold text-[var(--lm-text-secondary)] uppercase tracking-wider block text-center">
+                          Or open directly in your preferred app:
+                        </span>
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleLaunchUpiApp('phonepe')}
+                            className="py-2.5 px-2 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                          >
+                            <span>🟣</span>
+                            <span>PhonePe</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleLaunchUpiApp('gpay')}
+                            className="py-2.5 px-2 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                          >
+                            <span>🔵</span>
+                            <span>GPay</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleLaunchUpiApp('paytm')}
+                            className="py-2.5 px-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                          >
+                            <span>🔷</span>
+                            <span>Paytm</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Step 2: Verification Form */}
                     <form onSubmit={handleVerifyUpi} className="space-y-3 pt-2 border-t border-[var(--lm-border-default)]">

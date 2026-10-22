@@ -1895,8 +1895,9 @@ app.post('/api/billing/create-order', authenticateToken, (req, res) => {
   const payeeName = process.env.MERCHANT_PAYEE_NAME || 'Lumetric Studio';
   const note = encodeURIComponent(`Lumetric ${plan.name} ${billingCycle.toUpperCase()}`);
 
+  const formattedAmount = Number(amount).toFixed(2);
   // NPCI Universal UPI payment deep link (Compatible with GPay, PhonePe, Paytm, CRED, BHIM)
-  const upiDeepLink = `upi://pay?pa=${merchantVpa}&pn=${encodeURIComponent(payeeName)}&am=${amount}&tr=${orderId}&cu=INR&tn=${note}`;
+  const upiDeepLink = `upi://pay?pa=${merchantVpa}&pn=${encodeURIComponent(payeeName)}&am=${formattedAmount}&cu=INR&tn=${note}`;
 
   logAuditEvent(req.user.email, 'PAYMENT_ORDER_CREATED', 'Billing', `Order ${orderId} initiated for ${plan.name} (${amount} INR)`);
 
