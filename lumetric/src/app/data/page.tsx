@@ -333,11 +333,11 @@ export default function DataWorkspacePage() {
               Data Ingestion & Requirements Studio
             </h1>
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-semibold">
-              Gateway Gate 1
+              Data Workspace
             </span>
           </div>
           <p className="text-xs sm:text-sm text-[var(--lm-text-secondary)] font-normal">
-            Spec Section B, D, E & F: All analysis starts here. Define business grain, entity keys, currency, and quality contracts before running analytical models.
+            Upload, profile, and inspect your business datasets with automated data quality checks and schema detection.
           </p>
         </div>
 
@@ -417,10 +417,10 @@ export default function DataWorkspacePage() {
 
               <div>
                 <h3 className="text-lg font-semibold tracking-tight text-[var(--lm-text-primary)]">
-                  Select Source Document for Governed Intake
+                  Upload or Connect Your Dataset
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Every pipeline starts with rigorous validation. Upload your CSV, JSON, or Delimited business record to begin cryptographic verification and requirement elicitation.
+                  Upload your CSV, Excel, or JSON file to immediately profile columns, evaluate data health, and start analyzing.
                 </p>
               </div>
 

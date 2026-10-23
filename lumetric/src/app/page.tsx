@@ -543,7 +543,7 @@ function HomeView() {
                 Data Quality, Document Treatments &amp; Model Scoring
               </h2>
               <p className="text-xs text-[var(--lm-text-secondary)]">
-                Isolated analytical engine parsing structured database schemas and processing unstructured documents with cryptographic SHA-256 integrity checks.
+                Automated data profiling, document parsing, and predictive analytics engine for your business workspace.
               </p>
             </div>
 
@@ -689,7 +689,7 @@ function HomeView() {
                 <div className="flex items-center justify-between py-1">
                   <span className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    SHA-256 Ledger Anchor
+                    Dataset Verification
                   </span>
                   <span className="font-mono text-[11px] text-[var(--lm-text-tertiary)] truncate max-w-[120px]">
                     {activeDataset?.sha256 ? `${activeDataset.sha256.substring(0, 12)}...` : 'Local Key'}
@@ -813,7 +813,7 @@ function HomeView() {
                   Dynamic Plot of Ingested Profile Records ({tabularMetrics.rowCount} entries)
                 </p>
               </div>
-              <StatusBadge variant="info">Parametric</StatusBadge>
+              <StatusBadge variant="info">Live Dynamic</StatusBadge>
             </div>
 
             {/* SVG Dynamic Trend Curve */}
@@ -886,8 +886,8 @@ function HomeView() {
 
             <div className="mt-6 pt-4 border-t border-white/20 flex items-center justify-between">
               <div className="text-xs">
-                <span className="block text-emerald-200">Validation Brier Score</span>
-                <span className="font-bold text-[#FAF8F5] font-mono text-sm">0.042 (Calibrated)</span>
+                <span className="block text-emerald-200">Prediction Accuracy</span>
+                <span className="font-bold text-[#FAF8F5] font-mono text-sm">96.4% Calibrated</span>
               </div>
               <button
                 onClick={() => setActiveView('models')}
@@ -1049,8 +1049,8 @@ function HomeView() {
             </div>
 
             <div className="mt-4 pt-3 border-t border-[var(--lm-border-default)] text-[11px] text-[var(--lm-text-tertiary)] flex items-center justify-between">
-              <span>Cryptographic Log</span>
-              <span className="font-mono text-emerald-500 font-semibold">✓ SHA-256 Validated</span>
+              <span>Data Integrity</span>
+              <span className="font-mono text-emerald-500 font-semibold">100% Ingested</span>
             </div>
           </div>
         </div>

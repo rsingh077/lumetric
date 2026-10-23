@@ -164,7 +164,7 @@ export default function PipelinesPage() {
             Visual Data Engineering & DAG Studio
           </h1>
           <p className="text-xs sm:text-sm text-[var(--lm-text-secondary)]">
-            Spec Section G: Directed Acyclic Graph with typed nodes, join cardinality assertions, and immutable publication.
+            Build visual data transformation workflows, clean raw columns, and orchestrate automated pipelines.
           </p>
         </div>
 

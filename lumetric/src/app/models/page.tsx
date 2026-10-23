@@ -193,7 +193,7 @@ export default function ModelsPage() {
             Machine Learning Models & Registry
           </h1>
           <p className="text-xs sm:text-sm text-[var(--lm-text-secondary)]">
-            Spec Section S & M: Audited model registry, leakage-free cross-validation, and live inference.
+            Train, evaluate, and deploy predictive models to forecast revenue, churn, and customer lifetime value.
           </p>
         </div>
 

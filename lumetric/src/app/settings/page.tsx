@@ -161,7 +161,7 @@ export default function SettingsPage() {
             Workspace Governance & Access Controls
           </h1>
           <p className="text-xs sm:text-sm text-[var(--lm-text-secondary)]">
-            Spec Section C & W: Fine-grained Role-Based Access Control (RBAC), tenant boundary policies, and secret management.
+            Manage workspace roles, subscription billing, and security settings.
           </p>
         </div>
 

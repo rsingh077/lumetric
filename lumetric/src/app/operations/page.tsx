@@ -235,7 +235,7 @@ export default function OperationsPage() {
             Operations & Orchestration Console
           </h1>
           <p className="text-xs sm:text-sm text-[var(--lm-text-secondary)]">
-            Spec Section H: Production job executions, retry policies, isolated worker metrics, and incident recovery.
+            Monitor pipeline executions, schedule data syncs, and view system health and runtime metrics.
           </p>
         </div>
 
