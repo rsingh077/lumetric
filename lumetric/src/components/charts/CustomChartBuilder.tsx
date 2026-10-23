@@ -126,6 +126,12 @@ export function CustomChartBuilder() {
     return limit > 0 ? results.slice(0, limit) : results;
   }, [rows, dimensionCol, metricCol, aggType, limit]);
 
+  const totalGroupsCount = useMemo(() => {
+    if (rows.length === 0 || !dimensionCol) return 0;
+    const distinct = new Set(rows.map((r) => r[dimensionCol] || 'Unassigned'));
+    return distinct.size;
+  }, [rows, dimensionCol]);
+
   const totalSum = useMemo(() => {
     return aggregatedData.reduce((acc, d) => acc + d.value, 0);
   }, [aggregatedData]);
@@ -194,7 +200,7 @@ export function CustomChartBuilder() {
   };
 
   return (
-    <div className="bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
+    <div className="bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-3xl p-6 sm:p-8 shadow-xs space-y-6 max-w-full overflow-hidden">
       {/* 1. Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -338,14 +344,15 @@ export function CustomChartBuilder() {
             <option value={5}>Top 5</option>
             <option value={10}>Top 10</option>
             <option value={20}>Top 20</option>
-            <option value={50}>All Groups</option>
+            <option value={50}>Top 50</option>
+            <option value={0}>All Groups ({totalGroupsCount || 'All'})</option>
           </select>
         </div>
       </div>
 
       {/* 3. Live Generated Chart Canvas */}
-      <div className="p-6 rounded-3xl border border-[var(--lm-border-default)] bg-[var(--lm-bg-secondary)]/50 space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="p-6 rounded-3xl border border-[var(--lm-border-default)] bg-[var(--lm-bg-secondary)]/50 space-y-4 max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h3 className="text-base font-extrabold text-[var(--lm-text-primary)]">
               {aggType.toUpperCase()} of {metricCol} by {dimensionCol}
@@ -354,9 +361,16 @@ export function CustomChartBuilder() {
               Aggregated across {aggregatedData.length} distinct categories • Total: <strong className="font-mono text-indigo-600">{totalSum.toLocaleString()}</strong>
             </p>
           </div>
-          <span className="text-[11px] font-mono text-[var(--lm-text-tertiary)] bg-[var(--lm-bg-elevated)] px-2.5 py-1 rounded-lg border border-[var(--lm-border-default)]">
-            {aggregatedData.length} Data Points
-          </span>
+          <div className="flex items-center gap-2">
+            {aggregatedData.length > 12 && chartType === 'vertical_bar' && (
+              <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1 shrink-0 animate-fade-in">
+                <span>↔</span> Scroll to view all {aggregatedData.length}
+              </span>
+            )}
+            <span className="text-[11px] font-mono text-[var(--lm-text-tertiary)] bg-[var(--lm-bg-elevated)] px-2.5 py-1 rounded-lg border border-[var(--lm-border-default)] shrink-0">
+              {aggregatedData.length} Data Points
+            </span>
+          </div>
         </div>
 
         {/* Chart View Selection */}
@@ -368,36 +382,63 @@ export function CustomChartBuilder() {
           <div className="pt-2">
             {/* TYPE 1: VERTICAL BAR CHART */}
             {chartType === 'vertical_bar' && (
-              <div className="space-y-3">
-                <div className="h-64 flex items-end gap-3 pt-6 pb-2 px-4 border-b border-[var(--lm-border-default)]">
-                  {aggregatedData.map((d, i) => {
-                    const heightPct = Math.max(8, Math.round((d.value / maxVal) * 100));
-                    return (
-                      <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative">
-                        {/* Hover Tooltip */}
-                        <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] font-mono px-2 py-1 rounded-md shadow-lg pointer-events-none whitespace-nowrap z-20">
-                          {d.category}: {d.value.toLocaleString()}
-                        </div>
+              <div className="space-y-3 max-w-full">
+                <div className="w-full max-w-full overflow-x-auto pb-4 pt-1 scrollbar-thin rounded-2xl border border-[var(--lm-border-default)]/60 bg-[var(--lm-bg-elevated)]/40">
+                  <div
+                    className="h-64 flex items-end gap-3 pt-8 pb-3 px-4 border-b border-[var(--lm-border-default)]"
+                    style={{
+                      minWidth: aggregatedData.length > 12 ? `${Math.max(640, aggregatedData.length * 52)}px` : '100%',
+                      width: aggregatedData.length > 12 ? `${Math.max(640, aggregatedData.length * 52)}px` : '100%',
+                    }}
+                  >
+                    {aggregatedData.map((d, i) => {
+                      const heightPct = Math.max(8, Math.round((d.value / maxVal) * 100));
+                      return (
                         <div
-                          className="w-full rounded-t-xl transition-all duration-500 hover:brightness-110 shadow-sm"
+                          key={i}
+                          className="flex flex-col items-center h-full justify-end group relative shrink-0"
                           style={{
-                            height: `${heightPct}%`,
-                            backgroundColor: paletteColors.primary,
+                            flex: aggregatedData.length > 12 ? '0 0 44px' : '1 1 0%',
+                            minWidth: aggregatedData.length > 12 ? '44px' : '0',
+                            maxWidth: aggregatedData.length > 12 ? '54px' : 'none',
                           }}
-                        />
-                        <span className="text-[10px] font-mono text-[var(--lm-text-tertiary)] truncate w-full text-center mt-2 group-hover:text-[var(--lm-text-primary)] font-medium">
-                          {d.category}
-                        </span>
-                      </div>
-                    );
-                  })}
+                        >
+                          {/* Hover Tooltip */}
+                          <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] font-mono px-2.5 py-1 rounded-md shadow-lg pointer-events-none whitespace-nowrap z-30">
+                            {d.category}: {d.value.toLocaleString()}
+                          </div>
+
+                          {/* Bar Value Preview (if readable) */}
+                          {aggregatedData.length <= 16 && (
+                            <span className="text-[9px] font-mono text-[var(--lm-text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity mb-1 font-semibold truncate max-w-full">
+                              {d.value >= 1000 ? `${(d.value / 1000).toFixed(1)}k` : d.value}
+                            </span>
+                          )}
+
+                          <div
+                            className="w-full rounded-t-xl transition-all duration-300 hover:brightness-110 shadow-sm"
+                            style={{
+                              height: `${heightPct}%`,
+                              backgroundColor: paletteColors.primary,
+                            }}
+                          />
+                          <span
+                            className="text-[10px] font-mono text-[var(--lm-text-tertiary)] truncate w-full text-center mt-2 group-hover:text-[var(--lm-text-primary)] font-medium"
+                            title={d.category}
+                          >
+                            {d.category}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}
 
             {/* TYPE 2: HORIZONTAL RANKED BARS */}
             {chartType === 'horizontal_bar' && (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[440px] overflow-y-auto pr-2 scrollbar-thin">
                 {aggregatedData.map((d, i) => {
                   const widthPct = Math.max(5, Math.round((d.value / maxVal) * 100));
                   const sharePct = totalSum > 0 ? ((d.value / totalSum) * 100).toFixed(1) : 0;
@@ -428,8 +469,18 @@ export function CustomChartBuilder() {
 
             {/* TYPE 3: LINE & AREA TREND */}
             {chartType === 'line' && (
-              <div className="w-full h-56 relative border border-[var(--lm-border-default)] rounded-2xl bg-[var(--lm-bg-elevated)] p-4">
-                <svg viewBox="0 0 600 160" className="w-full h-full overflow-visible">
+              <div className="w-full overflow-x-auto pb-2 scrollbar-thin">
+                <div
+                  className="h-60 relative border border-[var(--lm-border-default)] rounded-2xl bg-[var(--lm-bg-elevated)] p-4"
+                  style={{
+                    minWidth: aggregatedData.length > 20 ? `${Math.max(640, aggregatedData.length * 28)}px` : '100%',
+                  }}
+                >
+                  <svg
+                    viewBox={`0 0 ${Math.max(600, aggregatedData.length * 28)} 160`}
+                    className="w-full h-full overflow-visible"
+                    preserveAspectRatio="none"
+                  >
                   <defs>
                     <linearGradient id="customChartGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={paletteColors.primary} stopOpacity="0.4" />
@@ -437,27 +488,36 @@ export function CustomChartBuilder() {
                     </linearGradient>
                   </defs>
                   {/* Grid */}
-                  <line x1="30" y1="20" x2="570" y2="20" stroke="currentColor" className="text-[var(--lm-border-default)]" strokeDasharray="3 3" />
-                  <line x1="30" y1="80" x2="570" y2="80" stroke="currentColor" className="text-[var(--lm-border-default)]" strokeDasharray="3 3" />
-                  <line x1="30" y1="140" x2="570" y2="140" stroke="currentColor" className="text-[var(--lm-border-default)]" strokeDasharray="3 3" />
+                  <line x1="30" y1="20" x2={Math.max(570, aggregatedData.length * 28 - 30)} y2="20" stroke="currentColor" className="text-[var(--lm-border-default)]" strokeDasharray="3 3" />
+                  <line x1="30" y1="80" x2={Math.max(570, aggregatedData.length * 28 - 30)} y2="80" stroke="currentColor" className="text-[var(--lm-border-default)]" strokeDasharray="3 3" />
+                  <line x1="30" y1="140" x2={Math.max(570, aggregatedData.length * 28 - 30)} y2="140" stroke="currentColor" className="text-[var(--lm-border-default)]" strokeDasharray="3 3" />
 
                   {/* Points calculation */}
                   {(() => {
-                    const step = 540 / Math.max(1, aggregatedData.length - 1);
+                    const totalWidth = Math.max(540, (aggregatedData.length - 1) * 28);
+                    const step = totalWidth / Math.max(1, aggregatedData.length - 1);
                     const coords = aggregatedData.map((d, i) => {
                       const x = 30 + i * step;
                       const y = 140 - ((d.value / maxVal) * 110);
                       return [x, y];
                     });
                     const polyPoints = coords.map((c) => c.join(',')).join(' ');
-                    const areaPoints = `${coords.map((c) => c.join(',')).join(' ')} 570,140 30,140`;
+                    const areaPoints = `${coords.map((c) => c.join(',')).join(' ')} ${30 + totalWidth},140 30,140`;
 
                     return (
                       <>
                         <polygon points={areaPoints} fill="url(#customChartGrad)" />
                         <polyline points={polyPoints} fill="none" stroke={paletteColors.primary} strokeWidth="3" />
                         {coords.map(([cx, cy], i) => (
-                          <circle key={i} cx={cx} cy={cy} r="4.5" fill="#FFFFFF" stroke={paletteColors.primary} strokeWidth="2.5" />
+                          <circle
+                            key={i}
+                            cx={cx}
+                            cy={cy}
+                            r={aggregatedData.length > 25 ? 2.5 : 4}
+                            fill="#FFFFFF"
+                            stroke={paletteColors.primary}
+                            strokeWidth={aggregatedData.length > 25 ? 1.5 : 2.5}
+                          />
                         ))}
                       </>
                     );
@@ -465,11 +525,14 @@ export function CustomChartBuilder() {
                 </svg>
                 <div className="flex items-center justify-between text-[10px] font-mono text-[var(--lm-text-tertiary)] mt-2">
                   <span>{aggregatedData[0]?.category}</span>
-                  <span>{aggregatedData[Math.floor(aggregatedData.length / 2)]?.category}</span>
+                  {aggregatedData.length > 2 && (
+                    <span>{aggregatedData[Math.floor(aggregatedData.length / 2)]?.category}</span>
+                  )}
                   <span>{aggregatedData[aggregatedData.length - 1]?.category}</span>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
             {/* TYPE 4: DONUT / RING */}
             {chartType === 'donut' && (
@@ -545,7 +608,7 @@ export function CustomChartBuilder() {
             <button
               onClick={() => {
                 setPinnedWidgets([]);
-                localStorage.removeItem('lumetric_pinned_charts');
+                localStorage.removeItem(userStorageKey);
               }}
               className="text-[11px] text-[var(--lm-text-tertiary)] hover:text-rose-500 transition-colors cursor-pointer"
             >

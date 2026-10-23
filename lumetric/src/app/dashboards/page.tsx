@@ -969,7 +969,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
       )}
 
       {dashboardTab === 'builder' ? (
-        <div className="space-y-6">
+        <div className="space-y-6 max-w-full overflow-hidden">
           <CustomChartBuilder />
         </div>
       ) : (
@@ -2630,7 +2630,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
       )}
 
           {/* 8. INTERACTIVE NO-CODE CHART BUILDER SECTION */}
-          <div className="mt-8 pt-6 border-t border-[var(--lm-border-default)]">
+          <div className="mt-8 pt-6 border-t border-[var(--lm-border-default)] max-w-full overflow-hidden">
             <CustomChartBuilder />
           </div>
         </>
