@@ -21,6 +21,7 @@ import {
   BarChart3Icon,
 } from '@/components/icons';
 import { DatasetProfile } from '@/types';
+import { CustomChartBuilder } from '@/components/charts/CustomChartBuilder';
 
 // Theme presets inspired directly by user's reference images
 type ThemePreset = 'modern' | 'cyberpunk' | 'enterprise';
@@ -32,6 +33,7 @@ export default function DashboardsPage() {
   // Visual Theme & Presentation State
   const [theme, setTheme] = useState<ThemePreset>('modern');
   const [slicersOpen, setSlicersOpen] = useState<boolean>(true);
+  const [dashboardTab, setDashboardTab] = useState<'dashboard' | 'builder'>('dashboard');
 
   // Field Selectors
   const [selectedMetric, setSelectedMetric] = useState<string>('');
@@ -850,6 +852,30 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
 
         {/* Action Controls & Preset Themes */}
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 print:hidden overflow-x-auto pb-1 max-w-full">
+          {/* Dashboard Mode Selector */}
+          <div className="flex items-center p-1 bg-[var(--lm-bg-secondary)]/90 backdrop-blur-md rounded-2xl text-xs font-semibold border border-[var(--lm-border-default)] shadow-xs shrink-0">
+            <button
+              onClick={() => setDashboardTab('dashboard')}
+              className={`px-3 py-1 rounded-xl transition-all text-xs font-bold cursor-pointer ${
+                dashboardTab === 'dashboard'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'
+              }`}
+            >
+              📊 Executive Dashboard
+            </button>
+            <button
+              onClick={() => setDashboardTab('builder')}
+              className={`px-3 py-1 rounded-xl transition-all text-xs font-bold cursor-pointer ${
+                dashboardTab === 'builder'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'
+              }`}
+            >
+              📈 Custom Chart Builder
+            </button>
+          </div>
+
           {/* Preset Theme Switcher (Apple Segments) */}
           <div className="flex items-center p-1 bg-[var(--lm-bg-secondary)]/90 backdrop-blur-md rounded-2xl text-xs font-semibold border border-[var(--lm-border-default)] shadow-xs shrink-0">
             <button
@@ -942,9 +968,13 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
         </div>
       )}
 
-
-
-      {/* 2. COLLAPSIBLE INTERACTIVE SLICERS / FILTER BAR */}
+      {dashboardTab === 'builder' ? (
+        <div className="space-y-6">
+          <CustomChartBuilder />
+        </div>
+      ) : (
+        <>
+          {/* 2. COLLAPSIBLE INTERACTIVE SLICERS / FILTER BAR */}
       {slicersOpen && (
         <div className="mb-6 p-5 rounded-3xl bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] print:hidden animate-apple-in">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3.5 pb-2.5 border-b border-[var(--lm-border-default)]">
@@ -2597,6 +2627,13 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
             </div>
           </div>
         </div>
+      )}
+
+          {/* 8. INTERACTIVE NO-CODE CHART BUILDER SECTION */}
+          <div className="mt-8 pt-6 border-t border-[var(--lm-border-default)]">
+            <CustomChartBuilder />
+          </div>
+        </>
       )}
     </div>
   );

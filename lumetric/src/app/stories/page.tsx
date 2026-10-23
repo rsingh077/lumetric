@@ -332,8 +332,184 @@ export default function StoriesPage() {
   }, [slides.length]);
 
   // ---------------------------------------------------------------------------
-  // 4. EXPORT HANDLERS (Print / PDF / Markdown / Video)
+  // 4. EXPORT HANDLERS (Print / PDF / Markdown / PowerPoint / Video)
   // ---------------------------------------------------------------------------
+  const [isExportingPPTX, setIsExportingPPTX] = useState(false);
+
+  const handleExportPowerPoint = async () => {
+    setIsExportingPPTX(true);
+    setRenderNotice('Generating 16:9 Microsoft PowerPoint presentation (.pptx)...');
+    try {
+      const pptxgen = (await import('pptxgenjs')).default;
+      const pres = new pptxgen();
+      pres.layout = 'LAYOUT_16x9';
+      pres.author = currentUser.name || 'Lumetric Studio';
+      pres.company = 'Lumetric Data & Decision Studio';
+      pres.title = `Executive Storyboard: ${metrics.datasetName}`;
+
+      const addSlideBranding = (slide: any, stepNumber: number, stageName: string) => {
+        slide.background = { color: '0B0F19' };
+        slide.addText(`SLIDE ${stepNumber} OF 5 • ${stageName.toUpperCase()} • ${audience.toUpperCase()} FRAMING`, {
+          x: 0.8,
+          y: 0.5,
+          fontSize: 10,
+          bold: true,
+          color: '94A3B8',
+          fontFace: 'Arial',
+        });
+        slide.addText('LUMETRIC EXECUTIVE BRIEFING', {
+          x: 0.8,
+          y: 6.8,
+          fontSize: 9,
+          bold: true,
+          color: '64748B',
+          fontFace: 'Arial',
+        });
+        slide.addText(`DATASET: ${metrics.datasetName.toUpperCase()}`, {
+          x: 8.5,
+          y: 6.8,
+          w: 4.0,
+          align: 'right',
+          fontSize: 9,
+          color: '64748B',
+          fontFace: 'Arial',
+        });
+      };
+
+      // Slide 1: Cover & Hero Metrics
+      const s1 = pres.addSlide();
+      addSlideBranding(s1, 1, 'Overview');
+      s1.addText(slides[0].narratives[audience].headline, {
+        x: 0.8,
+        y: 1.2,
+        w: 11.5,
+        fontSize: 26,
+        bold: true,
+        color: 'FFFFFF',
+        fontFace: 'Arial',
+      });
+      s1.addText(slides[0].narratives[audience].subtext, {
+        x: 0.8,
+        y: 2.6,
+        w: 11.5,
+        fontSize: 14,
+        color: 'CBD5E1',
+        fontFace: 'Arial',
+      });
+      // 3 KPI Cards
+      s1.addShape(pres.ShapeType.roundRect, { x: 0.8, y: 3.6, w: 3.6, h: 2.2, fill: { color: '1E293B' }, line: { color: 'E11D48', width: 1.5 } });
+      s1.addText('TOTAL PORTFOLIO ARR', { x: 1.0, y: 3.8, fontSize: 10, color: '94A3B8', bold: true });
+      s1.addText(`$${(metrics.totalARR / 1000000).toFixed(2)}M`, { x: 1.0, y: 4.4, fontSize: 32, bold: true, color: 'FB7185' });
+      s1.addText('Verified Contracted ARR', { x: 1.0, y: 5.2, fontSize: 10, color: '64748B' });
+
+      s1.addShape(pres.ShapeType.roundRect, { x: 4.8, y: 3.6, w: 3.6, h: 2.2, fill: { color: '1E293B' }, line: { color: '10B981', width: 1.5 } });
+      s1.addText('ACTIVE CUSTOMER LOGOS', { x: 5.0, y: 3.8, fontSize: 10, color: '94A3B8', bold: true });
+      s1.addText(`${metrics.accountCount.toLocaleString()}`, { x: 5.0, y: 4.4, fontSize: 32, bold: true, color: '34D399' });
+      s1.addText('Active Accounts Evaluated', { x: 5.0, y: 5.2, fontSize: 10, color: '64748B' });
+
+      s1.addShape(pres.ShapeType.roundRect, { x: 8.8, y: 3.6, w: 3.6, h: 2.2, fill: { color: '1E293B' }, line: { color: 'F59E0B', width: 1.5 } });
+      s1.addText('PORTFOLIO HEALTH INDEX', { x: 9.0, y: 3.8, fontSize: 10, color: '94A3B8', bold: true });
+      s1.addText(`${metrics.avgNPS} / 100`, { x: 9.0, y: 4.4, fontSize: 32, bold: true, color: 'FBBF24' });
+      s1.addText('Mean Net Promoter Score', { x: 9.0, y: 5.2, fontSize: 10, color: '64748B' });
+
+      s1.addNotes(slides[0].narratives[audience].voiceover);
+
+      // Slide 2: Regional Distribution
+      const s2 = pres.addSlide();
+      addSlideBranding(s2, 2, 'Distribution');
+      s2.addText(slides[1].narratives[audience].headline, { x: 0.8, y: 1.2, w: 11.5, fontSize: 24, bold: true, color: 'FFFFFF' });
+      s2.addText(slides[1].narratives[audience].subtext, { x: 0.8, y: 2.2, w: 11.5, fontSize: 13, color: 'CBD5E1' });
+      const regionalRows = [
+        [{ text: 'Region', options: { bold: true, color: 'FFFFFF', fill: { color: '1E293B' } } },
+         { text: 'Share (%)', options: { bold: true, color: 'FFFFFF', fill: { color: '1E293B' } } },
+         { text: 'Volume (USD)', options: { bold: true, color: 'FFFFFF', fill: { color: '1E293B' } } }],
+        ...metrics.regionSegments.map(r => [
+          { text: r.name, options: { color: 'E2E8F0' } },
+          { text: `${r.pct}%`, options: { color: '38BDF8', bold: true } },
+          { text: `$${((r.value || 0) / 1000).toFixed(0)}k`, options: { color: 'CBD5E1' } }
+        ])
+      ];
+      s2.addTable(regionalRows, { x: 0.8, y: 3.0, w: 5.6, fill: { color: '0F172A' }, border: { color: '334155', pt: 1 } });
+
+      const tierRows = [
+        [{ text: 'Plan Tier', options: { bold: true, color: 'FFFFFF', fill: { color: '1E293B' } } },
+         { text: 'Accounts', options: { bold: true, color: 'FFFFFF', fill: { color: '1E293B' } } },
+         { text: 'Total ARR', options: { bold: true, color: 'FFFFFF', fill: { color: '1E293B' } } }],
+        ...metrics.tierBreakdown.map(t => [
+          { text: t.tier, options: { color: 'E2E8F0' } },
+          { text: `${t.count}`, options: { color: 'A78BFA' } },
+          { text: `$${(t.arr / 1000).toFixed(0)}k`, options: { color: '34D399', bold: true } }
+        ])
+      ];
+      s2.addTable(tierRows, { x: 6.8, y: 3.0, w: 5.6, fill: { color: '0F172A' }, border: { color: '334155', pt: 1 } });
+      s2.addNotes(slides[1].narratives[audience].voiceover);
+
+      // Slide 3: Trajectory & Growth
+      const s3 = pres.addSlide();
+      addSlideBranding(s3, 3, 'Trajectory');
+      s3.addText(slides[2].narratives[audience].headline, { x: 0.8, y: 1.2, w: 11.5, fontSize: 24, bold: true, color: 'FFFFFF' });
+      s3.addText(slides[2].narratives[audience].subtext, { x: 0.8, y: 2.2, w: 11.5, fontSize: 13, color: 'CBD5E1' });
+      s3.addShape(pres.ShapeType.roundRect, { x: 0.8, y: 3.2, w: 11.5, h: 2.8, fill: { color: '1E293B' }, line: { color: '38BDF8', width: 1 } });
+      s3.addText('REVENUE MOMENTUM & EXPANSION TRAJECTORY', { x: 1.2, y: 3.5, fontSize: 12, bold: true, color: '38BDF8' });
+      s3.addText('• Net Revenue Retention: 114.2% (+2.1% QoQ expansion)', { x: 1.2, y: 4.1, fontSize: 13, color: 'FFFFFF' });
+      s3.addText('• Forward Baseline Horizon: Projected to reach $2.7M - $3.1M in Q4 with 80% confidence', { x: 1.2, y: 4.6, fontSize: 13, color: 'FFFFFF' });
+      s3.addText('• Expansion ARR: Averaging +$35,000 per enterprise contract upgrade', { x: 1.2, y: 5.1, fontSize: 13, color: 'FFFFFF' });
+      s3.addNotes(slides[2].narratives[audience].voiceover);
+
+      // Slide 4: Risk Radar
+      const s4 = pres.addSlide();
+      addSlideBranding(s4, 4, 'Risk Radar');
+      s4.addText(slides[3].narratives[audience].headline, { x: 0.8, y: 1.2, w: 11.5, fontSize: 24, bold: true, color: 'FFFFFF' });
+      s4.addText(slides[3].narratives[audience].subtext, { x: 0.8, y: 2.2, w: 11.5, fontSize: 13, color: 'CBD5E1' });
+      const riskRows = [
+        [{ text: 'Account Name', options: { bold: true, color: 'FFFFFF', fill: { color: '7F1D1D' } } },
+         { text: 'ARR at Risk', options: { bold: true, color: 'FFFFFF', fill: { color: '7F1D1D' } } },
+         { text: 'Churn Probability', options: { bold: true, color: 'FFFFFF', fill: { color: '7F1D1D' } } },
+         { text: 'Recommended Action', options: { bold: true, color: 'FFFFFF', fill: { color: '7F1D1D' } } }],
+        ...metrics.atRiskAccounts.map(a => [
+          { text: a.name, options: { color: 'FCA5A5' } },
+          { text: `$${(a.arr / 1000).toFixed(0)}k`, options: { color: 'F87171', bold: true } },
+          { text: `${Math.round(a.churn * 100)}%`, options: { color: 'F87171', bold: true } },
+          { text: 'Executive QBR Intervention', options: { color: 'E2E8F0' } }
+        ])
+      ];
+      s4.addTable(riskRows, { x: 0.8, y: 3.0, w: 11.5, fill: { color: '0F172A' }, border: { color: '991B1B', pt: 1 } });
+      s4.addNotes(slides[3].narratives[audience].voiceover);
+
+      // Slide 5: Strategic Action Plan
+      const s5 = pres.addSlide();
+      addSlideBranding(s5, 5, 'Action Plan');
+      s5.addText(slides[4].narratives[audience].headline, { x: 0.8, y: 1.2, w: 11.5, fontSize: 24, bold: true, color: 'FFFFFF' });
+      s5.addText(slides[4].narratives[audience].subtext, { x: 0.8, y: 2.2, w: 11.5, fontSize: 13, color: 'CBD5E1' });
+      s5.addShape(pres.ShapeType.roundRect, { x: 0.8, y: 3.0, w: 3.6, h: 3.2, fill: { color: '1E293B' }, line: { color: 'E11D48', width: 1.5 } });
+      s5.addText('1. PROTECT CORE ARR', { x: 1.0, y: 3.3, fontSize: 12, bold: true, color: 'FB7185' });
+      s5.addText('Deploy high-touch customer success onboarding on the 4 flagged enterprise accounts to protect $366k in renewals.', { x: 1.0, y: 3.9, w: 3.2, fontSize: 11, color: 'E2E8F0' });
+      s5.addText('Target: +$366k Saved', { x: 1.0, y: 5.6, fontSize: 10, bold: true, color: '34D399' });
+
+      s5.addShape(pres.ShapeType.roundRect, { x: 4.8, y: 3.0, w: 3.6, h: 3.2, fill: { color: '1E293B' }, line: { color: '6366F1', width: 1.5 } });
+      s5.addText('2. EXPAND MID-MARKET', { x: 5.0, y: 3.3, fontSize: 12, bold: true, color: 'A5B4FC' });
+      s5.addText('Incentivize standard tier upgrades into growth tiers in European accounts displaying >80% feature adoption.', { x: 5.0, y: 3.9, w: 3.2, fontSize: 11, color: 'E2E8F0' });
+      s5.addText('Target: +18% Upgrades', { x: 5.0, y: 5.6, fontSize: 10, bold: true, color: '818CF8' });
+
+      s5.addShape(pres.ShapeType.roundRect, { x: 8.8, y: 3.0, w: 3.6, h: 3.2, fill: { color: '1E293B' }, line: { color: 'F59E0B', width: 1.5 } });
+      s5.addText('3. AUTOMATE INGESTION', { x: 9.0, y: 3.3, fontSize: 12, bold: true, color: 'FDE68A' });
+      s5.addText('Lock weekly schema synchronization and AI telemetry drift limits at 5% variance thresholds.', { x: 9.0, y: 3.9, w: 3.2, fontSize: 11, color: 'E2E8F0' });
+      s5.addText('Target: 0 Drift Errors', { x: 9.0, y: 5.6, fontSize: 10, bold: true, color: 'FBBF24' });
+
+      s5.addNotes(slides[4].narratives[audience].voiceover);
+
+      // Write file
+      await pres.writeFile({ fileName: `lumetric_presentation_${audience.toLowerCase()}_${Date.now()}.pptx` });
+      setRenderNotice('✨ Native PowerPoint presentation (.pptx) downloaded successfully with speaker notes.');
+      setTimeout(() => setRenderNotice(null), 4000);
+    } catch (err: any) {
+      console.error('PowerPoint Export Error:', err);
+      setRenderNotice(`PowerPoint export failed: ${err.message || 'Error generating slides'}`);
+    } finally {
+      setIsExportingPPTX(false);
+    }
+  };
+
   const handlePrintPDF = () => {
     window.print();
   };
@@ -524,6 +700,24 @@ ${slides
           >
             <MaximizeIcon className="w-3.5 h-3.5" />
             Present Fullscreen
+          </button>
+
+          {/* Export PowerPoint (.pptx) */}
+          <button
+            onClick={handleExportPowerPoint}
+            disabled={isExportingPPTX}
+            className="px-3 py-2 rounded-xl bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800 text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+          >
+            {isExportingPPTX ? (
+              <>
+                <RefreshCwIcon className="w-3.5 h-3.5 animate-spin" />
+                Generating .pptx...
+              </>
+            ) : (
+              <>
+                📊 PowerPoint (.pptx)
+              </>
+            )}
           </button>
 
           {/* Export PDF / Print */}

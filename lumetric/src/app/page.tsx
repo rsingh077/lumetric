@@ -94,8 +94,19 @@ function HomeView() {
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
 
-      if (['csv', 'tsv', 'txt', 'json'].includes(ext)) {
-        const text = await file.text();
+      if (['csv', 'tsv', 'txt', 'json', 'xlsx', 'xls'].includes(ext)) {
+        let text = '';
+        if (ext === 'xlsx' || ext === 'xls') {
+          const XLSX = await import('xlsx');
+          const buffer = await file.arrayBuffer();
+          const wb = XLSX.read(buffer, { type: 'array' });
+          const firstSheet = wb.SheetNames[0];
+          const ws = wb.Sheets[firstSheet];
+          text = XLSX.utils.sheet_to_csv(ws);
+        } else {
+          text = await file.text();
+        }
+
         const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
         if (lines.length < 2) {
           throw new Error('File must contain at least a header row and one valid data record.');
@@ -460,7 +471,7 @@ function HomeView() {
               type="file"
               id="home-direct-file-input"
               className="hidden"
-              accept=".csv,.tsv,.txt,.json,.pdf,.docx"
+              accept=".csv,.tsv,.txt,.json,.pdf,.docx,.xlsx,.xls"
               disabled={isUploading}
               onChange={(e) => {
                 const file = e.target.files?.[0];

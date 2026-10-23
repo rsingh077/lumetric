@@ -71,6 +71,11 @@ export default function DataWorkspacePage() {
   const [columnFilter, setColumnFilter] = useState('');
   const [publishedNotice, setPublishedNotice] = useState<string | null>(null);
 
+  // Multi-sheet Excel State
+  const [excelWorkbook, setExcelWorkbook] = useState<any>(null);
+  const [excelSheetNames, setExcelSheetNames] = useState<string[]>([]);
+  const [activeExcelSheet, setActiveExcelSheet] = useState<string>('');
+
   // Parse CSV respecting quotation marks
   const parseCSVLine = (line: string): string[] => {
     const result: string[] = [];
@@ -163,9 +168,33 @@ export default function DataWorkspacePage() {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+
+    if (ext === 'xlsx' || ext === 'xls') {
+      try {
+        setIsProcessing(true);
+        const XLSX = await import('xlsx');
+        const buffer = await file.arrayBuffer();
+        const wb = XLSX.read(buffer, { type: 'array' });
+        setExcelWorkbook(wb);
+        setExcelSheetNames(wb.SheetNames);
+        const initialSheet = wb.SheetNames[0] || 'Sheet1';
+        setActiveExcelSheet(initialSheet);
+
+        const ws = wb.Sheets[initialSheet];
+        const csvContent = XLSX.utils.sheet_to_csv(ws);
+        handleIntakeContent(csvContent, `${file.name} [${initialSheet}]`, file.size);
+      } catch (err: any) {
+        setParseError(`Failed to parse Excel file: ${err.message || 'Corrupted spreadsheet'}`);
+        setIsProcessing(false);
+      }
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
@@ -175,6 +204,22 @@ export default function DataWorkspacePage() {
       setParseError('Failed to read local file.');
     };
     reader.readAsText(file);
+  };
+
+  const handleSelectExcelSheet = async (sheetName: string) => {
+    if (!excelWorkbook) return;
+    try {
+      setIsProcessing(true);
+      setActiveExcelSheet(sheetName);
+      const XLSX = await import('xlsx');
+      const ws = excelWorkbook.Sheets[sheetName];
+      const csvContent = XLSX.utils.sheet_to_csv(ws);
+      const baseName = fileName.includes(' [') ? fileName.split(' [')[0] : fileName;
+      handleIntakeContent(csvContent, `${baseName} [${sheetName}]`, fileSize);
+    } catch (err: any) {
+      setParseError(`Failed to switch sheet: ${err.message}`);
+      setIsProcessing(false);
+    }
   };
 
   // Complete Onboarding: Build Quality Checks, Profiles, and Publish Immutable Dataset
@@ -408,6 +453,35 @@ export default function DataWorkspacePage() {
       {/* ============================================================== */}
       {activeTab === 'intake' && (
         <div className="space-y-6 animate-fade-in">
+          {/* Multi-Sheet Excel Workbook Selector */}
+          {excelSheetNames.length > 1 && (
+            <div className="p-4 rounded-3xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2.5 shadow-sm">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                  📊 Multi-Sheet Excel Workbook: {excelSheetNames.length} Sheets Detected
+                </span>
+                <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-mono">
+                  Currently viewing: <strong>{activeExcelSheet}</strong>
+                </span>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                {excelSheetNames.map((sName) => (
+                  <button
+                    key={sName}
+                    onClick={() => handleSelectExcelSheet(sName)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      activeExcelSheet === sName
+                        ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                        : 'bg-[var(--lm-bg-elevated)] border border-emerald-300/60 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100'
+                    }`}
+                  >
+                    📄 {sName}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Main Drag & Drop Zone */}
           <div className="border-2 border-dashed border-[var(--lm-border-default)] hover:border-blue-500/60 rounded-3xl p-8 sm:p-12 text-center bg-[var(--lm-bg-elevated)] backdrop-blur-2xl transition-all duration-300 shadow-[var(--lm-shadow-md)] apple-card-hover">
             <div className="max-w-xl mx-auto space-y-4">
@@ -428,13 +502,13 @@ export default function DataWorkspacePage() {
                 <label className="cursor-pointer">
                   <input
                     type="file"
-                    accept=".csv,.txt,.json,.parquet"
+                    accept=".csv,.txt,.json,.parquet,.xlsx,.xls"
                     onChange={handleFileUpload}
                     className="hidden"
                     disabled={isProcessing}
                   />
                   <span className="inline-flex items-center justify-center font-bold rounded-xl px-5 py-2.5 text-xs gap-2 bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all hover:scale-105">
-                    {isProcessing ? 'Verifying Content...' : 'Choose File from Device (.csv, .json, .txt)'}
+                    {isProcessing ? 'Verifying Content...' : 'Choose File (.xlsx, .csv, .json)'}
                   </span>
                 </label>
                 <Button
