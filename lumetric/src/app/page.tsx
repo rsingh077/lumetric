@@ -36,6 +36,8 @@ import SettingsPage from './settings/page';
 function HomeView() {
   const {
     currentUser,
+    currentWorkspace,
+    openWorkspaceModal,
     datasets,
     activeDataset,
     activeRows,
@@ -365,26 +367,41 @@ function HomeView() {
               {t('app.subtitle')}
             </span>
             <span className="text-[var(--lm-text-tertiary)] text-xs">•</span>
-            <span className="text-xs text-[var(--lm-text-tertiary)] font-mono">
-              Profile: {currentUser.email || 'Guest'}
-            </span>
+            <button
+              type="button"
+              onClick={openWorkspaceModal}
+              className="text-xs font-semibold text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] flex items-center gap-1.5 cursor-pointer bg-[var(--lm-bg-secondary)] px-2.5 py-0.5 rounded-full border border-[var(--lm-border-default)] hover:border-[#059669]/40 transition-colors"
+              title="Click to rename workspace or customize branding"
+            >
+              <span>{currentWorkspace.icon || '⚡'}</span>
+              <span>{currentWorkspace.name}</span>
+              <span className="text-[10px] text-slate-400">✎</span>
+            </button>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--lm-text-primary)] tracking-tight">
-            {t('common.welcome')}, {currentUser.name}
-          </h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--lm-text-primary)] tracking-tight">
+              {t('common.welcome')}, {currentUser.name || 'Analyst'}
+            </h1>
+            <button
+              type="button"
+              onClick={openWorkspaceModal}
+              className="p-1 rounded-lg text-slate-400 hover:text-[var(--lm-text-primary)] hover:bg-[var(--lm-bg-secondary)] text-xs transition-colors cursor-pointer"
+              title="Edit Profile Name & Workspace"
+            >
+              ✎
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Profile & Role Button */}
+          {/* Workspace Settings & Storage Button */}
           <button
-            onClick={() => openAuthModal('profile-db')}
+            onClick={openWorkspaceModal}
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] text-xs font-semibold text-[var(--lm-text-primary)] hover:border-[#059669] transition-colors shadow-xs cursor-pointer"
-            title="Manage Profile Database & Storage"
+            title="Manage Workspace & Profile Settings"
           >
-            <div className="w-5 h-5 rounded-full bg-[#059669]/20 text-[#059669] dark:text-[#34D399] flex items-center justify-center font-bold text-[10px]">
-              {(currentUser.name || 'U').charAt(0)}
-            </div>
-            <span className="capitalize">{currentUser.role}</span>
+            <span className="text-sm">{currentWorkspace.icon || '⚡'}</span>
+            <span className="max-w-[130px] truncate">{currentWorkspace.name}</span>
             <span className="text-[10px] font-mono text-[#059669] dark:text-[#34D399] hidden sm:inline">
               ({formatBytes(storageFootprintBytes)})
             </span>
@@ -428,7 +445,7 @@ function HomeView() {
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse" />
                 <span className="text-xs font-bold text-[#059669] dark:text-[#10B981] uppercase tracking-wider">
-                  Isolated Account Workspace
+                  Isolated Private Workspace
                 </span>
                 <StatusBadge variant="emerald" dot>Ready</StatusBadge>
               </div>
@@ -436,15 +453,16 @@ function HomeView() {
                 Upload Your Data to Start Instant Analysis
               </h2>
               <p className="text-xs sm:text-sm text-[var(--lm-text-secondary)] max-w-xl">
-                Profile: <span className="font-mono text-[#059669] font-semibold">{currentUser.email || 'your-account'}</span>. Uploaded files remain strictly saved and isolated to your personal cloud database.
+                Workspace: <span className="font-bold text-[var(--lm-text-primary)]">{currentWorkspace.name}</span>. Uploaded datasets and documents remain encrypted and strictly isolated to your workspace vault.
               </p>
             </div>
 
             <button
-              onClick={() => openAuthModal('profile-db')}
-              className="px-4 py-2 rounded-2xl bg-[var(--lm-bg-secondary)] hover:bg-[var(--lm-bg-tertiary)] border border-[var(--lm-border-default)] text-xs font-bold text-[var(--lm-text-primary)] transition-all shrink-0 cursor-pointer self-start sm:self-auto"
+              onClick={openWorkspaceModal}
+              className="px-4 py-2 rounded-2xl bg-[var(--lm-bg-secondary)] hover:bg-[var(--lm-bg-tertiary)] border border-[var(--lm-border-default)] text-xs font-bold text-[var(--lm-text-primary)] transition-all shrink-0 cursor-pointer self-start sm:self-auto flex items-center gap-1.5"
             >
-              ⚙️ Profile Storage
+              <span>⚙️</span>
+              <span>Workspace Settings</span>
             </button>
           </div>
 

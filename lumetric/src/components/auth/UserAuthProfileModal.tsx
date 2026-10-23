@@ -32,13 +32,19 @@ export function UserAuthProfileModal({
     setActiveDocument,
     deleteDocumentFile,
     storageFootprintBytes,
+    currentWorkspace,
+    updateWorkspace,
     loadSampleDataIntoProfile,
     clearProfileData,
     setActiveView,
     setIsAuthenticated,
   } = useApp();
-  const [mode, setMode] = useState<'profile' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db' | 'forgot-password'>(initialMode || 'profile');
+  const [mode, setMode] = useState<'profile' | 'workspace' | 'login' | 'register' | 'admin-dashboard' | 'connectors' | 'audit' | 'profile-db' | 'forgot-password'>(initialMode || 'profile');
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+
+  // Workspace state
+  const [wsName, setWsName] = useState(currentWorkspace?.name || '');
+  const [wsIcon, setWsIcon] = useState(currentWorkspace?.icon || '⚡');
 
   // Form states
   const [email, setEmail] = useState('');
@@ -474,6 +480,14 @@ export function UserAuthProfileModal({
     setLoading(true);
     setFeedback(null);
 
+    // Save workspace name if modified
+    if (wsName.trim() && currentWorkspace && (wsName.trim() !== currentWorkspace.name || wsIcon !== currentWorkspace.icon)) {
+      updateWorkspace(currentWorkspace.id, {
+        name: wsName.trim(),
+        icon: wsIcon,
+      });
+    }
+
     const res = await LumetricAuthService.updateProfile({
       name,
       organization: org
@@ -481,10 +495,9 @@ export function UserAuthProfileModal({
     setLoading(false);
 
     if (res.success && res.user) {
-      flushMemoryState();
       setAuthUser(res.user);
       setCurrentUser(res.user);
-      setFeedback({ type: 'success', message: 'Profile updated in database.' });
+      setFeedback({ type: 'success', message: 'Profile & workspace branding updated in cloud database.' });
       setTimeout(() => setFeedback(null), 3000);
     } else {
       setFeedback({ type: 'error', message: res.error || 'Failed to update profile.' });
@@ -583,6 +596,18 @@ export function UserAuthProfileModal({
               }`}
             >
               My Profile
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('workspace')}
+              className={`pb-2.5 px-2 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-1.5 ${
+                mode === 'workspace'
+                  ? 'border-[#059669] text-[#059669] dark:text-[#34D399] dark:border-[#34D399]'
+                  : 'border-transparent text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'
+              }`}
+            >
+              <span>{wsIcon}</span>
+              <span>Workspace &amp; Branding</span>
             </button>
             <button
               type="button"
@@ -829,11 +854,28 @@ export function UserAuthProfileModal({
               </div>
 
               <form onSubmit={handleUpdateProfile} className="space-y-3">
+                <div className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--lm-text-tertiary)] font-mono">
+                    Workspace Branding
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{wsIcon}</span>
+                    <Input
+                      label="Workspace Name"
+                      value={wsName}
+                      onChange={(e) => setWsName(e.target.value)}
+                      placeholder="e.g. Acme Analytics, Growth Studio"
+                      className="flex-1"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <Input
                   label="Display Name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Your full name"
+                  placeholder="Your full name (e.g. Jazz Patel)"
                   required
                 />
                 <Input
@@ -853,7 +895,101 @@ export function UserAuthProfileModal({
                     Sign Out
                   </Button>
                   <Button type="submit" size="sm" variant="emerald" loading={loading}>
-                    Save Profile Changes
+                    Save Profile &amp; Workspace
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* VIEW: WORKSPACE & BRANDING STUDIO */}
+          {mode === 'workspace' && authUser && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--lm-text-tertiary)] font-mono">
+                  Active Workspace Live Preview
+                </span>
+                <div className="flex items-center gap-2 text-xs py-1">
+                  <span className="font-bold text-[var(--lm-text-primary)] flex items-center gap-1.5 bg-[var(--lm-bg-elevated)] px-3 py-1.5 rounded-xl border border-[var(--lm-border-default)]">
+                    <span className="text-base">{wsIcon}</span>
+                    <span>{wsName.trim() || 'My Studio'}</span>
+                  </span>
+                  <span className="text-[var(--lm-text-tertiary)]">/</span>
+                  <span className="text-[var(--lm-text-secondary)] font-medium bg-[var(--lm-bg-elevated)] px-2.5 py-1.5 rounded-xl border border-[var(--lm-border-default)]">
+                    📁 Executive Intelligence
+                  </span>
+                  <span className="text-[var(--lm-text-tertiary)]">/</span>
+                  <span className="text-[var(--lm-text-tertiary)]">Studio Overview</span>
+                </div>
+              </div>
+
+              <form onSubmit={handleUpdateProfile} className="space-y-3.5">
+                <Input
+                  label="Workspace Name"
+                  value={wsName}
+                  onChange={(e) => setWsName(e.target.value)}
+                  placeholder="e.g. Acme Analytics, Growth Intelligence"
+                  required
+                />
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[var(--lm-text-primary)]">
+                    Workspace Icon &amp; Badge
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {['⚡', '📊', '🚀', '🔬', '🧠', '🏢', '💎', '🎯', '💡', '🌐', '🛡️', '📈'].map((emoji) => (
+                      <button
+                        type="button"
+                        key={emoji}
+                        onClick={() => setWsIcon(emoji)}
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg border transition-all cursor-pointer ${
+                          wsIcon === emoji
+                            ? 'border-[#059669] bg-[#059669]/15 shadow-sm scale-105'
+                            : 'border-[var(--lm-border-default)] bg-[var(--lm-bg-elevated)] hover:border-slate-400'
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[11px] font-semibold text-[var(--lm-text-secondary)]">
+                    Quick Suggestions:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Executive Intelligence', 'Growth Analytics Hub', 'FinTech Science Lab', 'Product Studio', 'Personal Research Vault'].map((sug) => (
+                      <button
+                        type="button"
+                        key={sug}
+                        onClick={() => setWsName(sug)}
+                        className="px-2.5 py-1 text-[11px] rounded-lg bg-[var(--lm-bg-tertiary)] text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] hover:border-[#059669] border border-transparent transition-colors cursor-pointer"
+                      >
+                        {sug}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <Input
+                  label="Your Display Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Jazz Patel"
+                  required
+                />
+
+                <Input
+                  label="Organization / Company"
+                  value={org}
+                  onChange={(e) => setOrg(e.target.value)}
+                  placeholder="e.g. Acme Corporation"
+                />
+
+                <div className="pt-2 flex items-center justify-end">
+                  <Button type="submit" size="sm" variant="emerald" loading={loading}>
+                    Save Workspace &amp; Branding
                   </Button>
                 </div>
               </form>

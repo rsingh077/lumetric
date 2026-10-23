@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardHeader, CardTitle, StatusBadge, Button, Input } from '@/components/ui';
 import { UserRole } from '@/types';
@@ -88,9 +88,9 @@ const PERMISSIONS_MATRIX: PermissionEntry[] = [
 ];
 
 export default function SettingsPage() {
-  const { currentUser, setRole, currentWorkspace, language, setLanguage } = useApp();
+  const { currentUser, setRole, currentWorkspace, updateWorkspace, updateUserProfile, language, setLanguage } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'billing' | 'rbac' | 'tenant' | 'security' | 'language'>('billing');
+  const [activeTab, setActiveTab] = useState<'general' | 'billing' | 'rbac' | 'tenant' | 'security' | 'language'>('general');
   const [roleNotice, setRoleNotice] = useState<string | null>(null);
   const [secrets, setSecrets] = useState<SecretPointer[]>(INITIAL_SECRETS);
   const [addSecretOpen, setAddSecretOpen] = useState(false);
@@ -99,6 +99,51 @@ export default function SettingsPage() {
   const [cacheFlushNotice, setCacheFlushNotice] = useState<string | null>(null);
   const [twoFactorModalOpen, setTwoFactorModalOpen] = useState(false);
   const [twoFactorActive, setTwoFactorActive] = useState(false);
+
+  // Workspace & Profile state
+  const [wsName, setWsName] = useState(currentWorkspace?.name || '');
+  const [wsIcon, setWsIcon] = useState(currentWorkspace?.icon || '⚡');
+  const [wsDesc, setWsDesc] = useState(currentWorkspace?.description || '');
+  const [displayName, setDisplayName] = useState(currentUser?.name || '');
+  const [orgName, setOrgName] = useState('');
+  const [generalSaving, setGeneralSaving] = useState(false);
+  const [generalSavedNotice, setGeneralSavedNotice] = useState(false);
+
+  useEffect(() => {
+    if (currentWorkspace) {
+      setWsName(currentWorkspace.name || '');
+      setWsIcon(currentWorkspace.icon || '⚡');
+      setWsDesc(currentWorkspace.description || '');
+    }
+    if (currentUser) {
+      setDisplayName(currentUser.name || '');
+    }
+  }, [currentWorkspace, currentUser]);
+
+  const handleSaveGeneral = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!wsName.trim()) return;
+    setGeneralSaving(true);
+
+    if (currentWorkspace && (wsName.trim() !== currentWorkspace.name || wsIcon !== currentWorkspace.icon || wsDesc.trim() !== currentWorkspace.description)) {
+      updateWorkspace(currentWorkspace.id, {
+        name: wsName.trim(),
+        icon: wsIcon,
+        description: wsDesc.trim(),
+      });
+    }
+
+    if (displayName.trim() && displayName.trim() !== currentUser.name) {
+      await updateUserProfile({
+        name: displayName.trim(),
+        organization: orgName.trim() || undefined,
+      });
+    }
+
+    setGeneralSaving(false);
+    setGeneralSavedNotice(true);
+    setTimeout(() => setGeneralSavedNotice(false), 3000);
+  };
 
   const allRoles: UserRole[] = ['owner', 'administrator', 'builder', 'reviewer', 'viewer'];
 
@@ -198,10 +243,21 @@ export default function SettingsPage() {
       )}
 
       {/* Settings Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-[var(--lm-border-default)]">
+      <div className="flex items-center gap-2 border-b border-[var(--lm-border-default)] overflow-x-auto scrollbar-none">
+        <button
+          onClick={() => setActiveTab('general')}
+          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+            activeTab === 'general'
+              ? 'border-[#059669] text-[#059669]'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span>{wsIcon}</span>
+          <span>Workspace &amp; Branding</span>
+        </button>
         <button
           onClick={() => setActiveTab('billing')}
-          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
+          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
             activeTab === 'billing'
               ? 'border-[#059669] text-[#059669]'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -212,7 +268,7 @@ export default function SettingsPage() {
         </button>
         <button
           onClick={() => setActiveTab('rbac')}
-          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors ${
+          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'rbac'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -222,7 +278,7 @@ export default function SettingsPage() {
         </button>
         <button
           onClick={() => setActiveTab('tenant')}
-          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors ${
+          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'tenant'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -232,7 +288,7 @@ export default function SettingsPage() {
         </button>
         <button
           onClick={() => setActiveTab('security')}
-          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors ${
+          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'security'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -242,7 +298,7 @@ export default function SettingsPage() {
         </button>
         <button
           onClick={() => setActiveTab('language')}
-          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
+          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'language'
               ? 'border-rose-500 text-rose-500'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -252,6 +308,140 @@ export default function SettingsPage() {
           <span>Language &amp; Localization</span>
         </button>
       </div>
+
+      {/* TAB: GENERAL WORKSPACE & BRANDING */}
+      {activeTab === 'general' && (
+        <div className="space-y-6 animate-fade-in">
+          {generalSavedNotice && (
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-2">
+              <span>✓</span>
+              <span>Workspace branding and profile display updated and synchronized with cloud vault.</span>
+            </div>
+          )}
+
+          {/* Live Preview Header Card */}
+          <Card padding="md" className="border-[var(--lm-border-default)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#059669] to-emerald-400 text-white flex items-center justify-center text-2xl shadow-md">
+                  {wsIcon}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-extrabold text-[var(--lm-text-primary)]">
+                      {wsName.trim() || 'My Analytics Studio'}
+                    </h3>
+                    <StatusBadge variant="success">Active Workspace</StatusBadge>
+                  </div>
+                  <p className="text-xs text-[var(--lm-text-secondary)] mt-0.5">
+                    {wsDesc.trim() || 'Dedicated enterprise dataset & document intelligence vault'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                  AES-256 Partitioned
+                </span>
+              </div>
+            </div>
+          </Card>
+
+          {/* Edit Form */}
+          <Card padding="lg" className="border-[var(--lm-border-default)]">
+            <form onSubmit={handleSaveGeneral} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[var(--lm-text-primary)]">
+                  Workspace Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={wsName}
+                  onChange={(e) => setWsName(e.target.value)}
+                  placeholder="e.g. Acme Analytics, Growth Intelligence Hub"
+                  className="w-full px-3.5 py-2.5 text-sm bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-xl text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-colors"
+                />
+                <p className="text-[11px] text-[var(--lm-text-secondary)]">
+                  This custom title appears in the top navigation bar, breadcrumbs, presentation decks, and executive reports.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[var(--lm-text-primary)]">
+                  Workspace Icon &amp; Symbol
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {['⚡', '📊', '🚀', '🔬', '🧠', '🏢', '💎', '🎯', '💡', '🌐', '🛡️', '📈'].map((emoji) => (
+                    <button
+                      type="button"
+                      key={emoji}
+                      onClick={() => setWsIcon(emoji)}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl border transition-all cursor-pointer ${
+                        wsIcon === emoji
+                          ? 'border-[#059669] bg-[#059669]/15 shadow-sm scale-105'
+                          : 'border-[var(--lm-border-default)] bg-[var(--lm-bg-elevated)] hover:border-slate-400'
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[var(--lm-text-primary)]">
+                  Workspace Description / Tagline
+                </label>
+                <input
+                  type="text"
+                  value={wsDesc}
+                  onChange={(e) => setWsDesc(e.target.value)}
+                  placeholder="e.g. Primary analytics, cohort modeling, and board presentations"
+                  className="w-full px-3.5 py-2 text-xs bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-xl text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-colors"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[var(--lm-border-default)]">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[var(--lm-text-primary)]">
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="e.g. Jazz Patel"
+                    className="w-full px-3.5 py-2 text-xs bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-xl text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-colors"
+                  />
+                  <p className="text-[10px] text-[var(--lm-text-tertiary)]">
+                    Replaces raw email handles in greetings and cards.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[var(--lm-text-primary)]">
+                    Organization / Company
+                  </label>
+                  <input
+                    type="text"
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    placeholder="e.g. Acme Corporation"
+                    className="w-full px-3.5 py-2 text-xs bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-xl text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end">
+                <Button type="submit" size="md" variant="primary" loading={generalSaving} className="bg-[#059669] hover:bg-[#047857]">
+                  Save Workspace &amp; Profile Branding
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
 
       {/* TAB: BILLING & SUBSCRIPTIONS */}
       {activeTab === 'billing' && <BillingSection />}

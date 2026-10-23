@@ -16,6 +16,8 @@ export interface Workspace {
   name: string;
   slug: string;
   description?: string;
+  icon?: string;
+  color?: string;
   ownerId: string;
   members: WorkspaceMember[];
   createdAt: string;

@@ -62,7 +62,7 @@ const INITIAL_MODELS: ModelEntry[] = [
 ];
 
 export default function ModelsPage() {
-  const { activeDataset, datasets, currentUser, setActiveView, loadSampleDataIntoProfile } = useApp();
+  const { activeDataset, datasets, currentUser, currentWorkspace, setActiveView, loadSampleDataIntoProfile } = useApp();
   const [models, setModels] = useState<ModelEntry[]>(INITIAL_MODELS);
   const [selectedModel, setSelectedModel] = useState<ModelEntry>(INITIAL_MODELS[0]);
   const [trainModalOpen, setTrainModalOpen] = useState(false);
@@ -215,7 +215,7 @@ export default function ModelsPage() {
           <DatabaseIcon className="w-12 h-12 text-[var(--lm-text-tertiary)] mx-auto mb-2" />
           <h2 className="text-base font-semibold text-[var(--lm-text-primary)]">No Machine Learning Models Trained Yet</h2>
           <p className="text-xs text-[var(--lm-text-secondary)] max-w-md mx-auto">
-            Your personal profile (<span className="font-mono text-blue-600 font-semibold">{currentUser.email || 'active user'}</span>) has zero shared models. Ingest your dataset in Data Studio to train custom predictive models.
+            Your workspace (<span className="font-semibold text-emerald-600 dark:text-emerald-400">{currentWorkspace.name}</span>) has zero trained predictive models yet. Ingest your dataset in Data Studio to train custom predictive models.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Button onClick={() => setActiveView('data')}>

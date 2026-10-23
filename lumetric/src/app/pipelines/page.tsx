@@ -64,7 +64,7 @@ const getInitialNodes = (datasetName?: string, rowCount?: number, hash?: string)
 ];
 
 export default function PipelinesPage() {
-  const { activeDataset, activeRows, currentUser, datasets, setActiveView, loadSampleDataIntoProfile } = useApp();
+  const { activeDataset, activeRows, currentUser, currentWorkspace, datasets, setActiveView, loadSampleDataIntoProfile } = useApp();
   const [nodes, setNodes] = useState<PipelineNode[]>(() =>
     getInitialNodes(activeDataset?.fileName, activeDataset?.rowCount, activeDataset?.sha256)
   );
@@ -214,7 +214,7 @@ export default function PipelinesPage() {
           <DatabaseIcon className="w-12 h-12 text-[var(--lm-text-tertiary)] mx-auto mb-2" />
           <h2 className="text-base font-semibold text-[var(--lm-text-primary)]">No Active Pipelines Configured</h2>
           <p className="text-xs text-[var(--lm-text-secondary)] max-w-md mx-auto">
-            Your personal profile (<span className="font-mono text-blue-600 font-semibold">{currentUser?.email || 'active user'}</span>) has zero active data pipelines. Ingest a dataset in Data Studio to build deterministic transformation and deduplication DAGs.
+            Your workspace (<span className="font-semibold text-emerald-600 dark:text-emerald-400">{currentWorkspace.name}</span>) has zero active data pipelines configured yet. Ingest a dataset in Data Studio to build deterministic transformation and deduplication DAGs.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Button onClick={() => setActiveView('data')}>

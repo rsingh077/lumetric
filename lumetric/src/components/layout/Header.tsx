@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/contexts/AppContext';
 import { ActiveView } from '@/types';
 import { UserAuthProfileModal } from '@/components/auth/UserAuthProfileModal';
+import { WorkspaceSettingsModal } from '@/components/workspace/WorkspaceSettingsModal';
 import { OfflineSyncManager } from '@/lib/offlineSync';
 import {
   MenuIcon,
@@ -34,6 +35,9 @@ export function Header() {
     activeView,
     setActiveView,
     currentWorkspace,
+    openWorkspaceModal,
+    workspaceModalOpen,
+    setWorkspaceModalOpen,
     currentProject,
     projects,
     selectProject,
@@ -221,9 +225,18 @@ export function Header() {
           </button>
 
           <div className="flex items-center gap-2 text-xs">
-            <span className="font-semibold text-[var(--lm-text-primary)] tracking-tight">
-              {currentWorkspace.name}
-            </span>
+            <button
+              type="button"
+              onClick={openWorkspaceModal}
+              className="group flex items-center gap-1.5 px-2 py-1 rounded-xl hover:bg-[var(--lm-bg-secondary)] border border-transparent hover:border-[var(--lm-border-default)] transition-all cursor-pointer font-semibold text-[var(--lm-text-primary)] tracking-tight"
+              title="Click to rename workspace or customize branding"
+            >
+              <span className="text-sm">{currentWorkspace.icon || '⚡'}</span>
+              <span className="truncate max-w-[130px] sm:max-w-[200px]">{currentWorkspace.name}</span>
+              <span className="opacity-0 group-hover:opacity-100 text-[10px] text-[var(--lm-text-tertiary)] hover:text-[#059669] transition-opacity">
+                ✎
+              </span>
+            </button>
             <span className="text-[var(--lm-text-tertiary)] font-normal">/</span>
             
             {/* Project Quick Selector */}
@@ -568,6 +581,12 @@ export function Header() {
           </div>
         </div>
       )}
+
+      {/* Workspace Settings & Branding Modal */}
+      <WorkspaceSettingsModal
+        isOpen={workspaceModalOpen}
+        onClose={() => setWorkspaceModalOpen(false)}
+      />
 
       {/* Live Auth & User Profile Modal */}
       <UserAuthProfileModal

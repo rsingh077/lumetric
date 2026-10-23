@@ -44,7 +44,7 @@ interface PresentationSlide {
 }
 
 export default function StoriesPage() {
-  const { activeDataset, activeRows, currentUser, loadSampleDataIntoProfile, setActiveView } = useApp();
+  const { activeDataset, activeRows, currentUser, currentWorkspace, loadSampleDataIntoProfile, setActiveView } = useApp();
 
   const hasActiveData = Boolean(activeDataset && activeRows && activeRows.length > 0);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
@@ -792,15 +792,15 @@ ${slides
             <DatabaseIcon className="w-8 h-8" />
           </div>
           <div className="space-y-1.5 max-w-lg mx-auto">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-[11px] font-bold border border-emerald-500/20">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Isolated Personal Workspace: {currentUser?.email || 'Active Account'}
+              Private Workspace: {currentWorkspace?.name || 'My Studio'}
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-[var(--lm-text-primary)]">
-              No Data Ingested Yet in this Profile
+              No Data Ingested Yet in this Workspace
             </h2>
             <p className="text-xs sm:text-sm text-[var(--lm-text-secondary)] leading-relaxed">
-              Your personal workspace is strictly isolated with zero shared records. Ingest your business CSV, Excel, or SQL dataset to automatically generate Canva-grade 16:9 executive presentation decks with automated charts, risk breakdowns, and voiceover scripts.
+              Your workspace ({currentWorkspace?.name || 'Studio'}) is strictly isolated with zero shared records. Ingest your business CSV, Excel, or SQL dataset to automatically generate Canva-grade 16:9 executive presentation decks with automated charts, risk breakdowns, and voiceover scripts.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">

@@ -67,6 +67,8 @@ export function Sidebar() {
     toggleSidebar,
     workspaces,
     currentWorkspace,
+    openWorkspaceModal,
+    openAuthModal,
     switchWorkspace,
     createWorkspace,
     currentUser,
@@ -204,7 +206,7 @@ export function Sidebar() {
                 aria-expanded={wsDropdownOpen}
               >
                 <div className="flex items-center gap-2 truncate">
-                  <span className="w-2 h-2 rounded-full bg-[#059669] shadow-xs shrink-0" />
+                  <span className="text-xs shrink-0">{currentWorkspace.icon || '⚡'}</span>
                   <span className="truncate">{currentWorkspace.name}</span>
                 </div>
                 <ChevronDownIcon className="w-3.5 h-3.5 text-[var(--lm-text-tertiary)] shrink-0" />
@@ -228,7 +230,10 @@ export function Sidebar() {
                           : 'text-[var(--lm-text-primary)]'
                       }`}
                     >
-                      <span className="truncate">{ws.name}</span>
+                      <div className="flex items-center gap-2 truncate">
+                        <span>{ws.icon || '⚡'}</span>
+                        <span className="truncate">{ws.name}</span>
+                      </div>
                       {ws.id === currentWorkspace.id && (
                         <span className="text-[10px] text-rose-600 dark:text-rose-400 font-mono font-medium">✓</span>
                       )}
@@ -236,11 +241,22 @@ export function Sidebar() {
                   ))}
                   <div className="border-t border-[var(--lm-border-default)] my-1" />
                   <button
+                    type="button"
+                    onClick={() => {
+                      setWsDropdownOpen(false);
+                      openWorkspaceModal();
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs text-[var(--lm-text-primary)] hover:bg-[var(--lm-bg-tertiary)] flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
+                  >
+                    <span>⚙️</span>
+                    <span>Workspace Settings &amp; Name</span>
+                  </button>
+                  <button
                     onClick={() => {
                       setNewWsModalOpen(true);
                       setWsDropdownOpen(false);
                     }}
-                    className="w-full text-left px-3.5 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-[var(--lm-bg-tertiary)] flex items-center gap-1.5 font-medium rounded-b-xl"
+                    className="w-full text-left px-3.5 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-[var(--lm-bg-tertiary)] flex items-center gap-1.5 font-medium rounded-b-xl cursor-pointer"
                   >
                     <PlusIcon className="w-3.5 h-3.5" />
                     + New Workspace

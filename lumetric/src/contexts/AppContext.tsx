@@ -44,13 +44,22 @@ interface AppContextType {
   workspaces: Workspace[];
   currentWorkspace: Workspace;
   switchWorkspace: (workspaceId: string) => void;
-  createWorkspace: (name: string, description?: string) => Workspace;
+  createWorkspace: (name: string, description?: string, icon?: string) => Workspace;
+  updateWorkspace: (workspaceId: string, updates: Partial<Workspace>) => void;
+  deleteWorkspace: (workspaceId: string) => boolean;
+  workspaceModalOpen: boolean;
+  setWorkspaceModalOpen: (open: boolean) => void;
+  openWorkspaceModal: () => void;
 
   // Projects
   projects: Project[];
   currentProject: Project | null;
   selectProject: (projectId: string | null) => void;
   createProject: (name: string, objective?: string, description?: string) => Project;
+  updateProject: (projectId: string, updates: Partial<Project>) => void;
+
+  // User Profile
+  updateUserProfile: (updates: { name?: string; organization?: string; avatarUrl?: string }) => Promise<boolean>;
 
   // Ingested Tabular Datasets
   datasets: DatasetProfile[];
@@ -404,11 +413,18 @@ function getUserStorageKey(email?: string): string {
   return `lumetric_profile_db_${clean}`;
 }
 
+function formatCleanDisplayName(email?: string): string {
+  if (!email) return 'Analytics';
+  const prefix = email.split('@')[0];
+  const lettersOnly = prefix.replace(/[0-9_.-]+$/, '');
+  const baseName = lettersOnly.length >= 2 ? lettersOnly : prefix;
+  return baseName.charAt(0).toUpperCase() + baseName.slice(1);
+}
+
 function createCleanProfileDatabase(userId?: string, userEmail?: string): UserProfileDatabase {
   const ownerId = userId || 'usr-personal';
   const email = userEmail || 'user@lumetric.io';
-  const username = email ? email.split('@')[0] : 'personal';
-  const capitalized = username.charAt(0).toUpperCase() + username.slice(1);
+  const cleanName = formatCleanDisplayName(email);
   return {
     userId: ownerId,
     userEmail: email,
@@ -421,8 +437,8 @@ function createCleanProfileDatabase(userId?: string, userEmail?: string): UserPr
       {
         id: `prj-${Date.now()}-1`,
         workspaceId: 'ws-personal',
-        name: `${capitalized} Analytics Workspace`,
-        objective: 'Individual analytical models, dataset ingestion, and document treatments',
+        name: 'Executive Intelligence',
+        objective: 'Enterprise analytical models, dataset ingestion, and document treatments',
         description: 'Private multi-tenant workspace isolated to this user account.',
         status: 'active',
         createdBy: ownerId,
@@ -433,8 +449,9 @@ function createCleanProfileDatabase(userId?: string, userEmail?: string): UserPr
     workspaces: [
       {
         id: 'ws-personal',
-        name: `${capitalized}'s Personal Lab`,
-        slug: 'personal-lab',
+        name: `${cleanName}'s Studio`,
+        slug: 'primary-studio',
+        icon: '⚡',
         description: 'Dedicated isolated personal database & file analysis environment',
         ownerId: ownerId,
         members: [],
@@ -957,17 +974,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(prev => ({ ...prev, role: newRole }));
   };
 
+  const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
+  const openWorkspaceModal = () => setWorkspaceModalOpen(true);
+
   const switchWorkspace = (workspaceId: string) => {
     const ws = workspaces.find(w => w.id === workspaceId);
     if (ws) setCurrentWorkspace(ws);
   };
 
-  const createWorkspace = (name: string, description?: string): Workspace => {
+  const createWorkspace = (name: string, description?: string, icon?: string): Workspace => {
     const newWs: Workspace = {
       id: `ws-${Date.now()}`,
       name,
       slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       description,
+      icon: icon || '⚡',
       ownerId: currentUser.id || 'usr-personal',
       members: [{ userId: currentUser.id || 'usr-personal', role: 'owner', joinedAt: new Date().toISOString() }],
       createdAt: new Date().toISOString(),
@@ -978,6 +999,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentWorkspace(newWs);
     persistProfileDb(undefined, undefined, undefined, undefined, undefined, undefined, updated);
     return newWs;
+  };
+
+  const updateWorkspace = (workspaceId: string, updates: Partial<Workspace>) => {
+    const updated = workspaces.map(w =>
+      w.id === workspaceId ? { ...w, ...updates, updatedAt: new Date().toISOString() } : w
+    );
+    setWorkspaces(updated);
+    if (currentWorkspace.id === workspaceId) {
+      setCurrentWorkspace(prev => ({ ...prev, ...updates, updatedAt: new Date().toISOString() }));
+    }
+    persistProfileDb(undefined, undefined, undefined, undefined, undefined, undefined, updated);
+  };
+
+  const deleteWorkspace = (workspaceId: string): boolean => {
+    if (workspaces.length <= 1) return false;
+    const updated = workspaces.filter(w => w.id !== workspaceId);
+    setWorkspaces(updated);
+    if (currentWorkspace.id === workspaceId) {
+      setCurrentWorkspace(updated[0]);
+    }
+    persistProfileDb(undefined, undefined, undefined, undefined, undefined, undefined, updated);
+    return true;
   };
 
   const selectProject = (projectId: string | null) => {
@@ -1006,6 +1049,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentProject(newPrj);
     persistProfileDb(undefined, undefined, undefined, undefined, undefined, updated);
     return newPrj;
+  };
+
+  const updateProject = (projectId: string, updates: Partial<Project>) => {
+    const updated = projects.map(p =>
+      p.id === projectId ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
+    );
+    setProjects(updated);
+    if (currentProject && currentProject.id === projectId) {
+      setCurrentProject(prev => prev ? ({ ...prev, ...updates, updatedAt: new Date().toISOString() }) : null);
+    }
+    persistProfileDb(undefined, undefined, undefined, undefined, undefined, updated);
+  };
+
+  const updateUserProfile = async (updates: { name?: string; organization?: string; avatarUrl?: string }): Promise<boolean> => {
+    try {
+      const res = await LumetricAuthService.updateProfile({
+        name: updates.name,
+        organization: updates.organization,
+      });
+      if (res.success && res.user) {
+        setCurrentUser(prev => ({
+          ...prev,
+          name: updates.name || prev.name,
+          avatarUrl: updates.avatarUrl || prev.avatarUrl,
+        }));
+        return true;
+      }
+    } catch (e) {
+      console.warn('Profile update error:', e);
+    }
+    setCurrentUser(prev => ({
+      ...prev,
+      name: updates.name || prev.name,
+      avatarUrl: updates.avatarUrl || prev.avatarUrl,
+    }));
+    return true;
   };
 
   const setActiveDataset = (dataset: DatasetProfile | null, rows?: Record<string, string>[]) => {
@@ -1076,10 +1155,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         currentWorkspace,
         switchWorkspace,
         createWorkspace,
+        updateWorkspace,
+        deleteWorkspace,
+        workspaceModalOpen,
+        setWorkspaceModalOpen,
+        openWorkspaceModal,
         projects,
         currentProject,
         selectProject,
         createProject,
+        updateProject,
+        updateUserProfile,
         datasets,
         activeDataset,
         activeRows,
