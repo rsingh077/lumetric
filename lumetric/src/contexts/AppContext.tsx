@@ -98,6 +98,9 @@ interface AppContextType {
 
   // Individual Profile Database & Separation Controls
   storageFootprintBytes: number;
+  isProfileDbLoading: boolean;
+  flushMemoryState: () => void;
+  applyProfileDatabase: (db: UserProfileDatabase) => void;
   loadSampleDataIntoProfile: () => void;
   clearProfileData: () => void;
 }
@@ -588,12 +591,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [documentFiles, setDocumentFiles] = useState<DocumentFileProfile[]>([]);
   const [activeDocument, setActiveDocument] = useState<DocumentFileProfile | null>(null);
 
-  // 6. Profile Storage Footprint in Bytes
+  // 6. Profile Storage Footprint & Synchronization State
   const [storageFootprintBytes, setStorageFootprintBytes] = useState<number>(0);
+  const [isProfileDbLoading, setIsProfileDbLoading] = useState<boolean>(false);
+
+  // Synchronously wipe all in-memory workspace datasets, rows, and docs
+  const flushMemoryState = () => {
+    setDatasets([]);
+    setActiveDatasetState(null);
+    setActiveRows([]);
+    setDatasetRowsMap({});
+    setDocumentFiles([]);
+    setActiveDocument(null);
+    setProjects([]);
+    setWorkspaces([]);
+    setStorageFootprintBytes(0);
+  };
 
   // Helper to apply a loaded profile database to in-memory React state
   const applyProfileDatabase = (db: UserProfileDatabase) => {
-    const dss = db.datasets || [];
+    if (!db) return;
+    // Strict multi-tenant safeguard: never apply a database meant for another user
+    if (db.userEmail && currentUser.email && db.userEmail.toLowerCase().trim() !== currentUser.email.toLowerCase().trim()) {
+      console.warn('[AppContext] Blocked cross-tenant database application:', db.userEmail, 'vs', currentUser.email);
+      return;
+    }
+
+    const dss = Array.isArray(db.datasets) ? db.datasets : [];
     setDatasets(dss);
     const activeDs = dss.find(d => d.id === db.activeDatasetId) || dss[0] || null;
     setActiveDatasetState(activeDs);
@@ -602,16 +626,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setDatasetRowsMap(rowsMap);
     setActiveRows(activeDs ? rowsMap[activeDs.id] || [] : []);
 
-    const docs = db.documentFiles || [];
+    const docs = Array.isArray(db.documentFiles) ? db.documentFiles : [];
     setDocumentFiles(docs);
     const activeDoc = docs.find(d => d.id === db.activeDocumentId) || docs[0] || null;
     setActiveDocument(activeDoc);
 
-    const prjs = db.projects || [];
+    const prjs = Array.isArray(db.projects) ? db.projects : [];
     setProjects(prjs);
     setCurrentProject(prjs[0] || null);
 
-    const wss = db.workspaces || [];
+    const wss = Array.isArray(db.workspaces) ? db.workspaces : [];
     setWorkspaces(wss);
     if (wss.length > 0) setCurrentWorkspace(wss[0]);
 
@@ -628,8 +652,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     updatedProjects?: Project[],
     updatedWorkspaces?: Workspace[]
   ) => {
-    if (typeof window === 'undefined' || !currentUser.email) return;
+    if (typeof window === 'undefined' || !currentUser.email || currentUser.email === 'guest' || !currentUser.id) return;
+    if (isProfileDbLoading) {
+      console.warn('[AppContext] persistProfileDb skipped: profile is currently synchronizing');
+      return;
+    }
 
+    const normEmail = currentUser.email.toLowerCase().trim();
     const currentDss = updatedDatasets !== undefined ? updatedDatasets : datasets;
     const currentActiveDsId = updatedActiveDatasetId !== undefined ? updatedActiveDatasetId : activeDataset?.id || null;
     const currentRowsMap = updatedRowsMap !== undefined ? updatedRowsMap : datasetRowsMap;
@@ -640,7 +669,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const dbPayload: UserProfileDatabase = {
       userId: currentUser.id || 'usr-personal',
-      userEmail: currentUser.email,
+      userEmail: normEmail,
       datasets: currentDss,
       activeDatasetId: currentActiveDsId,
       datasetRows: currentRowsMap,
@@ -674,53 +703,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    // Instantly wipe memory synchronously so old account data NEVER bleeds into new account
+    flushMemoryState();
+
     if (!currentUser.email) {
-      // Clear memory when no authenticated user
-      setDatasets([]);
-      setActiveDatasetState(null);
-      setActiveRows([]);
-      setDatasetRowsMap({});
-      setDocumentFiles([]);
-      setActiveDocument(null);
-      setProjects([]);
-      setWorkspaces([]);
-      setStorageFootprintBytes(0);
+      setIsProfileDbLoading(false);
       return;
     }
 
+    const targetEmail = currentUser.email.toLowerCase().trim();
     let isMounted = true;
+    setIsProfileDbLoading(true);
 
     async function loadAndSyncProfile() {
-      // 1. Check local high-capacity vault (IndexedDB, with automatic backward-compatibility migration for existing users)
-      const localVaultDb = await ProfileStorageManager.loadProfile(currentUser.email);
-      if (!isMounted) return;
+      try {
+        // 1. Check local high-capacity vault (IndexedDB)
+        const localVaultDb = await ProfileStorageManager.loadProfile(targetEmail);
+        if (!isMounted) return;
 
-      if (localVaultDb && Array.isArray(localVaultDb.datasets)) {
-        applyProfileDatabase(localVaultDb);
+        if (localVaultDb && Array.isArray(localVaultDb.datasets) && localVaultDb.userEmail?.toLowerCase().trim() === targetEmail) {
+          applyProfileDatabase(localVaultDb);
+          setIsProfileDbLoading(false);
 
-        // Reconcile in the background with Zoho Catalyst DataStore
-        LumetricAuthService.fetchWorkspaceData().then((res) => {
-          if (!isMounted) return;
-          if (res.success && res.workspaceData && Array.isArray(res.workspaceData.datasets)) {
-            if (res.workspaceData.lastSyncedAt && localVaultDb.lastSyncedAt) {
-              if (new Date(res.workspaceData.lastSyncedAt).getTime() > new Date(localVaultDb.lastSyncedAt).getTime()) {
-                applyProfileDatabase(res.workspaceData);
-                ProfileStorageManager.saveProfile(res.workspaceData).catch(() => {});
+          // Reconcile in the background with Zoho Catalyst DataStore
+          LumetricAuthService.fetchWorkspaceData().then((res) => {
+            if (!isMounted) return;
+            if (res.success && res.workspaceData && Array.isArray(res.workspaceData.datasets) && res.workspaceData.userEmail?.toLowerCase().trim() === targetEmail) {
+              if (res.workspaceData.lastSyncedAt && localVaultDb.lastSyncedAt) {
+                if (new Date(res.workspaceData.lastSyncedAt).getTime() > new Date(localVaultDb.lastSyncedAt).getTime()) {
+                  applyProfileDatabase(res.workspaceData);
+                  ProfileStorageManager.saveProfile(res.workspaceData).catch(() => {});
+                }
               }
             }
-          }
-        }).catch(() => {});
-        return;
-      }
+          }).catch(() => {});
+          return;
+        }
 
-      // 2. Cloud workspace fetch from Zoho Catalyst DataStore
-      try {
+        // 2. Cloud workspace fetch from Zoho Catalyst DataStore
         const res = await LumetricAuthService.fetchWorkspaceData();
         if (!isMounted) return;
 
-        if (res.success && res.workspaceData && Array.isArray(res.workspaceData.datasets)) {
+        if (res.success && res.workspaceData && Array.isArray(res.workspaceData.datasets) && res.workspaceData.userEmail?.toLowerCase().trim() === targetEmail) {
           applyProfileDatabase(res.workspaceData);
           await ProfileStorageManager.saveProfile(res.workspaceData);
+          setIsProfileDbLoading(false);
           return;
         }
       } catch (err) {
@@ -730,8 +757,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!isMounted) return;
 
       // 3. Brand-new profile: initialize clean, spotless individual workspace
-      const cleanDb = createCleanProfileDatabase(currentUser.id, currentUser.email);
+      const cleanDb = createCleanProfileDatabase(currentUser.id, targetEmail);
       applyProfileDatabase(cleanDb);
+      setIsProfileDbLoading(false);
       await ProfileStorageManager.saveProfile(cleanDb);
       LumetricAuthService.saveWorkspaceData(cleanDb).catch(() => {});
     }
@@ -762,19 +790,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    flushMemoryState();
     await LumetricAuthService.logout();
     setIsAuthenticated(false);
     setCurrentUser(emptyUser);
-    // Wipe in-memory state completely so no leaked data appears on auth screen
-    setDatasets([]);
-    setActiveDatasetState(null);
-    setActiveRows([]);
-    setDatasetRowsMap({});
-    setDocumentFiles([]);
-    setActiveDocument(null);
-    setProjects([]);
-    setWorkspaces([]);
-    setStorageFootprintBytes(0);
     closeAuthModal();
   };
 
@@ -1094,6 +1113,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         closeAuthModal,
         logout,
         storageFootprintBytes,
+        isProfileDbLoading,
+        flushMemoryState,
+        applyProfileDatabase,
         loadSampleDataIntoProfile,
         clearProfileData,
       }}

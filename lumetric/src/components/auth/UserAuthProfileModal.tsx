@@ -20,6 +20,7 @@ export function UserAuthProfileModal({
     serverLatency,
     reconnectServer,
     logout,
+    flushMemoryState,
     setCurrentUser,
     currentUser,
     datasets,
@@ -394,6 +395,7 @@ export function UserAuthProfileModal({
     }
 
     if (res.success && res.user) {
+      flushMemoryState();
       setAuthUser(res.user);
       setCurrentUser(res.user);
       setRole(res.user.role);
@@ -447,6 +449,7 @@ export function UserAuthProfileModal({
     setLoading(false);
 
     if (res.success && res.user) {
+      flushMemoryState();
       setAuthUser(res.user);
       setCurrentUser(res.user);
       setRole(res.user.role);
@@ -478,6 +481,7 @@ export function UserAuthProfileModal({
     setLoading(false);
 
     if (res.success && res.user) {
+      flushMemoryState();
       setAuthUser(res.user);
       setCurrentUser(res.user);
       setFeedback({ type: 'success', message: 'Profile updated in database.' });

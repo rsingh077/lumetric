@@ -9,6 +9,7 @@ export function AuthScreen() {
   const {
     setCurrentUser,
     setIsAuthenticated,
+    flushMemoryState,
     serverStatus,
     serverLatency,
     reconnectServer,
@@ -83,6 +84,7 @@ export function AuthScreen() {
 
     if (res.success && res.user) {
       setSuccessMessage('Signed in successfully. Launching Lumetric Studio...');
+      flushMemoryState();
       setCurrentUser(res.user);
       setIsAuthenticated(true);
       if (res.user.settings?.subscription) {
@@ -145,6 +147,7 @@ export function AuthScreen() {
 
     if (res.success && res.user) {
       setSuccessMessage(res.message || 'Account successfully created! Entering Studio...');
+      flushMemoryState();
       setCurrentUser(res.user);
       setIsAuthenticated(true);
       if (res.user.settings?.subscription) {
@@ -158,6 +161,7 @@ export function AuthScreen() {
         const loginRes = await LumetricAuthService.login({ email: cleanEmail, password });
         if (loginRes.success && loginRes.user) {
           setSuccessMessage('Account authenticated successfully.');
+          flushMemoryState();
           setCurrentUser(loginRes.user);
           setIsAuthenticated(true);
           if (loginRes.user.settings?.subscription) {
@@ -202,6 +206,7 @@ export function AuthScreen() {
     setIsLoading(false);
     if (res.success && res.user) {
       setSuccessMessage('Google authentication validated.');
+      flushMemoryState();
       setCurrentUser(res.user);
       setIsAuthenticated(true);
     } else {

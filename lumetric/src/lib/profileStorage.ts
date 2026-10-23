@@ -129,6 +129,10 @@ export class ProfileStorageManager {
       });
 
       if (profile && Array.isArray(profile.datasets)) {
+        if (profile.userEmail && profile.userEmail.toLowerCase().trim() !== normEmail) {
+          console.warn('[ProfileStorageManager] Mismatched profile email in vault:', profile.userEmail, 'expected:', normEmail);
+          return null;
+        }
         return profile;
       }
     } catch (err) {

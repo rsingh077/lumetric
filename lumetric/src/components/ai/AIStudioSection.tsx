@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { StatusBadge } from '@/components/ui';
 import {
@@ -49,7 +49,12 @@ const DEFAULT_PROMPTS = [
 ];
 
 export function AIStudioSection() {
-  const { activeRows } = useApp();
+  const { activeRows, currentUser } = useApp();
+
+  const userAiConfigKey = useMemo(() => {
+    const email = (currentUser?.email || 'guest').toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+    return `lumetric_ai_config_${email}`;
+  }, [currentUser?.email]);
 
   const [query, setQuery] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -66,19 +71,25 @@ export function AIStudioSection() {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('lumetric_ai_config');
+      const saved = localStorage.getItem(userAiConfigKey);
       if (saved) {
         setAiConfig(JSON.parse(saved));
+      } else {
+        setAiConfig({
+          provider: 'local',
+          apiKey: '',
+          model: 'gemini-1.5-flash',
+        });
       }
     } catch {
       // ignore
     }
-  }, []);
+  }, [userAiConfigKey]);
 
   const saveAiConfig = (newConfig: AIConfig) => {
     setAiConfig(newConfig);
     try {
-      localStorage.setItem('lumetric_ai_config', JSON.stringify(newConfig));
+      localStorage.setItem(userAiConfigKey, JSON.stringify(newConfig));
     } catch {
       // ignore
     }

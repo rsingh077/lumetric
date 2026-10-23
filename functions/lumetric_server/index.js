@@ -1773,24 +1773,50 @@ app.patch('/api/user/profile', authenticateToken, async (req, res) => {
 });
 
 // 11c. User Profile Database & Workspace Data Separation (Multi-Tenant Isolation)
-app.get('/api/user/workspace-data', authenticateToken, (req, res) => {
-  const user = req.user;
-  const workspaceData = (user.settings && user.settings.workspaceData) || null;
-  return res.json({
-    success: true,
-    userEmail: user.email,
-    workspaceData
-  });
+app.get('/api/user/workspace-data', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || !user.email) {
+      return res.status(401).json({ success: false, error: 'User session not found' });
+    }
+    // Re-verify from DataStore to ensure freshest settings
+    const freshUser = await getUserFromStore(req, user.email);
+    const targetUser = freshUser || user;
+    const workspaceData = (targetUser.settings && targetUser.settings.workspaceData) || null;
+    return res.json({
+      success: true,
+      userEmail: targetUser.email,
+      workspaceData
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: 'Failed to retrieve workspace data' });
+  }
 });
 
 app.post('/api/user/workspace-data', authenticateToken, async (req, res) => {
   try {
     const { workspaceData } = req.body;
     const user = req.user;
+    if (!user || !user.email) {
+      return res.status(401).json({ success: false, error: 'User session not found' });
+    }
+    const normEmail = user.email.toLowerCase().trim();
+
+    // Strict multi-tenant verification: verify payload email matches authenticated actor
+    if (workspaceData && workspaceData.userEmail) {
+      const payloadEmail = String(workspaceData.userEmail).toLowerCase().trim();
+      if (payloadEmail !== normEmail) {
+        return res.status(403).json({
+          success: false,
+          error: 'Multi-tenant isolation violation: Cannot overwrite another profile workspace database.'
+        });
+      }
+    }
+
     if (!user.settings) user.settings = {};
-    user.settings.workspaceData = workspaceData;
+    user.settings.workspaceData = workspaceData ? { ...workspaceData, userEmail: normEmail } : null;
     await saveUserToStore(req, user);
-    logAuditEvent(user.email, 'WORKSPACE_DATA_SYNCED', 'DataStore', 'Individual profile workspace & datasets synced');
+    logAuditEvent(normEmail, 'WORKSPACE_DATA_SYNCED', 'DataStore', 'Individual profile workspace & datasets synced');
     return res.json({
       success: true,
       message: 'Individual profile database saved to cloud store.'
@@ -1799,6 +1825,28 @@ app.post('/api/user/workspace-data', authenticateToken, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Failed to persist individual profile workspace data.'
+    });
+  }
+});
+
+app.post('/api/user/workspace-data/reset', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || !user.email) {
+      return res.status(401).json({ success: false, error: 'User session not found' });
+    }
+    if (!user.settings) user.settings = {};
+    user.settings.workspaceData = null;
+    await saveUserToStore(req, user);
+    logAuditEvent(user.email, 'WORKSPACE_DATA_RESET', 'DataStore', 'Individual profile workspace reset to clean slate');
+    return res.json({
+      success: true,
+      message: 'Workspace data cleared. Profile reset to clean slate.'
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to reset profile workspace data.'
     });
   }
 });

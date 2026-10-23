@@ -44,8 +44,9 @@ interface PresentationSlide {
 }
 
 export default function StoriesPage() {
-  const { activeDataset, activeRows, currentUser } = useApp();
+  const { activeDataset, activeRows, currentUser, loadSampleDataIntoProfile, setActiveView } = useApp();
 
+  const hasActiveData = Boolean(activeDataset && activeRows && activeRows.length > 0);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [audience, setAudience] = useState<AudienceType>('Executive');
   const [theme, setTheme] = useState<SlideTheme>('midnight');
@@ -66,6 +67,19 @@ export default function StoriesPage() {
   const metrics = useMemo(() => {
     const rows = activeRows || [];
     const count = rows.length;
+
+    if (!hasActiveData) {
+      return {
+        totalARR: 0,
+        accountCount: 0,
+        avgNPS: '0.0',
+        avgChurnPct: '0.0',
+        regionSegments: [],
+        tierBreakdown: [],
+        atRiskAccounts: [],
+        datasetName: 'No active dataset',
+      };
+    }
 
     // Sum ARR or Revenue
     let totalARR = 0;
@@ -153,9 +167,9 @@ export default function StoriesPage() {
         { name: 'Starlight Financial', arr: 84000, churn: 0.29 },
         { name: 'Vanguard Systems', arr: 67000, churn: 0.26 },
       ],
-      datasetName: activeDataset?.fileName || 'arr_cohorts_v2.4.csv',
+      datasetName: activeDataset?.fileName || (hasActiveData ? 'Ingested Dataset' : 'No Dataset Selected'),
     };
-  }, [activeDataset, activeRows]);
+  }, [activeDataset, activeRows, hasActiveData]);
 
   // ---------------------------------------------------------------------------
   // 2. SLIDE DEFINITIONS: Grounded dynamically in dataset metrics
@@ -771,9 +785,45 @@ ${slides
         </div>
       )}
 
-      {/* ------------------------------------------------------------------ */}
-      {/* 2. MAIN WORKSPACE: Widescreen Presentation Canvas & Slide Deck     */}
-      {/* ------------------------------------------------------------------ */}
+      {/* Empty State when no dataset has been ingested */}
+      {!hasActiveData ? (
+        <div className="bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-3xl p-8 sm:p-14 text-center shadow-xs space-y-5">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center">
+            <DatabaseIcon className="w-8 h-8" />
+          </div>
+          <div className="space-y-1.5 max-w-lg mx-auto">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-[11px] font-bold border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Isolated Personal Workspace: {currentUser?.email || 'Active Account'}
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--lm-text-primary)]">
+              No Data Ingested Yet in this Profile
+            </h2>
+            <p className="text-xs sm:text-sm text-[var(--lm-text-secondary)] leading-relaxed">
+              Your personal workspace is strictly isolated with zero shared records. Ingest your business CSV, Excel, or SQL dataset to automatically generate Canva-grade 16:9 executive presentation decks with automated charts, risk breakdowns, and voiceover scripts.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => setActiveView('data')}
+              className="px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md shadow-rose-900/20 cursor-pointer inline-flex items-center gap-2"
+            >
+              <DatabaseIcon className="w-4 h-4" />
+              Open Data Studio to Ingest File
+            </button>
+            <button
+              onClick={() => loadSampleDataIntoProfile()}
+              className="px-5 py-3 rounded-2xl bg-[var(--lm-bg-secondary)] hover:bg-[var(--lm-bg-tertiary)] border border-[var(--lm-border-default)] text-xs font-semibold text-[var(--lm-text-primary)] transition-all cursor-pointer inline-flex items-center gap-2"
+            >
+              <SparklesIcon className="w-4 h-4 text-amber-500" />
+              Load Sample SaaS Benchmark Deck
+            </button>
+          </div>
+        </div>
+      ) : (
+      /* ------------------------------------------------------------------ */
+      /* 2. MAIN WORKSPACE: Widescreen Presentation Canvas & Slide Deck     */
+      /* ------------------------------------------------------------------ */
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN: 16:9 Interactive Presentation Slide Canvas (8 cols) */}
         <div className="lg:col-span-8 space-y-4">
@@ -1254,6 +1304,7 @@ ${slides
           </div>
         </div>
       </div>
+      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* 3. CINEMA FULLSCREEN PRESENTATION MODE (Canva / Keynote Style)     */}

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useApp } from '@/contexts/AppContext';
 import { Card, Button, StatusBadge, Input } from '@/components/ui';
-import { PlusIcon } from '@/components/icons';
+import { PlusIcon, DatabaseIcon } from '@/components/icons';
 
 interface ModelEntry {
   version: string;
@@ -61,6 +62,7 @@ const INITIAL_MODELS: ModelEntry[] = [
 ];
 
 export default function ModelsPage() {
+  const { activeDataset, datasets, currentUser, setActiveView, loadSampleDataIntoProfile } = useApp();
   const [models, setModels] = useState<ModelEntry[]>(INITIAL_MODELS);
   const [selectedModel, setSelectedModel] = useState<ModelEntry>(INITIAL_MODELS[0]);
   const [trainModalOpen, setTrainModalOpen] = useState(false);
@@ -101,7 +103,7 @@ export default function ModelsPage() {
               name: newModelName,
               task: newModelTask,
               algorithm: newModelTask === 'Classification' ? 'XGBoost Classifier (Early Stopping)' : 'Lasso Regularized Regression',
-              datasetVersion: 'saas_arr_retention_sample.csv',
+              datasetVersion: activeDataset?.fileName || datasets[0]?.fileName || 'dataset_v1.csv',
               status: 'reviewed',
               primaryMetric: newModelTask === 'Classification' ? 'PR-AUC' : 'RMSE',
               metricValue: newModelTask === 'Classification' ? '0.892' : '$2,910',
@@ -208,16 +210,34 @@ export default function ModelsPage() {
         </div>
       </div>
 
-      {/* Model Registry Table */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-[var(--lm-text-primary)]">
-            Registered Models ({models.length})
-          </h2>
-          <span className="text-xs text-slate-500">
-            Active in cluster: <strong className="text-emerald-600 font-mono">1 Deployed</strong>
-          </span>
-        </div>
+      {datasets.length === 0 ? (
+        <Card padding="lg" className="rounded-3xl border-[var(--lm-border-default)] text-center py-16 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl shadow-[var(--lm-shadow-md)] space-y-4">
+          <DatabaseIcon className="w-12 h-12 text-[var(--lm-text-tertiary)] mx-auto mb-2" />
+          <h2 className="text-base font-semibold text-[var(--lm-text-primary)]">No Machine Learning Models Trained Yet</h2>
+          <p className="text-xs text-[var(--lm-text-secondary)] max-w-md mx-auto">
+            Your personal profile (<span className="font-mono text-blue-600 font-semibold">{currentUser.email || 'active user'}</span>) has zero shared models. Ingest your dataset in Data Studio to train custom predictive models.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <Button onClick={() => setActiveView('data')}>
+              Open Data Studio to Ingest Data
+            </Button>
+            <Button variant="secondary" onClick={() => loadSampleDataIntoProfile()}>
+              Load Sample Benchmark Data
+            </Button>
+          </div>
+        </Card>
+      ) : (
+        <>
+          {/* Model Registry Table */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-[var(--lm-text-primary)]">
+                Registered Models ({models.length})
+              </h2>
+              <span className="text-xs text-slate-500">
+                Active in cluster: <strong className="text-emerald-600 font-mono">1 Deployed</strong>
+              </span>
+            </div>
 
         <div className="overflow-x-auto border border-[var(--lm-border-default)] rounded-xl bg-white shadow-xs">
           <table className="w-full text-left text-xs">
@@ -459,6 +479,8 @@ export default function ModelsPage() {
           </Card>
         </div>
       </div>
+      </>
+      )}
 
       {/* Train Candidate Modal */}
       {trainModalOpen && (

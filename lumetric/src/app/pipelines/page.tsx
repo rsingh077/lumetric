@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Card, Button, StatusBadge, Input } from '@/components/ui';
-import { PlusIcon } from '@/components/icons';
+import { PlusIcon, DatabaseIcon } from '@/components/icons';
 
 interface PipelineNode {
   id: string;
@@ -64,7 +64,7 @@ const getInitialNodes = (datasetName?: string, rowCount?: number, hash?: string)
 ];
 
 export default function PipelinesPage() {
-  const { activeDataset, activeRows } = useApp();
+  const { activeDataset, activeRows, currentUser, datasets, setActiveView, loadSampleDataIntoProfile } = useApp();
   const [nodes, setNodes] = useState<PipelineNode[]>(() =>
     getInitialNodes(activeDataset?.fileName, activeDataset?.rowCount, activeDataset?.sha256)
   );
@@ -209,6 +209,23 @@ export default function PipelinesPage() {
       )}
 
       {/* DAG Visualization */}
+      {datasets.length === 0 ? (
+        <Card padding="lg" className="rounded-3xl border-[var(--lm-border-default)] text-center py-16 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl shadow-[var(--lm-shadow-md)] space-y-4">
+          <DatabaseIcon className="w-12 h-12 text-[var(--lm-text-tertiary)] mx-auto mb-2" />
+          <h2 className="text-base font-semibold text-[var(--lm-text-primary)]">No Active Pipelines Configured</h2>
+          <p className="text-xs text-[var(--lm-text-secondary)] max-w-md mx-auto">
+            Your personal profile (<span className="font-mono text-blue-600 font-semibold">{currentUser?.email || 'active user'}</span>) has zero active data pipelines. Ingest a dataset in Data Studio to build deterministic transformation and deduplication DAGs.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <Button onClick={() => setActiveView('data')}>
+              Open Data Studio to Ingest Data
+            </Button>
+            <Button variant="secondary" onClick={() => loadSampleDataIntoProfile()}>
+              Load Sample Benchmark Data
+            </Button>
+          </div>
+        </Card>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 space-y-4">
           <Card padding="md" className="border-[var(--lm-border-default)]">
@@ -369,6 +386,7 @@ export default function PipelinesPage() {
           </Card>
         </div>
       </div>
+      )}
 
       {/* Add Node Modal */}
       {addNodeModalOpen && (

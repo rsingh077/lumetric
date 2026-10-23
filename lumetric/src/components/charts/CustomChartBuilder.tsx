@@ -30,7 +30,12 @@ export interface PinnedWidget {
 }
 
 export function CustomChartBuilder() {
-  const { activeRows, activeDataset } = useApp();
+  const { activeRows, activeDataset, currentUser } = useApp();
+
+  const userStorageKey = useMemo(() => {
+    const email = (currentUser?.email || 'guest').toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+    return `lumetric_pinned_charts_${email}`;
+  }, [currentUser?.email]);
 
   const rows = activeRows || [];
   const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
@@ -74,17 +79,19 @@ export function CustomChartBuilder() {
     }
   }, [categoricalColumns, numericColumns]);
 
-  // Load pinned widgets from localStorage
+  // Load pinned widgets from user-isolated storage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('lumetric_pinned_charts');
+      const saved = localStorage.getItem(userStorageKey);
       if (saved) {
         setPinnedWidgets(JSON.parse(saved));
+      } else {
+        setPinnedWidgets([]);
       }
     } catch {
-      // ignore
+      setPinnedWidgets([]);
     }
-  }, []);
+  }, [userStorageKey]);
 
   // Compute Aggregates
   const aggregatedData = useMemo(() => {
@@ -151,7 +158,7 @@ export function CustomChartBuilder() {
     const updated = [newWidget, ...pinnedWidgets];
     setPinnedWidgets(updated);
     try {
-      localStorage.setItem('lumetric_pinned_charts', JSON.stringify(updated));
+      localStorage.setItem(userStorageKey, JSON.stringify(updated));
       setPinnedNotice(`📌 Widget pinned to dashboard.`);
       setTimeout(() => setPinnedNotice(null), 3000);
     } catch {
@@ -163,7 +170,7 @@ export function CustomChartBuilder() {
     const updated = pinnedWidgets.filter((w) => w.id !== id);
     setPinnedWidgets(updated);
     try {
-      localStorage.setItem('lumetric_pinned_charts', JSON.stringify(updated));
+      localStorage.setItem(userStorageKey, JSON.stringify(updated));
     } catch {
       // ignore
     }
