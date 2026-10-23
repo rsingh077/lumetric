@@ -20,6 +20,7 @@ import {
 } from '@/components/icons';
 
 import { DatasetProfile, DocumentFileProfile } from '@/types';
+import { AIStudioSection } from '@/components/ai/AIStudioSection';
 
 // Sub-page imports for routing between application tabs
 import ProjectsPage from './projects/page';
@@ -54,7 +55,7 @@ function HomeView() {
     t,
   } = useApp();
 
-  const [activeFilter, setActiveFilter] = useState<'all' | 'tabular' | 'documents' | 'pipelines' | 'models'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'tabular' | 'ai' | 'documents' | 'pipelines' | 'models'>('all');
   const [treatmentRunning, setTreatmentRunning] = useState(false);
   const [treatmentMessage, setTreatmentMessage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -386,6 +387,7 @@ function HomeView() {
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         {[
           { id: 'all', label: 'All Studio Assets' },
+          { id: 'ai', label: '✨ Lumetric AI Copilot' },
           { id: 'tabular', label: 'Tabular Data (CSV & SQL)' },
           { id: 'documents', label: 'Document NLP & Treatments' },
           { id: 'pipelines', label: 'Data Pipelines' },
@@ -600,6 +602,13 @@ function HomeView() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* 3.5 LUMETRIC AI COPILOT & DISCOVERY STUDIO                   */}
+      {/* ============================================================ */}
+      {(activeFilter === 'all' || activeFilter === 'ai') && (
+        <AIStudioSection />
       )}
 
       {/* ══════════════════════════════════════════════════════════════ */}
