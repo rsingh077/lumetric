@@ -320,11 +320,17 @@ export class LumetricAuthService {
     try {
       localStorage.removeItem(TOKEN_STORAGE_KEY);
       localStorage.removeItem(USER_STORAGE_KEY);
+      localStorage.removeItem('lumetric_auth_email');
+      localStorage.removeItem('lumetric_active_subscription');
+      localStorage.removeItem('lumetric_cached_invoices');
     } catch {}
 
     try {
       sessionStorage.removeItem(TOKEN_STORAGE_KEY);
       sessionStorage.removeItem(USER_STORAGE_KEY);
+      sessionStorage.removeItem('lumetric_auth_email');
+      sessionStorage.removeItem('lumetric_active_subscription');
+      sessionStorage.removeItem('lumetric_cached_invoices');
     } catch {}
   }
 
@@ -902,7 +908,25 @@ export class LumetricAuthService {
       if (token) {
         Object.assign(headers, this.getAuthHeaders(token));
       }
-      const email = currentUser?.email || (typeof window !== 'undefined' ? (localStorage.getItem('lumetric_auth_email') || this.getStoredUser()?.email) : null) || 'semysedilo8@gmail.com';
+      const email = currentUser?.email || (typeof window !== 'undefined' ? (localStorage.getItem('lumetric_auth_email') || this.getStoredUser()?.email) : null) || '';
+      
+      if (!email && !token) {
+        return {
+          success: true,
+          subscription: {
+            tier: 'free',
+            planName: 'Starter Free',
+            status: 'active',
+            limits: {
+              maxRowsPerDataset: 5000,
+              maxDatasets: 3,
+              maxAiQueriesPerDay: 20,
+              allowedExportFormats: ['csv', 'png']
+            }
+          }
+        };
+      }
+
       if (email) {
         headers['x-user-email'] = email;
       }
@@ -1037,7 +1061,12 @@ export class LumetricAuthService {
     try {
       const headers: Record<string, string> = {};
       if (token) Object.assign(headers, this.getAuthHeaders(token));
-      const email = currentUser?.email || (typeof window !== 'undefined' ? (localStorage.getItem('lumetric_auth_email') || this.getStoredUser()?.email) : null) || 'semysedilo8@gmail.com';
+      const email = currentUser?.email || (typeof window !== 'undefined' ? (localStorage.getItem('lumetric_auth_email') || this.getStoredUser()?.email) : null) || '';
+      
+      if (!email && !token) {
+        return { success: true, invoices: [] };
+      }
+
       if (email) headers['x-user-email'] = email;
       const query = email ? `?email=${encodeURIComponent(email)}` : '';
 

@@ -812,6 +812,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(false);
     setCurrentUser(emptyUser);
     closeAuthModal();
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('lumetric_active_subscription');
+        localStorage.removeItem('lumetric_cached_invoices');
+        localStorage.removeItem('lumetric_auth_email');
+      } catch {}
+    }
   };
 
   const addDocumentFile = (doc: DocumentFileProfile) => {

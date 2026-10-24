@@ -52,6 +52,7 @@ export class ProfileStorageManager {
     const normEmail = dbPayload.userEmail.toLowerCase().trim();
     const payloadWithNorm = { ...dbPayload, userEmail: normEmail };
 
+    let savedInIndexedDb = false;
     try {
       const db = await openDatabase();
       await new Promise<void>((resolve, reject) => {
@@ -64,18 +65,27 @@ export class ProfileStorageManager {
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
       });
+      savedInIndexedDb = true;
     } catch (err) {
-      console.warn('IndexedDB save warning:', err);
+      console.warn('IndexedDB save warning, falling back to localStorage:', err);
+      try {
+        const key = this.getLegacyStorageKey(normEmail);
+        localStorage.setItem(key, JSON.stringify(payloadWithNorm));
+      } catch (lsErr) {
+        console.warn('LocalStorage fallback write error:', lsErr);
+      }
     }
 
-    // Proactively purge any legacy localStorage copy to free up browser quota for session & auth tokens
-    try {
-      const key = this.getLegacyStorageKey(normEmail);
-      if (localStorage.getItem(key)) {
-        localStorage.removeItem(key);
+    if (savedInIndexedDb) {
+      // Proactively purge any legacy localStorage copy to free up browser quota for session & auth tokens
+      try {
+        const key = this.getLegacyStorageKey(normEmail);
+        if (localStorage.getItem(key)) {
+          localStorage.removeItem(key);
+        }
+      } catch {
+        // Storage operations should never crash profile save
       }
-    } catch {
-      // Storage operations should never crash profile save
     }
   }
 

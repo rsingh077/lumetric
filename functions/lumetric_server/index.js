@@ -419,7 +419,7 @@ async function getUserFromStore(req, email) {
   if (catApp && catApp.zcql) {
     try {
       const tableName = await resolveUserTableName(catApp);
-      const safeEmail = normEmail.replace(/'/g, "''");
+      const safeEmail = String(normEmail).replace(/\\/g, '').replace(/'/g, "''").replace(/;/g, '').replace(/--/g, '');
       const zcqlRes = await catApp.zcql().executeZCQLQuery(
         `SELECT * FROM ${tableName} WHERE email = '${safeEmail}'`
       );
@@ -577,7 +577,7 @@ async function saveUserToStore(req, user) {
       // If we don't have rowid cached on the user, check if row exists in table
       if (!targetRowId && catApp.zcql) {
         try {
-          const safeEmail = normEmail.replace(/'/g, "''");
+          const safeEmail = String(normEmail).replace(/\\/g, '').replace(/'/g, "''").replace(/;/g, '').replace(/--/g, '');
           const checkRes = await catApp.zcql().executeZCQLQuery(
             `SELECT ROWID FROM ${tableName} WHERE email = '${safeEmail}'`
           );
@@ -710,8 +710,17 @@ async function getAllUsersFromStore(req) {
 
   const list = [];
   for (const [, user] of memoryStore.entries()) {
-    const { passwordHash: _, mfaSecret: __, ...safe } = user;
-    list.push(safe);
+    list.push({
+      id: user.id || (user.email ? `usr_${user.email.replace(/[^a-zA-Z0-9]/g, '_')}` : 'usr_anon'),
+      email: user.email,
+      name: user.name || (user.email ? user.email.split('@')[0] : 'User'),
+      role: user.role || 'builder',
+      organization: user.organization || '',
+      avatarUrl: user.avatarUrl || '',
+      mfaEnabled: Boolean(user.mfaEnabled),
+      createdAt: user.createdAt,
+      lastLoginAt: user.lastLoginAt
+    });
   }
   return list;
 }
@@ -871,7 +880,7 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 20, 
     if (existingUser) {
       if (!existingUser.passwordHash) {
         // User account exists (from UPI checkout or OAuth) but had no password set
-        const salt = await bcrypt.genSalt(10);
+        const salt = await bcrypt.genSalt(12);
         existingUser.passwordHash = await bcrypt.hash(password, salt);
         if (name && (!existingUser.name || existingUser.name === 'User')) existingUser.name = name.trim();
         await saveUserToStore(req, existingUser);
@@ -1032,7 +1041,7 @@ app.post('/api/auth/login', rateLimiter({ windowMs: 5 * 60 * 1000, max: 200, mes
 
     if (!user) {
       // Automatic seamless onboarding: provision user account on first login
-      const salt = await bcrypt.genSalt(10);
+      const salt = await bcrypt.genSalt(12);
       const passwordHash = await bcrypt.hash(password, salt);
       user = {
         id: `usr_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
@@ -1084,7 +1093,7 @@ app.post('/api/auth/login', rateLimiter({ windowMs: 5 * 60 * 1000, max: 200, mes
       let isMatch = false;
       if (!user.passwordHash) {
         // Account exists from payment or Google, set this password!
-        const salt = await bcrypt.genSalt(10);
+        const salt = await bcrypt.genSalt(12);
         user.passwordHash = await bcrypt.hash(password, salt);
         await saveUserToStore(req, user);
         isMatch = true;
@@ -1180,7 +1189,7 @@ app.post('/api/auth/google', rateLimiter({ windowMs: 5 * 60 * 1000, max: 30 }), 
 
     if (!user) {
       // Auto-provision new account in database
-      const salt = await bcrypt.genSalt(10);
+      const salt = await bcrypt.genSalt(12);
       const randomPassword = `gauth_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       const passwordHash = await bcrypt.hash(randomPassword, salt);
 
@@ -2141,7 +2150,21 @@ app.get('/api/billing/subscription', async (req, res) => {
     if (rawMatch) queryEmail = decodeURIComponent(rawMatch.split('&')[0]).toLowerCase().trim();
   }
 
-  const targetEmail = decodedEmail || queryEmail || (user && user.email ? user.email.toLowerCase().trim() : 'semysedilo8@gmail.com');
+  const targetEmail = decodedEmail || queryEmail || (user && user.email ? user.email.toLowerCase().trim() : null);
+
+  if (!targetEmail) {
+    return res.json({
+      success: true,
+      subscription: {
+        tier: 'free',
+        planName: 'Starter Free',
+        billingCycle: 'monthly',
+        status: 'active',
+        limits: BILLING_PLANS.free.limits,
+        features: BILLING_PLANS.free.features,
+      }
+    });
+  }
 
   if (!user && targetEmail) {
     user = await getUserFromStore(req, targetEmail);
@@ -2159,7 +2182,7 @@ app.get('/api/billing/subscription', async (req, res) => {
   }
 
   const normEmail = (targetEmail || user?.email || '').toLowerCase().trim();
-  const isPaidAccount = normEmail === 'semysedilo8@gmail.com' || normEmail === 'rajskatoch07@gmail.com' || redeemedUtrs.has('666103816203');
+  const isPaidAccount = (VERIFIED_PAID_USERS.includes(normEmail) && normEmail.length > 0) || user?.settings?.subscription?.tier === 'pro';
 
   if (isPaidAccount && user) {
     if (!user.settings) user.settings = {};
@@ -2374,19 +2397,12 @@ app.post('/api/billing/verify-upi', async (req, res) => {
     }
   }
 
-  // 3. Fallback: Default verified payer email for direct UPI payments
+  // 3. Fallback check: user must be established
   if (!user) {
-    const defaultPayerEmail = 'semysedilo8@gmail.com';
-    user = await getUserFromStore(req, defaultPayerEmail);
-    if (!user) {
-      user = {
-        id: `usr-${Date.now()}`,
-        email: defaultPayerEmail,
-        name: 'semysedilo8',
-        role: 'builder',
-        createdAt: new Date().toISOString()
-      };
-    }
+    return res.status(400).json({
+      success: false,
+      error: 'A valid account email is required to verify and activate your subscription.'
+    });
   }
 
   // Match order from active orders or auto-detect plan from amount
@@ -2589,14 +2605,21 @@ app.get('/api/billing/invoices', async (req, res) => {
     if (rawMatch) queryEmail = decodeURIComponent(rawMatch.split('&')[0]).toLowerCase().trim();
   }
 
-  const targetEmail = decodedEmail || queryEmail || (user && user.email ? user.email.toLowerCase().trim() : 'semysedilo8@gmail.com');
+  const targetEmail = decodedEmail || queryEmail || (user && user.email ? user.email.toLowerCase().trim() : null);
+
+  if (!targetEmail) {
+    return res.json({
+      success: true,
+      invoices: []
+    });
+  }
 
   if (!user && targetEmail) {
     user = await getUserFromStore(req, targetEmail);
   }
 
   const normEmail = (targetEmail || user?.email || '').toLowerCase().trim();
-  const isPaidAccount = normEmail === 'semysedilo8@gmail.com' || normEmail === 'rajskatoch07@gmail.com' || user?.settings?.subscription?.tier === 'pro';
+  const isPaidAccount = (VERIFIED_PAID_USERS.includes(normEmail) && normEmail.length > 0) || user?.settings?.subscription?.tier === 'pro';
 
   let invoices = (user && user.settings && user.settings.invoices) || [];
   if (invoices.length === 0 && isPaidAccount) {

@@ -142,7 +142,7 @@ export function BillingSection() {
     upiDeepLink: string;
   } | null>(null);
 
-  const [checkoutEmail, setCheckoutEmail] = useState(currentUser?.email || 'semysedilo8@gmail.com');
+  const [checkoutEmail, setCheckoutEmail] = useState(currentUser?.email || '');
   const [utrNumber, setUtrNumber] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
@@ -311,7 +311,11 @@ export function BillingSection() {
       return;
     }
 
-    const emailToUse = currentUser?.email || checkoutEmail.trim() || 'semysedilo8@gmail.com';
+    const emailToUse = currentUser?.email || checkoutEmail.trim();
+    if (!emailToUse) {
+      setVerificationError('Please enter a valid account email to link this subscription.');
+      return;
+    }
 
     setIsVerifying(true);
     setVerificationError(null);
@@ -829,7 +833,7 @@ export function BillingSection() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Linked Account:</span>
-                    <strong className="text-slate-900 font-mono">{currentUser?.email || checkoutEmail || 'semysedilo8@gmail.com'}</strong>
+                    <strong className="text-slate-900 font-mono">{currentUser?.email || checkoutEmail || 'Active User'}</strong>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Status:</span>

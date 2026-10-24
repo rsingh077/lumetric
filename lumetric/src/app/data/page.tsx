@@ -76,29 +76,40 @@ export default function DataWorkspacePage() {
   const [excelSheetNames, setExcelSheetNames] = useState<string[]>([]);
   const [activeExcelSheet, setActiveExcelSheet] = useState<string>('');
 
-  // Parse CSV respecting quotation marks
-  const parseCSVLine = (line: string): string[] => {
+  // RFC 4180 Compliant CSV Parser with Escaped Quote & Prototype Pollution Hardening
+  const parseCSVLine = (line: string, delimiter = ','): string[] => {
     const result: string[] = [];
-    let start = 0;
+    let current = '';
     let inQuotes = false;
     for (let i = 0; i < line.length; i++) {
-      if (line[i] === '"') {
-        inQuotes = !inQuotes;
-      } else if (line[i] === ',' && !inQuotes) {
-        let field = line.substring(start, i).trim();
-        if (field.startsWith('"') && field.endsWith('"')) {
-          field = field.slice(1, -1);
+      const char = line[i];
+      const nextChar = line[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          current += '"';
+          i++; // skip escaped quote
+        } else {
+          inQuotes = !inQuotes;
         }
-        result.push(field);
-        start = i + 1;
+      } else if (char === delimiter && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
       }
     }
-    let lastField = line.substring(start).trim();
-    if (lastField.startsWith('"') && lastField.endsWith('"')) {
-      lastField = lastField.slice(1, -1);
-    }
-    result.push(lastField);
+    result.push(current.trim());
     return result;
+  };
+
+  const sanitizeHeaderKey = (header: string, index: number): string => {
+    const clean = header.trim().replace(/^["']|["']$/g, '');
+    const lower = clean.toLowerCase();
+    if (!clean || lower === '__proto__' || lower === 'constructor' || lower === 'prototype') {
+      return `Column_${index + 1}`;
+    }
+    return clean;
   };
 
   // Intake file handler: starts the structured requirement onboarding wizard
@@ -117,14 +128,25 @@ export default function DataWorkspacePage() {
         throw new Error('File must contain at least a header row and one valid data record.');
       }
 
-      const headers = parseCSVLine(lines[0]);
+      // Auto-detect delimiter: check comma vs semicolon vs tab on first line
+      const firstLine = lines[0];
+      const commaCount = (firstLine.match(/,/g) || []).length;
+      const semiCount = (firstLine.match(/;/g) || []).length;
+      const tabCount = (firstLine.match(/\t/g) || []).length;
+      const delimiter = semiCount > commaCount && semiCount > tabCount ? ';' : tabCount > commaCount ? '\t' : ',';
+
+      const rawHeaders = parseCSVLine(lines[0], delimiter);
+      const headers = rawHeaders.map((h, i) => sanitizeHeaderKey(h, i));
+
       const rows = lines.slice(1).map((line) => {
-        const values = parseCSVLine(line);
-        const obj: Record<string, string> = {};
+        const values = parseCSVLine(line, delimiter);
+        const obj: Record<string, string> = Object.create(null);
         headers.forEach((h, i) => {
-          obj[h] = values[i] ?? '';
+          if (h !== '__proto__' && h !== 'constructor' && h !== 'prototype') {
+            obj[h] = values[i] ?? '';
+          }
         });
-        return obj;
+        return { ...obj };
       });
 
       setRawContent(content);
