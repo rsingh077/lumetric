@@ -22,6 +22,7 @@ import {
 } from '@/components/icons';
 import { DatasetProfile } from '@/types';
 import { CustomChartBuilder } from '@/components/charts/CustomChartBuilder';
+import { GeographicIntelligenceMap } from '@/components/charts/GeographicIntelligenceMap';
 
 // Theme presets inspired directly by user's reference images
 type ThemePreset = 'modern' | 'cyberpunk' | 'enterprise';
@@ -44,6 +45,7 @@ export default function DashboardsPage() {
   // Interactive Slicer Filters
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [countryFilter, setCountryFilter] = useState<string>('all');
+  const [mapExpanded, setMapExpanded] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [targetMultiplier, setTargetMultiplier] = useState<number>(1.2);
 
@@ -150,34 +152,73 @@ export default function DashboardsPage() {
     return Array.from(set).sort();
   }, [rawRows, currentDim]);
 
-  // Slicer: Unique Countries/Regions
+  // Slicer: Unique Countries/Regions/States
   const uniqueCountries = useMemo(() => {
-    const geoCol = currentDataset.columns.find(
-      (c) => c.name.toLowerCase().includes('country') || c.name.toLowerCase().includes('region') || c.name.toLowerCase().includes('location')
-    )?.name;
-    if (!geoCol) return [];
+    const geoCols = currentDataset.columns.filter((c) => {
+      const n = c.name.toLowerCase();
+      return (
+        n.includes('country') ||
+        n.includes('state') ||
+        n.includes('province') ||
+        n.includes('district') ||
+        n.includes('county') ||
+        n.includes('city') ||
+        n.includes('region') ||
+        n.includes('location') ||
+        n.includes('territory')
+      );
+    });
+
     const set = new Set<string>();
     rawRows.forEach((r) => {
-      const val = r[geoCol];
-      if (val) set.add(val);
+      if (geoCols.length > 0) {
+        geoCols.forEach((col) => {
+          const val = r[col.name];
+          if (val && val.trim()) set.add(val.trim());
+        });
+      } else {
+        const val = r['Region'] || r['Country'] || r['State'] || r['Location'];
+        if (val && val.trim()) set.add(val.trim());
+      }
     });
     return Array.from(set).sort();
   }, [rawRows, currentDataset]);
 
-  // Synchronous Filtered Records
+  // Synchronous Filtered Records with Intelligent Multi-Grain Geographic Matching
   const filteredRows = useMemo(() => {
     return rawRows.filter((r) => {
       if (categoryFilter !== 'all' && r[currentDim] !== categoryFilter) return false;
       if (countryFilter !== 'all') {
-        const geoCol = currentDataset.columns.find(
-          (c) => c.name.toLowerCase().includes('country') || c.name.toLowerCase().includes('region') || c.name.toLowerCase().includes('location')
-        )?.name;
-        if (geoCol) {
-          const val = (r[geoCol] || '').toLowerCase();
-          const target = countryFilter.toLowerCase();
-          const matches = val === target || val.includes(target) || target.includes(val);
-          if (!matches) return false;
+        const target = countryFilter.toLowerCase().trim();
+        const geoCols = currentDataset.columns.filter((c) => {
+          const n = c.name.toLowerCase();
+          return (
+            n.includes('country') ||
+            n.includes('state') ||
+            n.includes('province') ||
+            n.includes('district') ||
+            n.includes('county') ||
+            n.includes('city') ||
+            n.includes('region') ||
+            n.includes('location') ||
+            n.includes('territory')
+          );
+        });
+
+        let matches = false;
+        if (geoCols.length > 0) {
+          matches = geoCols.some((col) => {
+            const val = (r[col.name] || '').toLowerCase().trim();
+            return val === target || val.includes(target) || target.includes(val);
+          });
         }
+        if (!matches) {
+          matches = Object.values(r).some((v) => {
+            const val = String(v).toLowerCase().trim();
+            return val === target || val.includes(target) || target.includes(val);
+          });
+        }
+        if (!matches) return false;
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -192,15 +233,36 @@ export default function DashboardsPage() {
   const categoryBaseRows = useMemo(() => {
     return rawRows.filter((r) => {
       if (countryFilter !== 'all') {
-        const geoCol = currentDataset.columns.find(
-          (c) => c.name.toLowerCase().includes('country') || c.name.toLowerCase().includes('region') || c.name.toLowerCase().includes('location')
-        )?.name;
-        if (geoCol) {
-          const val = (r[geoCol] || '').toLowerCase();
-          const target = countryFilter.toLowerCase();
-          const matches = val === target || val.includes(target) || target.includes(val);
-          if (!matches) return false;
+        const target = countryFilter.toLowerCase().trim();
+        const geoCols = currentDataset.columns.filter((c) => {
+          const n = c.name.toLowerCase();
+          return (
+            n.includes('country') ||
+            n.includes('state') ||
+            n.includes('province') ||
+            n.includes('district') ||
+            n.includes('county') ||
+            n.includes('city') ||
+            n.includes('region') ||
+            n.includes('location') ||
+            n.includes('territory')
+          );
+        });
+
+        let matches = false;
+        if (geoCols.length > 0) {
+          matches = geoCols.some((col) => {
+            const val = (r[col.name] || '').toLowerCase().trim();
+            return val === target || val.includes(target) || target.includes(val);
+          });
         }
+        if (!matches) {
+          matches = Object.values(r).some((v) => {
+            const val = String(v).toLowerCase().trim();
+            return val === target || val.includes(target) || target.includes(val);
+          });
+        }
+        if (!matches) return false;
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -603,47 +665,6 @@ export default function DashboardsPage() {
       { name: 'Portfolio Balance', value: normStability, benchmark: 65 },
     ];
   }, [filteredRows, rawRows, kpis, currentMetric]);
-
-  // 6. Geographic Distribution Clusters (World Map Projection Nodes)
-  const geoClusters = useMemo(() => {
-    const hubs = [
-      { id: 'emea', name: 'EMEA / Europe', x: 480, y: 140, baseVal: 0, count: 0 },
-      { id: 'na', name: 'North America', x: 210, y: 150, baseVal: 0, count: 0 },
-      { id: 'apac', name: 'APAC / Asia', x: 740, y: 180, baseVal: 0, count: 0 },
-      { id: 'latam', name: 'Latin America', x: 290, y: 280, baseVal: 0, count: 0 },
-      { id: 'au', name: 'Australia / Oceania', x: 810, y: 310, baseVal: 0, count: 0 },
-    ];
-
-    filteredRows.forEach((r) => {
-      const reg = (r['Region'] || r['Country'] || '').toLowerCase();
-      const val = parseFloat(r[currentMetric]) || 0;
-
-      if (reg.includes('americ') || reg.includes('united states') || reg.includes('us')) {
-        hubs[1].baseVal += val;
-        hubs[1].count += 1;
-      } else if (reg.includes('apac') || reg.includes('asia') || reg.includes('japan') || reg.includes('china')) {
-        hubs[2].baseVal += val;
-        hubs[2].count += 1;
-      } else if (reg.includes('latam') || reg.includes('brazil') || reg.includes('mexico')) {
-        hubs[3].baseVal += val;
-        hubs[3].count += 1;
-      } else if (reg.includes('australia')) {
-        hubs[4].baseVal += val;
-        hubs[4].count += 1;
-      } else {
-        // Default EMEA / Europe
-        hubs[0].baseVal += val;
-        hubs[0].count += 1;
-      }
-    });
-
-    const maxVal = Math.max(...hubs.map((h) => h.baseVal), 1);
-    return hubs.map((h) => ({
-      ...h,
-      radius: Math.max(12, Math.min(28, (h.baseVal / maxVal) * 28)),
-      intensity: (h.baseVal / maxVal) * 100,
-    }));
-  }, [filteredRows, currentMetric]);
 
   // Formatters
   const isCurrency = useMemo(() => {
@@ -2140,7 +2161,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
       {/* 5. SECONDARY ANALYTICAL GRID (Grouped Cross-Tab Bars, Radar Spider Chart, World Geo Map) */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
         {/* Widget 4: Grouped / Comparative Horizontal Bars */}
-        <div className="lg:col-span-5 rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)]">
+        <div className={`${mapExpanded ? 'lg:col-span-7' : 'lg:col-span-5'} rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] transition-all duration-300`}>
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--lm-border-default)]">
             <div>
               <h2 className="text-sm font-bold text-[var(--lm-text-primary)] tracking-tight flex items-center gap-2">
@@ -2199,7 +2220,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
         </div>
 
         {/* Widget 5: Multi-Attribute Radar / Spider Chart */}
-        <div className="lg:col-span-3 rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] flex flex-col justify-between">
+        <div className={`${mapExpanded ? 'lg:col-span-5' : 'lg:col-span-3'} rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] flex flex-col justify-between transition-all duration-300`}>
           <div>
             <div className="flex items-center justify-between mb-3 pb-3 border-b border-[var(--lm-border-default)]">
               <h2 className="text-sm font-bold text-[var(--lm-text-primary)] tracking-tight flex items-center gap-2">
@@ -2322,94 +2343,24 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
           </div>
         </div>
 
-        {/* Widget 6: Global Geo Distribution Vector Map */}
-        <div className="lg:col-span-4 rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3 pb-3 border-b border-[var(--lm-border-default)]">
-              <h2 className="text-sm font-bold text-[var(--lm-text-primary)] tracking-tight flex items-center gap-2">
-                <GlobeIcon className="w-4 h-4 text-emerald-500" />
-                Global & Regional Geo Density
-              </h2>
-              <span className="text-[10px] font-semibold text-[var(--lm-text-tertiary)] uppercase tracking-wider">
-                Pulsing Vector Hubs
-              </span>
-            </div>
-
-            {/* World Map Vector Projection */}
-            <div className="relative w-full h-48 my-1 bg-slate-50 dark:bg-slate-950 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 flex items-center justify-center">
-              <svg viewBox="0 0 1000 450" className="w-full h-full opacity-40">
-                {/* Simplified Continents Contours */}
-                <path
-                  d="M150 120 Q 250 80, 320 150 T 260 260 T 170 200 Z"
-                  fill="currentColor"
-                  opacity="0.3"
-                />
-                <path
-                  d="M260 270 Q 340 300, 310 400 T 250 350 Z"
-                  fill="currentColor"
-                  opacity="0.3"
-                />
-                <path
-                  d="M440 100 Q 550 70, 520 200 T 420 180 Z"
-                  fill="currentColor"
-                  opacity="0.3"
-                />
-                <path
-                  d="M470 210 Q 560 240, 530 380 T 450 300 Z"
-                  fill="currentColor"
-                  opacity="0.3"
-                />
-                <path
-                  d="M580 90 Q 820 60, 850 200 T 680 240 Z"
-                  fill="currentColor"
-                  opacity="0.3"
-                />
-                <path
-                  d="M740 280 Q 840 290, 820 370 T 730 340 Z"
-                  fill="currentColor"
-                  opacity="0.3"
-                />
-              </svg>
-
-              {/* Pulsing Beacon Hubs */}
-              {geoClusters.map((hub) => (
-                <div
-                  key={hub.id}
-                  className="absolute cursor-pointer group"
-                  style={{
-                    left: `${(hub.x / 1000) * 100}%`,
-                    top: `${(hub.y / 450) * 100}%`,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                  onClick={() => setCountryFilter(countryFilter === hub.name ? 'all' : hub.name)}
-                >
-                  {/* Outer pulsing ring */}
-                  <span
-                    className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-60"
-                    style={{ width: `${hub.radius * 1.5}px`, height: `${hub.radius * 1.5}px` }}
-                  />
-                  {/* Main solid beacon dot */}
-                  <div
-                    className="relative rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 shadow-md flex items-center justify-center text-[9px] font-bold text-white transition-transform group-hover:scale-125"
-                    style={{ width: `${hub.radius}px`, height: `${hub.radius}px` }}
-                  >
-                    {hub.count > 0 ? hub.count : ''}
-                  </div>
-                  {/* Tooltip on hover */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-slate-900 text-white text-[10px] px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap z-20 pointer-events-none">
-                    <div className="font-bold text-emerald-400">{hub.name}</div>
-                    <div>Volume: {formatNumber(hub.baseVal)}</div>
-                    <div>Count: {hub.count} records</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span>Leading Region: <strong>EMEA & Americas</strong></span>
-            <span className="text-emerald-500 font-semibold">Active Sync</span>
-          </div>
+        {/* Widget 6: Real-World Geographic Intelligence Map */}
+        <div
+          className={`${
+            mapExpanded ? 'lg:col-span-12 order-first' : 'lg:col-span-4'
+          } rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] flex flex-col justify-between transition-all duration-300`}
+        >
+          <GeographicIntelligenceMap
+            rows={filteredRows}
+            allDatasetRows={rawRows}
+            columns={currentDataset.columns}
+            currentMetric={currentMetric}
+            metricLabel={currentMetric}
+            isCurrency={isCurrency}
+            selectedRegion={countryFilter}
+            onSelectRegion={(reg) => setCountryFilter(reg)}
+            isExpanded={mapExpanded}
+            onToggleExpand={() => setMapExpanded(!mapExpanded)}
+          />
         </div>
       </section>
 
