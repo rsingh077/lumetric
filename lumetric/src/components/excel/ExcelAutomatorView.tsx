@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Workbook } from 'exceljs';
 import { useApp } from '@/contexts/AppContext';
 import {
@@ -16,6 +16,8 @@ import {
   SettingsIcon,
   RefreshCwIcon,
   TerminalIcon,
+  UploadIcon,
+  LayoutDashboardIcon,
 } from '@/components/icons';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -215,6 +217,8 @@ export function ExcelAutomatorView() {
     currentUser,
     currentWorkspace,
     setActiveView,
+    setActiveDataset,
+    loadSampleDataIntoProfile,
   } = useApp();
 
   // Selected Automation & Config
@@ -231,6 +235,244 @@ export function ExcelAutomatorView() {
     fileSizeBytes: number;
     durationMs: number;
   } | null>(null);
+
+  // File Upload & Intake State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isProcessingFile, setIsProcessingFile] = useState<boolean>(false);
+  const [fileAnalysisMessage, setFileAnalysisMessage] = useState<string | null>(null);
+
+  // Handle direct file intake (.xlsx, .csv, .tsv, .json)
+  const handleFileUpload = async (file: File) => {
+    try {
+      setIsProcessingFile(true);
+      setFileAnalysisMessage(`Scanning and profiling ${file.name}...`);
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+
+      let parsedRows: Record<string, string>[] = [];
+      let headers: string[] = [];
+
+      if (ext === 'xlsx' || ext === 'xls') {
+        const XLSX = await import('xlsx');
+        const buffer = await file.arrayBuffer();
+        const wb = XLSX.read(buffer, { type: 'array' });
+        const sheetName = wb.SheetNames[0] || 'Sheet1';
+        const ws = wb.Sheets[sheetName];
+        parsedRows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { raw: false, defval: '' });
+        if (parsedRows.length > 0) {
+          headers = Object.keys(parsedRows[0]);
+        }
+      } else if (ext === 'json') {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          parsedRows = parsed.map((item) => {
+            const row: Record<string, string> = {};
+            Object.entries(item).forEach(([k, v]) => {
+              row[k] = v !== null && v !== undefined ? String(v) : '';
+            });
+            return row;
+          });
+          headers = Object.keys(parsedRows[0]);
+        }
+      } else {
+        // CSV or TSV
+        const text = await file.text();
+        const delimiter = ext === 'tsv' ? '\t' : ',';
+        const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+        if (lines.length > 0) {
+          headers = lines[0].split(delimiter).map((h) => h.replace(/^["']|["']$/g, '').trim());
+          for (let i = 1; i < lines.length; i++) {
+            const rawLine = lines[i];
+            const parts: string[] = [];
+            let inQuote = false;
+            let current = '';
+            for (let c = 0; c < rawLine.length; c++) {
+              const char = rawLine[c];
+              if (char === '"') {
+                inQuote = !inQuote;
+              } else if (char === delimiter && !inQuote) {
+                parts.push(current.trim().replace(/^["']|["']$/g, ''));
+                current = '';
+              } else {
+                current += char;
+              }
+            }
+            parts.push(current.trim().replace(/^["']|["']$/g, ''));
+            const row: Record<string, string> = {};
+            headers.forEach((h, hIdx) => {
+              row[h] = parts[hIdx] ?? '';
+            });
+            parsedRows.push(row);
+          }
+        }
+      }
+
+      if (parsedRows.length === 0 || headers.length === 0) {
+        throw new Error('No valid tabular records found in file');
+      }
+
+      const columnProfiles = headers.map((colName) => {
+        const values = parsedRows.map((r) => r[colName] ?? '');
+        const nullCount = values.filter((v) => v === '' || v.toLowerCase() === 'null' || v.toLowerCase() === 'nan').length;
+        const nonNulls = values.filter((v) => v !== '' && v.toLowerCase() !== 'null');
+        const uniqueCount = new Set(nonNulls).size;
+        const numericValues = nonNulls.map((v) => Number(v.replace(/[\$,]/g, ''))).filter((n) => !isNaN(n));
+        const isNumeric = numericValues.length === nonNulls.length && nonNulls.length > 0;
+        const isDate = nonNulls.length > 0 && nonNulls.every((v) => !isNaN(Date.parse(v)) && (v.includes('-') || v.includes('/')));
+
+        let semanticRole: 'identifier' | 'metric' | 'dimension' | 'temporal' | 'target' = 'dimension';
+        const lower = colName.toLowerCase();
+        if (lower.includes('id') || lower.includes('key') || lower.includes('uuid')) {
+          semanticRole = 'identifier';
+        } else if (isDate || lower.includes('date') || lower.includes('time') || lower.includes('month') || lower.includes('year')) {
+          semanticRole = 'temporal';
+        } else if (isNumeric || lower.includes('arr') || lower.includes('rev') || lower.includes('cost') || lower.includes('price') || lower.includes('score')) {
+          semanticRole = 'metric';
+        } else if (lower.includes('churn') || lower.includes('risk') || lower.includes('target')) {
+          semanticRole = 'target';
+        }
+
+        return {
+          name: colName,
+          inferredType: isNumeric ? ('number' as const) : isDate ? ('datetime' as const) : ('string' as const),
+          semanticRole,
+          totalCount: values.length,
+          nullCount,
+          uniqueCount,
+          sampleValues: Array.from(new Set(nonNulls)).slice(0, 5),
+          mean: isNumeric && numericValues.length > 0 ? numericValues.reduce((a, b) => a + b, 0) / numericValues.length : undefined,
+        };
+      });
+
+      const newDataset: any = {
+        id: `ds-${Date.now().toString(36)}`,
+        fileName: file.name,
+        fileSize: file.size,
+        sha256: Math.random().toString(16).slice(2),
+        version: '1.0.0',
+        rowCount: parsedRows.length,
+        columnCount: headers.length,
+        columns: columnProfiles,
+        requirements: { requiredColumns: headers.slice(0, 3) },
+        qualityChecks: [],
+        quarantinedRowsCount: 0,
+        uploadedAt: new Date().toISOString(),
+        parseWarnings: [],
+        status: 'complete',
+      };
+
+      setActiveDataset(newDataset, parsedRows);
+      setFileAnalysisMessage(`Analysis Complete: "${file.name}" (${parsedRows.length.toLocaleString()} rows · ${headers.length} columns) loaded! Recommendations updated.`);
+      setTimeout(() => setFileAnalysisMessage(null), 5000);
+    } catch (err: any) {
+      console.error('File parsing failed:', err);
+      alert(`File analysis error: ${err?.message || 'Unsupported format'}`);
+    } finally {
+      setIsProcessingFile(false);
+    }
+  };
+
+  // Intelligent Schema & Opportunity Detective
+  const schemaAnalysis = useMemo(() => {
+    if (!activeRows || activeRows.length === 0) {
+      return {
+        metrics: [],
+        dimensions: [],
+        dates: [],
+        identifiers: [],
+        riskCols: [],
+        completenessScore: 100,
+        untrimmedCount: 0,
+        totalCells: 0,
+        nullCells: 0,
+      };
+    }
+
+    const cols = Object.keys(activeRows[0] || {});
+    const sampleSize = Math.min(activeRows.length, 100);
+    const sampleRows = activeRows.slice(0, sampleSize);
+
+    const metrics: { name: string; sum: number; avg: number }[] = [];
+    const dimensions: { name: string; uniqueCount: number; sampleValues: string[] }[] = [];
+    const dates: string[] = [];
+    const identifiers: string[] = [];
+    const riskCols: string[] = [];
+
+    const totalCells = activeRows.length * cols.length;
+    let nullCells = 0;
+    let untrimmedCount = 0;
+
+    cols.forEach((col) => {
+      const lower = col.toLowerCase();
+      let numCount = 0;
+      let dateCount = 0;
+      let sum = 0;
+      const valuesSet = new Set<string>();
+
+      sampleRows.forEach((r) => {
+        const raw = r[col];
+        if (raw === null || raw === undefined || String(raw).trim() === '') {
+          nullCells++;
+          return;
+        }
+        const str = String(raw);
+        if (str !== str.trim()) untrimmedCount++;
+
+        valuesSet.add(str);
+        const parsedNum = parseFloat(str.replace(/[\$,]/g, ''));
+        if (!isNaN(parsedNum) && /^-?\d+(\.\d+)?$/.test(str.replace(/[\$,]/g, ''))) {
+          numCount++;
+          sum += parsedNum;
+        } else if (!isNaN(Date.parse(str)) && (str.includes('-') || str.includes('/'))) {
+          dateCount++;
+        }
+      });
+
+      const isNumericCol = numCount >= sampleRows.length * 0.7;
+      const isDateCol = dateCount >= sampleRows.length * 0.7;
+
+      if (lower.includes('churn') || lower.includes('risk') || lower.includes('nps') || lower.includes('audit') || lower.includes('status') || lower.includes('flag')) {
+        riskCols.push(col);
+      }
+
+      if (lower.includes('id') || lower.includes('key') || lower.includes('uuid') || lower.includes('name') || lower.includes('code')) {
+        identifiers.push(col);
+      }
+
+      if (isDateCol || lower.includes('date') || lower.includes('time') || lower.includes('month') || lower.includes('year')) {
+        dates.push(col);
+      } else if (isNumericCol) {
+        metrics.push({
+          name: col,
+          sum,
+          avg: numCount > 0 ? sum / numCount : 0,
+        });
+      } else {
+        dimensions.push({
+          name: col,
+          uniqueCount: valuesSet.size,
+          sampleValues: Array.from(valuesSet).slice(0, 3),
+        });
+      }
+    });
+
+    const completenessScore = totalCells > 0 ? Math.max(0, Math.round(((totalCells - nullCells) / totalCells) * 100)) : 100;
+
+    return {
+      metrics,
+      dimensions,
+      dates,
+      identifiers,
+      riskCols,
+      completenessScore,
+      untrimmedCount,
+      totalCells,
+      nullCells,
+    };
+  }, [activeRows]);
+
+
 
   // Active dataset metrics helper
   const datasetStats = useMemo(() => {
@@ -286,6 +528,120 @@ export function ExcelAutomatorView() {
     };
   }, [activeRows]);
 
+  // Dynamic Opportunity Recommendations ("What Can We Build With This File?")
+  const recommendations = useMemo(() => {
+    const { metrics, dimensions, riskCols, completenessScore, untrimmedCount, nullCells } = schemaAnalysis;
+    const metricNames = metrics.map((m) => m.name);
+    const dimNames = dimensions.map((d) => d.name);
+
+    const list: {
+      id: AutomationType | 'interactive_dashboard';
+      title: string;
+      badge: string;
+      tagColor: string;
+      matchScore: number;
+      suitability: 'Perfect Match' | 'Strong Fit' | 'Recommended';
+      why: string;
+      drivers: string[];
+      actionType: 'download' | 'launch';
+      automationKey?: AutomationType;
+    }[] = [];
+
+    // 1. Interactive Dynamic Web Dashboard (Launch Button)
+    const dashboardScore = metrics.length > 0 && dimensions.length > 0 ? 98 : metrics.length > 0 ? 91 : 85;
+    list.push({
+      id: 'interactive_dashboard',
+      title: 'Interactive Dynamic Web Dashboard',
+      badge: 'Live In-Browser Slicing',
+      tagColor: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+      matchScore: dashboardScore,
+      suitability: 'Perfect Match',
+      why: `Detected ${metrics.length} metrics (${metricNames.slice(0, 2).join(', ') || 'Values'}) & ${dimensions.length} dimensions (${dimNames.slice(0, 2).join(', ') || 'Categories'}). Ready for real-time slicers, KPI target gauges, and dynamic trajectory curves.`,
+      drivers: [...metricNames.slice(0, 2), ...dimNames.slice(0, 2)],
+      actionType: 'launch',
+    });
+
+    // 2. Executive Performance Dashboard (.xlsx)
+    const execScore = metrics.length >= 1 ? 98 : 88;
+    list.push({
+      id: 'executive_dashboard',
+      automationKey: 'executive_dashboard',
+      title: 'Executive Performance Dashboard (.xlsx)',
+      badge: 'C-Suite Multi-Tab Workbook',
+      tagColor: 'bg-[#ECFDF5] dark:bg-[#064E3B]/40 text-[#065F46] dark:text-[#34D399] border-[#059669]/30',
+      matchScore: execScore,
+      suitability: 'Perfect Match',
+      why: `Generates 4 styled tabs (Dashboard, PivotSummary, DataLedger, AuditTrail) with top KPI cards (${metricNames[0] || 'ARR'}), frozen panes, auto-filters, and live SUM/AVERAGE formulas.`,
+      drivers: [metricNames[0] || 'ARR_USD', dimNames[0] || 'Region'],
+      actionType: 'download',
+    });
+
+    // 3. 12-Month ARR & Financial Projection Model (.xlsx)
+    const finScore = metricNames.some((m) => /arr|rev|sale|amount|cost/i.test(m)) ? 96 : metrics.length > 0 ? 89 : 75;
+    list.push({
+      id: 'financial_runway',
+      automationKey: 'financial_runway',
+      title: '12-Month ARR & Financial Projection Model (.xlsx)',
+      badge: 'Forward P&L Runway',
+      tagColor: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+      matchScore: finScore,
+      suitability: finScore >= 95 ? 'Perfect Match' : 'Strong Fit',
+      why: `Projects a 12-month sequential compound runway using ${metricNames.find((m) => /arr|rev|sale|amount/i.test(m)) || metricNames[0] || 'Baseline Revenue'} with COGS (22%) and Budget vs Actual variance tables.`,
+      drivers: [metricNames[0] || 'Revenue', '12-Month Horizon'],
+      actionType: 'download',
+    });
+
+    // 4. Multi-Level Cross-Tabulation Pivot Matrix (.xlsx)
+    const pivotScore = dimensions.length >= 2 ? 95 : dimensions.length === 1 ? 88 : 70;
+    list.push({
+      id: 'pivot_master',
+      automationKey: 'pivot_master',
+      title: 'Multi-Level Cross-Tabulation Pivot Matrix (.xlsx)',
+      badge: '2D Cross-Tab Matrix',
+      tagColor: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+      matchScore: pivotScore,
+      suitability: pivotScore >= 94 ? 'Perfect Match' : 'Strong Fit',
+      why: `Builds a multi-dimensional cross-tabulation across ${dimNames[0] || 'Region'} × ${dimNames[1] || 'Plan_Tier'} with native Excel SUMIFS formulas, row totals, and revenue share percentages.`,
+      drivers: [dimNames[0] || 'Region', dimNames[1] || 'Plan_Tier', metricNames[0] || 'ARR_USD'],
+      actionType: 'download',
+    });
+
+    // 5. Risk, Churn & Outlier Heatmap (.xlsx)
+    const riskScore = riskCols.length > 0 ? 93 : 82;
+    list.push({
+      id: 'conditional_heatmap',
+      automationKey: 'conditional_heatmap',
+      title: 'Risk, Churn & Outlier Heatmap (.xlsx)',
+      badge: 'Visual Alert Matrix',
+      tagColor: 'bg-[#FFF1F0] dark:bg-[#E34234]/20 text-[#E34234] border-[#E34234]/30',
+      matchScore: riskScore,
+      suitability: riskScore >= 90 ? 'Strong Fit' : 'Recommended',
+      why: `Detects anomalies in ${riskCols.slice(0, 2).join(', ') || 'Risk & Audit Fields'} with soft green (#D1FAE5), amber (#FEF3C7), and crimson (#FEE2E2) conditional cell formatting.`,
+      drivers: riskCols.length > 0 ? riskCols.slice(0, 2) : ['Anomaly Flags'],
+      actionType: 'download',
+    });
+
+    // 6. Automated Data Cleaner & Standardized Master (.xlsx)
+    const cleanScore = untrimmedCount > 0 || nullCells > 0 ? 94 : 86;
+    list.push({
+      id: 'clean_standardize',
+      automationKey: 'clean_standardize',
+      title: 'Automated Data Cleaner & Standardizer (.xlsx)',
+      badge: 'Data Sanitation Engine',
+      tagColor: 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800',
+      matchScore: cleanScore,
+      suitability: cleanScore >= 90 ? 'Strong Fit' : 'Recommended',
+      why: `Scans ${datasetStats.rowCount.toLocaleString()} rows for whitespace, casing, and empty fields. Applies TRIM, Title-Case, null imputation, and writes a separate audit trail sheet.`,
+      drivers: ['TRIM Whitespace', 'Title-Case', 'Impute Medians'],
+      actionType: 'download',
+    });
+
+    // Sort by match score descending
+    return list.sort((a, b) => b.matchScore - a.matchScore);
+  }, [schemaAnalysis, datasetStats.rowCount]);
+
+
+
   // Selected card detail
   const currentCard = useMemo(() => {
     return AUTOMATION_CATALOG.find((c) => c.id === selectedAutomation) || AUTOMATION_CATALOG[0];
@@ -317,7 +673,11 @@ export function ExcelAutomatorView() {
   // ════════════════════════════════════════════════════════════════════════════
   // COMPREHENSIVE EXCELJS WORKBOOK GENERATION ENGINE (ECMA-376 COMPLIANT)
   // ════════════════════════════════════════════════════════════════════════════
-  const handleGenerateWorkbook = async () => {
+  const handleGenerateWorkbook = async (overrideAutomation?: AutomationType) => {
+    const automationToRun = overrideAutomation || selectedAutomation;
+    if (overrideAutomation) {
+      setSelectedAutomation(overrideAutomation);
+    }
     if (!activeRows || activeRows.length === 0) {
       alert('No active dataset found. Please load or upload data first.');
       return;
@@ -388,7 +748,7 @@ export function ExcelAutomatorView() {
       // ────────────────────────────────────────────────────────────────────────
       // GENERATOR 1: INTERACTIVE EXECUTIVE DASHBOARD
       // ────────────────────────────────────────────────────────────────────────
-      if (selectedAutomation === 'executive_dashboard') {
+      if (automationToRun === 'executive_dashboard') {
         const wsDash = wb.addWorksheet('Dashboard', {
           views: [{ showGridLines: true }],
         });
@@ -697,7 +1057,7 @@ export function ExcelAutomatorView() {
       // ────────────────────────────────────────────────────────────────────────
       // GENERATOR 2: 12-MONTH ARR & FINANCIAL PROJECTION MODEL
       // ────────────────────────────────────────────────────────────────────────
-      else if (selectedAutomation === 'financial_runway') {
+      else if (automationToRun === 'financial_runway') {
         const wsFin = wb.addWorksheet('FinancialRunway', {
           views: [{ showGridLines: true, state: 'frozen', xSplit: 2, ySplit: 3 }],
         });
@@ -915,7 +1275,7 @@ export function ExcelAutomatorView() {
       // ────────────────────────────────────────────────────────────────────────
       // GENERATOR 3: MULTI-LEVEL PIVOT MASTER
       // ────────────────────────────────────────────────────────────────────────
-      else if (selectedAutomation === 'pivot_master') {
+      else if (automationToRun === 'pivot_master') {
         const wsPivotMaster = wb.addWorksheet('CrossTabMatrix', {
           views: [{ showGridLines: true }],
         });
@@ -1049,7 +1409,7 @@ export function ExcelAutomatorView() {
       // ────────────────────────────────────────────────────────────────────────
       // GENERATOR 4: FORMULA INJECTION & DYNAMIC LOOKUPS SUITE
       // ────────────────────────────────────────────────────────────────────────
-      else if (selectedAutomation === 'formula_suite') {
+      else if (automationToRun === 'formula_suite') {
         const wsDynamic = wb.addWorksheet('DynamicFormulas', {
           views: [{ showGridLines: true, state: 'frozen', xSplit: 0, ySplit: 2 }],
         });
@@ -1139,7 +1499,7 @@ export function ExcelAutomatorView() {
       // ────────────────────────────────────────────────────────────────────────
       // GENERATOR 5: CONDITIONAL FORMATTING & ANOMALY HEATMAP
       // ────────────────────────────────────────────────────────────────────────
-      else if (selectedAutomation === 'conditional_heatmap') {
+      else if (automationToRun === 'conditional_heatmap') {
         const wsHeatmap = wb.addWorksheet('HeatmapLedger', {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }],
         });
@@ -1214,7 +1574,7 @@ export function ExcelAutomatorView() {
       // ────────────────────────────────────────────────────────────────────────
       // GENERATOR 6: AUTOMATED DATA CLEANER & STANDARDIZER
       // ────────────────────────────────────────────────────────────────────────
-      else if (selectedAutomation === 'clean_standardize') {
+      else if (automationToRun === 'clean_standardize') {
         const wsClean = wb.addWorksheet('StandardizedData', {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }],
         });
@@ -1278,7 +1638,7 @@ export function ExcelAutomatorView() {
       });
 
       const dateStr = new Date().toISOString().slice(0, 10);
-      const downloadFileName = `lumetric_${selectedAutomation}_${dateStr}.xlsx`;
+      const downloadFileName = `lumetric_${automationToRun}_${dateStr}.xlsx`;
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1371,7 +1731,7 @@ export function ExcelAutomatorView() {
 
           {/* Primary Action Button */}
           <button
-            onClick={handleGenerateWorkbook}
+            onClick={() => handleGenerateWorkbook()}
             disabled={isGenerating || datasetStats.rowCount === 0}
             className="px-4 py-2 rounded-xl bg-[#059669] hover:bg-[#047857] active:scale-95 text-[#FAF8F5] text-xs font-bold transition-all shadow-md shadow-[#059669]/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2 whitespace-nowrap"
           >
@@ -1483,12 +1843,26 @@ export function ExcelAutomatorView() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+            <button
+              onClick={() => setPreviewTab('data_grid')}
+              className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-[#059669]/30 text-xs font-bold hover:bg-[#ECFDF5] text-[#065F46] dark:text-[#34D399] cursor-pointer"
+            >
+              📊 Preview in Grid
+            </button>
+            <a
+              href="https://drive.google.com"
+              target="_blank"
+              rel="noreferrer"
+              className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-[#059669]/30 text-xs font-bold hover:bg-[#ECFDF5] text-[#065F46] dark:text-[#34D399] cursor-pointer inline-flex items-center gap-1"
+            >
+              <span>Google Sheets ↗</span>
+            </a>
             <button
               onClick={() => setShowHowToOpenModal(true)}
-              className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-[#059669]/30 text-xs font-bold hover:bg-[#ECFDF5] cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-[#059669]/30 text-xs font-bold hover:bg-[#ECFDF5] text-[#065F46] dark:text-[#34D399] cursor-pointer"
             >
-              How to Open
+              💡 How to Open
             </button>
             <button
               onClick={() => setDownloadSuccess(null)}
@@ -1499,6 +1873,265 @@ export function ExcelAutomatorView() {
           </div>
         </div>
       )}
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* 2. AI DATASET DETECTIVE & BUILD OPPORTUNITY RECOMMENDER        */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <div className="p-6 rounded-3xl bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] shadow-xs space-y-5">
+        {/* Top Header of Detective */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[var(--lm-border-default)]">
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#059669] to-[#047857] text-white flex items-center justify-center shrink-0 shadow-md shadow-[#059669]/20">
+              <SparklesIcon className="w-5 h-5 text-amber-300" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-bold text-[var(--lm-text-primary)] tracking-tight">
+                  AI Dataset Detective &amp; Opportunity Recommender
+                </h2>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#ECFDF5] dark:bg-[#064E3B]/60 text-[#065F46] dark:text-[#34D399] font-bold border border-[#059669]/30 uppercase">
+                  Automatic Schema Intelligence
+                </span>
+              </div>
+              <p className="text-xs text-[var(--lm-text-secondary)] mt-0.5">
+                Drop any file to detect its schema, dimensions, and metrics. We analyze what you can build and generate interactive dynamic dashboards or ready-to-download Excel workbooks with 1 click.
+              </p>
+            </div>
+          </div>
+
+          {/* Action Zone: Dropzone / Upload button & Sample switchers */}
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls,.tsv,.json"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleFileUpload(f);
+                if (e.target) e.target.value = '';
+              }}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isProcessingFile}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[var(--lm-bg-secondary)] hover:bg-[var(--lm-bg-tertiary)] border border-[var(--lm-border-default)] text-xs font-bold text-[var(--lm-text-primary)] hover:border-[#059669]/50 transition-all shadow-xs cursor-pointer"
+            >
+              <UploadIcon className="w-4 h-4 text-[#059669]" />
+              <span>{isProcessingFile ? 'Analyzing File...' : 'Analyze Another File (.xlsx, .csv)'}</span>
+            </button>
+
+            {(!activeRows || activeRows.length === 0) && (
+              <button
+                onClick={loadSampleDataIntoProfile}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#059669] text-white hover:bg-[#047857] text-xs font-bold transition-all shadow-xs cursor-pointer"
+              >
+                <span>Load Benchmark SaaS Data</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* File Analysis Status Feedback Banner */}
+        {fileAnalysisMessage && (
+          <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300 flex items-center justify-between animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <SparklesIcon className="w-4 h-4 text-blue-600" />
+              <span>{fileAnalysisMessage}</span>
+            </div>
+            <button onClick={() => setFileAnalysisMessage(null)} className="font-bold hover:opacity-75 cursor-pointer">✕</button>
+          </div>
+        )}
+
+        {/* Drag and Drop Zone if dragged over */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            const f = e.dataTransfer.files?.[0];
+            if (f) handleFileUpload(f);
+          }}
+          className={`p-4 rounded-2xl border-2 border-dashed transition-all ${
+            isDragging
+              ? 'border-[#059669] bg-[#ECFDF5]/50 dark:bg-[#064E3B]/20 scale-[0.99]'
+              : 'border-[var(--lm-border-default)] bg-[var(--lm-bg-secondary)]/50'
+          }`}
+        >
+          {/* File Meta Radar & Detected Semantic Schema */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+            <div className="p-3 rounded-xl bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)]">
+              <span className="text-[10px] font-bold text-[var(--lm-text-tertiary)] uppercase tracking-wider block">
+                Active Source File
+              </span>
+              <span className="font-bold text-xs text-[var(--lm-text-primary)] truncate block mt-0.5" title={activeDataset?.fileName}>
+                {activeDataset?.fileName || 'Active Dataset'}
+              </span>
+              <span className="text-[11px] font-mono text-[var(--lm-text-secondary)]">
+                {datasetStats.rowCount.toLocaleString()} records · {datasetStats.columns.length} columns
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)]">
+              <span className="text-[10px] font-bold text-[var(--lm-text-tertiary)] uppercase tracking-wider block">
+                Detected Metrics ({schemaAnalysis.metrics.length})
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                {schemaAnalysis.metrics.slice(0, 3).map((m) => (
+                  <span key={m.name} className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    {m.name}
+                  </span>
+                ))}
+                {schemaAnalysis.metrics.length > 3 && (
+                  <span className="text-[10px] text-[var(--lm-text-tertiary)]">+{schemaAnalysis.metrics.length - 3}</span>
+                )}
+                {schemaAnalysis.metrics.length === 0 && (
+                  <span className="text-[10px] text-[var(--lm-text-tertiary)] italic">None detected</span>
+                )}
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)]">
+              <span className="text-[10px] font-bold text-[var(--lm-text-tertiary)] uppercase tracking-wider block">
+                Detected Dimensions ({schemaAnalysis.dimensions.length})
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                {schemaAnalysis.dimensions.slice(0, 3).map((d) => (
+                  <span key={d.name} className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    {d.name}
+                  </span>
+                ))}
+                {schemaAnalysis.dimensions.length > 3 && (
+                  <span className="text-[10px] text-[var(--lm-text-tertiary)]">+{schemaAnalysis.dimensions.length - 3}</span>
+                )}
+                {schemaAnalysis.dimensions.length === 0 && (
+                  <span className="text-[10px] text-[var(--lm-text-tertiary)] italic">None detected</span>
+                )}
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)]">
+              <span className="text-[10px] font-bold text-[var(--lm-text-tertiary)] uppercase tracking-wider block">
+                Data Sanitation Health
+              </span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="font-bold text-sm text-[#059669] dark:text-[#34D399]">
+                  {schemaAnalysis.completenessScore}% Complete
+                </span>
+                <span className="text-[10px] font-mono text-[var(--lm-text-tertiary)]">
+                  {schemaAnalysis.untrimmedCount} untrimmed
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center text-[11px] text-[var(--lm-text-tertiary)] flex items-center justify-center gap-2">
+            <span>💡 <strong>Drag &amp; Drop:</strong> You can drop any <code>.xlsx</code>, <code>.csv</code>, or <code>.json</code> file right here to inspect it instantly!</span>
+          </div>
+        </div>
+
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {/* RECOMMENDATION CARDS: "WHAT YOU CAN BUILD WITH THIS FILE"       */}
+        {/* ══════════════════════════════════════════════════════════════ */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--lm-text-secondary)] flex items-center gap-2">
+              <SparklesIcon className="w-3.5 h-3.5 text-[#059669]" />
+              What We Can Build With This File ({recommendations.length} Recommended Deliverables)
+            </h3>
+            <span className="text-[11px] text-[var(--lm-text-tertiary)]">Ranked by schema suitability</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {recommendations.slice(0, 6).map((rec) => {
+              const isActionLaunch = rec.actionType === 'launch';
+              const isCurrentlySelected = rec.automationKey && selectedAutomation === rec.automationKey;
+
+              return (
+                <div
+                  key={rec.id}
+                  className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
+                    isCurrentlySelected
+                      ? 'bg-[var(--lm-bg-elevated)] border-[#059669] ring-2 ring-[#059669]/20 shadow-sm'
+                      : 'bg-[var(--lm-bg-elevated)] border-[var(--lm-border-default)] hover:border-[#059669]/40 hover:shadow-xs'
+                  }`}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${rec.tagColor}`}>
+                        {rec.badge}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-[#059669] dark:text-[#34D399] border border-[#059669]/20 font-mono">
+                        {rec.matchScore}% Match
+                      </span>
+                    </div>
+
+                    <h4 className="font-bold text-sm text-[var(--lm-text-primary)]">
+                      {rec.title}
+                    </h4>
+
+                    <p className="text-xs text-[var(--lm-text-secondary)] leading-relaxed">
+                      {rec.why}
+                    </p>
+
+                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                      <span className="text-[10px] text-[var(--lm-text-tertiary)] uppercase font-semibold">Drivers:</span>
+                      {rec.drivers.map((d, dIdx) => (
+                        <span key={dIdx} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-[var(--lm-text-secondary)]">
+                          {d}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 mt-3 border-t border-[var(--lm-border-default)]/60 flex items-center justify-between gap-2">
+                    {isActionLaunch ? (
+                      <button
+                        onClick={() => setActiveView('dashboards')}
+                        className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <LayoutDashboardIcon className="w-3.5 h-3.5" />
+                        <span>Launch Dynamic Dashboard</span>
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (rec.automationKey) {
+                              setSelectedAutomation(rec.automationKey);
+                            }
+                          }}
+                          className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+                            isCurrentlySelected
+                              ? 'bg-[var(--lm-bg-secondary)] text-[#059669] border-[#059669]/30'
+                              : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] border-transparent'
+                          }`}
+                        >
+                          {isCurrentlySelected ? '● Active' : 'View Blueprint'}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            if (rec.automationKey) {
+                              handleGenerateWorkbook(rec.automationKey);
+                            }
+                          }}
+                          disabled={isGenerating || datasetStats.rowCount === 0}
+                          className="py-1.5 px-3 rounded-xl bg-[#059669] hover:bg-[#047857] text-[#FAF8F5] text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          <DownloadIcon className="w-3.5 h-3.5" />
+                          <span>Download .xlsx</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
 
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* MAIN TWO-COLUMN WORKSPACE                                      */}
@@ -1853,7 +2486,7 @@ export function ExcelAutomatorView() {
 
             {/* Primary Action Button */}
             <button
-              onClick={handleGenerateWorkbook}
+              onClick={() => handleGenerateWorkbook()}
               disabled={isGenerating || datasetStats.rowCount === 0}
               className="w-full mt-2 py-3 rounded-xl bg-[#059669] hover:bg-[#047857] active:scale-95 text-[#FAF8F5] font-bold text-xs transition-all shadow-md shadow-[#059669]/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >

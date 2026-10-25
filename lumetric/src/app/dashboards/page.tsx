@@ -1005,6 +1005,49 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
         </div>
       ) : (
         <>
+          {/* AI DATASET DETECTIVE & BUILD OPPORTUNITY RECOMMENDER BANNER */}
+          <div className="mb-6 p-4 rounded-3xl bg-[var(--lm-bg-elevated)] border border-[#059669]/30 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs animate-apple-in">
+            <div className="flex items-center gap-3.5">
+              <div className="w-9 h-9 rounded-2xl bg-[#ECFDF5] dark:bg-[#064E3B]/60 text-[#059669] dark:text-[#34D399] flex items-center justify-center shrink-0 border border-[#059669]/20 shadow-xs">
+                <SparklesIcon className="w-4 h-4 text-amber-500" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-sm text-[var(--lm-text-primary)]">
+                    AI Opportunity Detective: What Else Can We Build With This File?
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ECFDF5] dark:bg-[#064E3B]/60 text-[#065F46] dark:text-[#34D399] border border-[#059669]/30">
+                    Active Dataset
+                  </span>
+                </div>
+                <p className="text-[var(--lm-text-secondary)] mt-0.5">
+                  Analyzed <strong>{activeDataset?.fileName || 'Active Dataset'}</strong> ({rawRows.length.toLocaleString()} rows). Explore this <strong>Interactive Dynamic Dashboard</strong> live, or compile ready-to-download <strong>Executive Performance (.xlsx)</strong> workbooks &amp; <strong>12-Month Financial Forecasts</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setActiveView('excel')}
+                icon={<FileSpreadsheetIcon className="w-3.5 h-3.5 text-[#059669]" />}
+                title="Inspect what spreadsheets and models can be built"
+              >
+                What Can We Build?
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setActiveView('excel')}
+                icon={<DownloadIcon className="w-3.5 h-3.5" />}
+                className="bg-[#059669] hover:bg-[#047857] text-white"
+              >
+                Download Excel (.xlsx)
+              </Button>
+            </div>
+          </div>
+
           {/* 2. COLLAPSIBLE INTERACTIVE SLICERS / FILTER BAR */}
       {slicersOpen && (
         <div className="mb-6 p-5 rounded-3xl bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] print:hidden animate-apple-in">
