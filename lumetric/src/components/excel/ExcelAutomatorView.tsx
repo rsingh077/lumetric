@@ -46,7 +46,7 @@ const AUTOMATION_CATALOG: AutomationCard[] = [
     id: 'executive_dashboard',
     title: 'Interactive Executive Dashboard (.xlsx)',
     badge: 'Flagship Deliverable',
-    tagColor: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800',
+    tagColor: 'bg-[#ECFDF5] dark:bg-[#064E3B]/40 text-[#065F46] dark:text-[#34D399] border-[#059669]/30',
     category: 'Executive',
     description:
       'Creates a 4-tab C-suite ready workbook featuring styled KPI metric callouts, frozen headers, auto-filters, summary aggregation tables, and audit checksum metadata.',
@@ -63,7 +63,7 @@ const AUTOMATION_CATALOG: AutomationCard[] = [
     id: 'financial_runway',
     title: '12-Month ARR & Financial Projection Model',
     badge: 'P&L Runway',
-    tagColor: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800',
+    tagColor: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
     category: 'Financial',
     description:
       'Generates a forward-looking 12-month financial model with compound growth rates, COGS allocation, gross margin calculations, and Budget vs. Actual variance tracking.',
@@ -80,7 +80,7 @@ const AUTOMATION_CATALOG: AutomationCard[] = [
     id: 'pivot_master',
     title: 'Multi-Level Pivot & Cross-Tabulation Master',
     badge: 'Cross-Tab Matrix',
-    tagColor: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-800',
+    tagColor: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
     category: 'Analytics',
     description:
       'Engineers a multi-dimensional cross-tabulation matrix across two categorical dimensions with native formula row sums, column totals, and global grand totals.',
@@ -97,7 +97,7 @@ const AUTOMATION_CATALOG: AutomationCard[] = [
     id: 'formula_suite',
     title: 'Formula Injection & Dynamic Lookups Suite',
     badge: 'XLOOKUP & SUMIFS',
-    tagColor: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800',
+    tagColor: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
     category: 'Engineering',
     description:
       'Injects active corporate Excel formulas into your sheets: =XLOOKUP(), =SUMIFS(), =COUNTIFS(), =AVERAGEIFS(), and nested =IF() risk rules with pre-evaluated cached results.',
@@ -114,7 +114,7 @@ const AUTOMATION_CATALOG: AutomationCard[] = [
     id: 'conditional_heatmap',
     title: 'Conditional Formatting & Anomaly Matrix',
     badge: 'Visual Alerts',
-    tagColor: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800',
+    tagColor: 'bg-[#FFF1F0] dark:bg-[#E34234]/20 text-[#E34234] border-[#E34234]/30',
     category: 'Analytics',
     description:
       'Applies subtle, presentation-grade cell highlights to numbers, risk scores, and audit flags using pastel corporate tones (soft green, soft amber, and soft crimson).',
@@ -131,7 +131,7 @@ const AUTOMATION_CATALOG: AutomationCard[] = [
     id: 'clean_standardize',
     title: 'Automated Data Cleaner & Standardizer',
     badge: 'Data Sanitation',
-    tagColor: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-400 dark:border-teal-800',
+    tagColor: 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800',
     category: 'Engineering',
     description:
       'Trims whitespace, capitalizes names to Title Case, fills missing values with standardized placeholders or medians, and outputs a clean dataset with a full cleaning log.',
@@ -162,18 +162,18 @@ interface PaletteTheme {
 const PALETTES: Record<string, PaletteTheme> = {
   emerald: {
     id: 'emerald',
-    name: 'Lumetric Emerald (Executive)',
-    headerBg: 'FF0F172A', // Slate 900
+    name: 'Lumetric Emerald',
+    headerBg: 'FF064E3B', // Deep Emerald
     headerFont: 'FFFFFFFF',
     accentBg: 'FF059669', // Emerald 600
     accentFont: 'FFFFFFFF',
-    zebraBg: 'FFF8FAFC', // Slate 50
-    borderColor: 'FFE2E8F0', // Slate 200
-    badgeBg: 'FFECFDF5', // Emerald 50
+    zebraBg: 'FFF4ECE1', // Warm Ivory subtle
+    borderColor: 'FFE5D9C8',
+    badgeBg: 'FFECFDF5',
   },
   royal: {
     id: 'royal',
-    name: 'Executive Royal Blue',
+    name: 'Executive Navy',
     headerBg: 'FF1E3A8A', // Blue 900
     headerFont: 'FFFFFFFF',
     accentBg: 'FF2563EB', // Blue 600
@@ -184,14 +184,14 @@ const PALETTES: Record<string, PaletteTheme> = {
   },
   crimson: {
     id: 'crimson',
-    name: 'Midnight Crimson',
+    name: 'Vermilion Charcoal',
     headerBg: 'FF1E293B', // Slate 800
     headerFont: 'FFFFFFFF',
-    accentBg: 'FFE11D48', // Rose 600
+    accentBg: 'FFE34234', // Vermilion
     accentFont: 'FFFFFFFF',
-    zebraBg: 'FFF8FAFC',
+    zebraBg: 'FFFFF1F0',
     borderColor: 'FFE2E8F0',
-    badgeBg: 'FFFFF1F2',
+    badgeBg: 'FFFFF1F0',
   },
 };
 
@@ -199,8 +199,6 @@ export function ExcelAutomatorView() {
   const {
     activeDataset,
     activeRows,
-    datasets,
-    setActiveDataset,
     currentUser,
     currentWorkspace,
     setActiveView,
@@ -306,7 +304,6 @@ export function ExcelAutomatorView() {
             clean[k] = '';
           } else {
             const strVal = String(v).trim();
-            // Test if numeric
             const num = parseFloat(strVal.replace(/[\$,]/g, ''));
             if (!isNaN(num) && /^-?\d+(\.\d+)?$/.test(strVal.replace(/[\$,]/g, ''))) {
               clean[k] = num;
@@ -320,7 +317,6 @@ export function ExcelAutomatorView() {
 
       const cols = Object.keys(sanitizedRows[0] || {});
 
-      // Helper for header border
       const borderThin = {
         top: { style: 'thin' as const, color: { argb: palette.borderColor } },
         left: { style: 'thin' as const, color: { argb: palette.borderColor } },
@@ -328,16 +324,12 @@ export function ExcelAutomatorView() {
         right: { style: 'thin' as const, color: { argb: palette.borderColor } },
       };
 
-      // ────────────────────────────────────────────────────────────────────────
       // GENERATOR 1: INTERACTIVE EXECUTIVE DASHBOARD
-      // ────────────────────────────────────────────────────────────────────────
       if (selectedAutomation === 'executive_dashboard') {
-        // TAB 1: EXECUTIVE DASHBOARD
         const wsDash = wb.addWorksheet('1. Executive Dashboard', {
           views: [{ showGridLines: true }],
         });
 
-        // Set column widths
         wsDash.columns = [
           { width: 4 },
           { width: 26 },
@@ -348,7 +340,6 @@ export function ExcelAutomatorView() {
           { width: 4 },
         ];
 
-        // Title Block
         wsDash.mergeCells('B2:F2');
         const titleCell = wsDash.getCell('B2');
         titleCell.value = `${companyName.toUpperCase()} — EXECUTIVE PERFORMANCE DASHBOARD`;
@@ -357,7 +348,6 @@ export function ExcelAutomatorView() {
         titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
         wsDash.getRow(2).height = 36;
 
-        // Subtitle / Generation info
         wsDash.mergeCells('B3:F3');
         const subCell = wsDash.getCell('B3');
         subCell.value = `Generated: ${new Date().toISOString().replace('T', ' ').slice(0, 19)} UTC | Dataset: ${activeDataset?.fileName || 'Active Dataset'} (${datasetStats.rowCount.toLocaleString()} Accounts)`;
@@ -365,7 +355,6 @@ export function ExcelAutomatorView() {
         subCell.alignment = { vertical: 'middle', horizontal: 'center' };
         wsDash.getRow(3).height = 20;
 
-        // KPI Scorecards (Row 5 - Row 7)
         const kpis = [
           { col: 'B', label: 'TOTAL PORTFOLIO ARR', formula: '=SUM(\'3. Data Ledger\'!E2:E' + (datasetStats.rowCount + 1) + ')', fmt: '$#,##0', calc: datasetStats.totalArr },
           { col: 'C', label: 'AVG CONTRACT VALUE', formula: '=AVERAGE(\'3. Data Ledger\'!E2:E' + (datasetStats.rowCount + 1) + ')', fmt: '$#,##0', calc: datasetStats.avgArr },
@@ -375,7 +364,6 @@ export function ExcelAutomatorView() {
         ];
 
         kpis.forEach((kpi) => {
-          // Label cell
           const lblCell = wsDash.getCell(`${kpi.col}5`);
           lblCell.value = kpi.label;
           lblCell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF475569' } };
@@ -383,7 +371,6 @@ export function ExcelAutomatorView() {
           lblCell.alignment = { horizontal: 'center', vertical: 'middle' };
           lblCell.border = { top: borderThin.top, left: borderThin.left, right: borderThin.right };
 
-          // Value cell
           const valCell = wsDash.getCell(`${kpi.col}6`);
           valCell.value = { formula: kpi.formula, result: kpi.calc };
           valCell.font = { name: 'Segoe UI', size: 16, bold: true, color: { argb: palette.accentBg } };
@@ -395,7 +382,6 @@ export function ExcelAutomatorView() {
         wsDash.getRow(5).height = 22;
         wsDash.getRow(6).height = 32;
 
-        // Section Header: Regional Summary Matrix (Row 9)
         wsDash.mergeCells('B9:F9');
         const regHeader = wsDash.getCell('B9');
         regHeader.value = 'PORTFOLIO BREAKDOWN BY REGION';
@@ -404,7 +390,6 @@ export function ExcelAutomatorView() {
         regHeader.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
         wsDash.getRow(9).height = 26;
 
-        // Table Header
         const tblHeaders = ['Region', 'Client Count', 'Total ARR ($)', 'Average ARR ($)', 'Revenue Share %'];
         const tblCols = ['B', 'C', 'D', 'E', 'F'];
         tblHeaders.forEach((h, idx) => {
@@ -417,7 +402,6 @@ export function ExcelAutomatorView() {
         });
         wsDash.getRow(10).height = 22;
 
-        // Group rows by region
         const regionGroups: Record<string, { count: number; arr: number }> = {};
         sanitizedRows.forEach((r) => {
           const reg = String(r['Region'] || r['region'] || 'Global');
@@ -430,13 +414,11 @@ export function ExcelAutomatorView() {
         let curRow = 11;
         const totalRowsLedger = datasetStats.rowCount + 1;
         Object.entries(regionGroups).forEach(([regName, stats]) => {
-          // Region cell
           const cReg = wsDash.getCell(`B${curRow}`);
           cReg.value = regName;
           cReg.font = { name: 'Segoe UI', size: 10, bold: true };
           cReg.border = borderThin;
 
-          // Count formula: COUNTIF in Ledger
           const cCount = wsDash.getCell(`C${curRow}`);
           cCount.value = {
             formula: `=COUNTIF('3. Data Ledger'!$C$2:$C$${totalRowsLedger}, "${regName}")`,
@@ -447,7 +429,6 @@ export function ExcelAutomatorView() {
           cCount.alignment = { horizontal: 'right' };
           cCount.border = borderThin;
 
-          // ARR formula: SUMIF in Ledger
           const cArr = wsDash.getCell(`D${curRow}`);
           cArr.value = {
             formula: `=SUMIF('3. Data Ledger'!$C$2:$C$${totalRowsLedger}, "${regName}", '3. Data Ledger'!$E$2:$E$${totalRowsLedger})`,
@@ -458,7 +439,6 @@ export function ExcelAutomatorView() {
           cArr.alignment = { horizontal: 'right' };
           cArr.border = borderThin;
 
-          // Avg ARR formula: =D_row / C_row
           const cAvg = wsDash.getCell(`E${curRow}`);
           cAvg.value = {
             formula: `=D${curRow}/C${curRow}`,
@@ -469,7 +449,6 @@ export function ExcelAutomatorView() {
           cAvg.alignment = { horizontal: 'right' };
           cAvg.border = borderThin;
 
-          // Share formula: =D_row / $D$Total
           const cShare = wsDash.getCell(`F${curRow}`);
           cShare.value = {
             formula: `=D${curRow}/$D$${11 + Object.keys(regionGroups).length}`,
@@ -484,7 +463,6 @@ export function ExcelAutomatorView() {
           curRow++;
         });
 
-        // Total Row
         const totRow = curRow;
         wsDash.getCell(`B${totRow}`).value = 'GRAND TOTAL';
         wsDash.getCell(`B${totRow}`).font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: palette.headerFont } };
@@ -540,7 +518,6 @@ export function ExcelAutomatorView() {
           c.border = borderThin;
         });
 
-        // Group by Plan Tier
         const tierGroups: Record<string, { count: number; arr: number; npsSum: number }> = {};
         sanitizedRows.forEach((r) => {
           const tier = String(r['Plan_Tier'] || r['tier'] || 'Standard');
@@ -570,19 +547,17 @@ export function ExcelAutomatorView() {
           pRow++;
         });
 
-        // TAB 3: DATA LEDGER (STRICT CORPORATE FORMAT WITH FROZEN PANE & AUTOFILTERS)
+        // TAB 3: DATA LEDGER
         const wsLedger = wb.addWorksheet('3. Data Ledger', {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, activeCell: 'A2', showGridLines: true }],
         });
 
-        // Headers
         wsLedger.columns = cols.map((colName) => ({
           header: colName.replace(/_/g, ' '),
           key: colName,
           width: Math.max(16, colName.length + 6),
         }));
 
-        // Style Header Row
         const headerRow = wsLedger.getRow(1);
         headerRow.height = 28;
         headerRow.eachCell((cell) => {
@@ -592,11 +567,9 @@ export function ExcelAutomatorView() {
           cell.border = borderThin;
         });
 
-        // Enable AutoFilters
         const lastColLetter = String.fromCharCode(65 + cols.length - 1);
         wsLedger.autoFilter = `A1:${lastColLetter}1`;
 
-        // Add Data Rows with zebra striping and number formatting
         sanitizedRows.forEach((row, rowIdx) => {
           const r = wsLedger.addRow(row);
           r.height = 20;
@@ -610,7 +583,6 @@ export function ExcelAutomatorView() {
             }
 
             const colKey = cols[colNumber - 1];
-            // Format specific data types
             if (colKey.includes('ARR') || colKey.includes('revenue') || colKey.includes('Price')) {
               cell.numFmt = '$#,##0.00';
               cell.alignment = { horizontal: 'right' };
@@ -659,9 +631,7 @@ export function ExcelAutomatorView() {
         });
       }
 
-      // ────────────────────────────────────────────────────────────────────────
       // GENERATOR 2: 12-MONTH ARR & FINANCIAL PROJECTION MODEL
-      // ────────────────────────────────────────────────────────────────────────
       else if (selectedAutomation === 'financial_runway') {
         const wsFin = wb.addWorksheet('1. 12-Month P&L Runway', {
           views: [{ showGridLines: true, state: 'frozen', xSplit: 2, ySplit: 3 }],
@@ -685,7 +655,6 @@ export function ExcelAutomatorView() {
           { width: 18 },
         ];
 
-        // Title Row
         wsFin.mergeCells('A1:O1');
         const finTitle = wsFin.getCell('A1');
         finTitle.value = `${companyName.toUpperCase()} — 12-MONTH FORWARD P&L & ARR RUNWAY MODEL`;
@@ -694,7 +663,6 @@ export function ExcelAutomatorView() {
         finTitle.alignment = { vertical: 'middle', horizontal: 'center' };
         wsFin.getRow(1).height = 34;
 
-        // Config Row
         wsFin.getCell('A2').value = 'Assumed Monthly Growth Rate:';
         wsFin.getCell('A2').font = { name: 'Segoe UI', size: 9, bold: true };
         wsFin.getCell('B2').value = growthScenarioPct / 100;
@@ -702,7 +670,6 @@ export function ExcelAutomatorView() {
         wsFin.getCell('B2').font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: palette.accentBg } };
         wsFin.getRow(2).height = 22;
 
-        // Month Headers (Row 3)
         const monthHeaders = [
           'Financial Metric',
           'Current Baseline',
@@ -732,14 +699,12 @@ export function ExcelAutomatorView() {
 
         const baselineRevenue = datasetStats.totalArr > 0 ? datasetStats.totalArr / 12 : 100000;
 
-        // Helper to populate monthly projection formula
         const addProjectedLine = (
           label: string,
           baseVal: number,
           isFormulaRow: boolean,
           rateRef: string,
           multiplier = 1,
-          isExpense = false
         ) => {
           const cells: any[] = [label, baseVal];
           const colLetters = ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'];
@@ -756,7 +721,6 @@ export function ExcelAutomatorView() {
             }
           }
 
-          // Full Year Total (Sum of C:N)
           const curR = wsFin.rowCount + 1;
           cells.push({
             formula: `=SUM(C${curR}:N${curR})`,
@@ -776,10 +740,8 @@ export function ExcelAutomatorView() {
           return curR;
         };
 
-        // Section 1: Revenue
         const revRow = addProjectedLine('1. Gross Recurring Revenue (MRR)', baselineRevenue, true, '$B$2', 1);
 
-        // Section 2: COGS (25% of Revenue)
         const cogsCells: any[] = ['2. Cost of Goods Sold (COGS 22%)', baselineRevenue * 0.22];
         const colLetters = ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'];
         for (let m = 0; m < 12; m++) {
@@ -801,7 +763,6 @@ export function ExcelAutomatorView() {
           }
         });
 
-        // Section 3: Gross Profit = Revenue - COGS
         const gpCells: any[] = ['3. Gross Profit (Revenue - COGS)', baselineRevenue * 0.78];
         for (let m = 0; m < 12; m++) {
           const col = colLetters[m];
@@ -881,24 +842,20 @@ export function ExcelAutomatorView() {
           r.getCell(3).numFmt = '$#,##0';
           r.getCell(4).numFmt = '$#,##0';
           r.getCell(5).numFmt = '0.0%';
-          r.getCell(6).font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: isFavorable ? 'FF059669' : 'FFE11D48' } };
+          r.getCell(6).font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: isFavorable ? 'FF059669' : 'FFE34234' } };
           r.eachCell((c) => (c.border = borderThin));
         });
       }
 
-      // ────────────────────────────────────────────────────────────────────────
-      // GENERATOR 3: MULTI-LEVEL PIVOT & CROSS-TABULATION MASTER
-      // ────────────────────────────────────────────────────────────────────────
+      // GENERATOR 3: MULTI-LEVEL PIVOT MASTER
       else if (selectedAutomation === 'pivot_master') {
         const wsPivotMaster = wb.addWorksheet('1. Cross-Tab Matrix', {
           views: [{ showGridLines: true }],
         });
 
-        // Collect distinct rows and columns
         const regions = Array.from(new Set(sanitizedRows.map((r) => String(r['Region'] || 'Global')))).sort();
         const tiers = Array.from(new Set(sanitizedRows.map((r) => String(r['Plan_Tier'] || 'Standard')))).sort();
 
-        // Calculate columns width
         wsPivotMaster.columns = [
           { width: 24 },
           ...tiers.map(() => ({ width: 18 })),
@@ -906,7 +863,6 @@ export function ExcelAutomatorView() {
           { width: 18 },
         ];
 
-        // Title Row
         const totalCols = tiers.length + 3;
         const lastColLetter = String.fromCharCode(65 + totalCols - 1);
         wsPivotMaster.mergeCells(`A1:${lastColLetter}1`);
@@ -917,7 +873,6 @@ export function ExcelAutomatorView() {
         pTitle.alignment = { vertical: 'middle', horizontal: 'center' };
         wsPivotMaster.getRow(1).height = 32;
 
-        // Header Row: Dimension A (Region) by Dimension B (Plan Tiers)
         const headerRowVals = ['Region / Dimension', ...tiers, 'Total ARR (Row Sum)', 'Share of Revenue'];
         const pHeadRow = wsPivotMaster.addRow(headerRowVals);
         pHeadRow.height = 24;
@@ -928,7 +883,6 @@ export function ExcelAutomatorView() {
           c.border = borderThin;
         });
 
-        // Compute sums
         let startRow = 3;
         const grandTotalRow = startRow + regions.length;
         const totalRowsLedger = datasetStats.rowCount + 1;
@@ -938,9 +892,7 @@ export function ExcelAutomatorView() {
           const rowVals: any[] = [reg];
 
           let rowSumCalc = 0;
-          tiers.forEach((tier, tIdx) => {
-            const tierColLetter = String.fromCharCode(66 + tIdx);
-            // In Ledger, Region is column C, Plan_Tier is column D, ARR is column E
+          tiers.forEach((tier) => {
             const matchingRows = sanitizedRows.filter(
               (r) => String(r['Region']) === reg && String(r['Plan_Tier']) === tier
             );
@@ -953,18 +905,15 @@ export function ExcelAutomatorView() {
             });
           });
 
-          // Row Sum Formula
           const firstTierCol = 'B';
           const lastTierCol = String.fromCharCode(65 + tiers.length);
           const totalColLetter = String.fromCharCode(66 + tiers.length);
-          const shareColLetter = String.fromCharCode(67 + tiers.length);
 
           rowVals.push({
             formula: `=SUM(${firstTierCol}${curR}:${lastTierCol}${curR})`,
             result: rowSumCalc,
           });
 
-          // Share % Formula
           rowVals.push({
             formula: `=${totalColLetter}${curR}/$${totalColLetter}$${grandTotalRow}`,
             result: datasetStats.totalArr > 0 ? rowSumCalc / datasetStats.totalArr : 0,
@@ -985,7 +934,6 @@ export function ExcelAutomatorView() {
           });
         });
 
-        // Grand Totals Row
         const grandTotalsVals: any[] = ['GRAND TOTAL'];
         tiers.forEach((tier, tIdx) => {
           const colLetter = String.fromCharCode(66 + tIdx);
@@ -1019,7 +967,6 @@ export function ExcelAutomatorView() {
           }
         });
 
-        // TAB 2: SOURCE DATA
         const wsSource = wb.addWorksheet('3. Source Data', {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }],
         });
@@ -1031,9 +978,7 @@ export function ExcelAutomatorView() {
         sanitizedRows.forEach((r) => wsSource.addRow(r));
       }
 
-      // ────────────────────────────────────────────────────────────────────────
-      // GENERATOR 4: FORMULA INJECTION & DYNAMIC LOOKUPS SUITE
-      // ────────────────────────────────────────────────────────────────────────
+      // GENERATOR 4: FORMULA SUITE
       else if (selectedAutomation === 'formula_suite') {
         const wsDynamic = wb.addWorksheet('1. Dynamic Formulas', {
           views: [{ showGridLines: true, state: 'frozen', xSplit: 0, ySplit: 2 }],
@@ -1106,12 +1051,11 @@ export function ExcelAutomatorView() {
             name: 'Segoe UI',
             size: 9,
             bold: true,
-            color: { argb: churnVal >= 0.2 ? 'FFE11D48' : churnVal >= 0.1 ? 'FFD97706' : 'FF059669' },
+            color: { argb: churnVal >= 0.2 ? 'FFE34234' : churnVal >= 0.1 ? 'FFD97706' : 'FF059669' },
           };
           r.eachCell((c) => (c.border = borderThin));
         });
 
-        // TAB 2: MASTER LEDGER
         const wsMaster = wb.addWorksheet('3. Master Ledger', {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }],
         });
@@ -1123,9 +1067,7 @@ export function ExcelAutomatorView() {
         sanitizedRows.forEach((r) => wsMaster.addRow(r));
       }
 
-      // ────────────────────────────────────────────────────────────────────────
-      // GENERATOR 5: CONDITIONAL FORMATTING & ANOMALY HEATMAP
-      // ────────────────────────────────────────────────────────────────────────
+      // GENERATOR 5: CONDITIONAL FORMATTING
       else if (selectedAutomation === 'conditional_heatmap') {
         const wsHeatmap = wb.addWorksheet('1. Heatmap Ledger', {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }],
@@ -1156,18 +1098,15 @@ export function ExcelAutomatorView() {
             if (colKey.includes('ARR')) {
               cell.numFmt = '$#,##0.00';
               if (arr > 100000) {
-                // Soft Green highlight for high ARR
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
                 cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF065F46' } };
               }
             } else if (colKey.includes('Churn')) {
               cell.numFmt = '0.0%';
               if (churn >= 0.2) {
-                // Soft Red highlight
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
                 cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF991B1B' } };
               } else if (churn >= 0.1) {
-                // Soft Amber highlight
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
                 cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF92400E' } };
               }
@@ -1180,7 +1119,6 @@ export function ExcelAutomatorView() {
           });
         });
 
-        // TAB 2: THRESHOLD KEY
         const wsKey = wb.addWorksheet('2. Threshold Key', { views: [{ showGridLines: true }] });
         wsKey.columns = [{ width: 24 }, { width: 36 }, { width: 30 }];
         wsKey.addRow(['Indicator Color', 'Condition / Threshold', 'Action Trigger']);
@@ -1202,9 +1140,7 @@ export function ExcelAutomatorView() {
         });
       }
 
-      // ────────────────────────────────────────────────────────────────────────
-      // GENERATOR 6: AUTOMATED DATA CLEANER & STANDARDIZER
-      // ────────────────────────────────────────────────────────────────────────
+      // GENERATOR 6: AUTOMATED DATA CLEANER
       else if (selectedAutomation === 'clean_standardize') {
         const wsClean = wb.addWorksheet('1. Cleaned & Standardized Data', {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }],
@@ -1232,7 +1168,6 @@ export function ExcelAutomatorView() {
               if (trimmed !== rawVal) {
                 cleaningLog.push({ row: idx + 2, col: colKey, action: 'Trimmed surrounding whitespace' });
               }
-              // Title case
               if (colKey.includes('Name') || colKey.includes('City') || colKey.includes('Region')) {
                 cleanedRow[colKey] = trimmed.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.substr(1).toLowerCase());
               } else {
@@ -1248,7 +1183,6 @@ export function ExcelAutomatorView() {
           r.eachCell((c) => (c.border = borderThin));
         });
 
-        // TAB 2: AUDIT LOG
         const wsLog = wb.addWorksheet('2. Cleaning Audit Log', { views: [{ showGridLines: true }] });
         wsLog.columns = [{ width: 14 }, { width: 22 }, { width: 50 }];
         wsLog.addRow(['Row Number', 'Column Name', 'Sanitization Action Applied']);
@@ -1297,99 +1231,95 @@ export function ExcelAutomatorView() {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-50 dark:bg-[#0B0F19] min-h-screen">
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-16 w-full">
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* 1. TOP HEADER & WORKSPACE CONTEXT BAR                         */}
+      {/* 1. CLEAN EXECUTIVE PAGE HEADER                                */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="bg-white dark:bg-[#0F172A] border-b border-slate-200 dark:border-slate-800 px-6 py-4 sticky top-0 z-20 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--lm-border-default)]">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="p-1.5 rounded-xl bg-[#059669]/10 text-[#059669] dark:text-[#34D399]">
               <FileSpreadsheetIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-                  Excel Automator
-                </h1>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 uppercase tracking-wider">
-                  Self-Dealing Suite
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800">
-                  100% Math Accuracy
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Automated multi-tab Microsoft Excel (.xlsx) workbooks with live native formulas, dashboards &amp; financial models.
-              </p>
-            </div>
+            </span>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--lm-text-primary)]">
+              Excel Automator
+            </h1>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#ECFDF5] dark:bg-[#064E3B]/60 text-[#065F46] dark:text-[#34D399] font-bold border border-[#059669]/30 uppercase tracking-wider">
+              Self-Dealing Suite
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800 hidden sm:inline">
+              100% Math Accuracy
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-[var(--lm-text-secondary)] font-normal">
+            Automated multi-tab Microsoft Excel (.xlsx) workbooks with live native formulas, dashboards &amp; financial models.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+          {/* Active Dataset Pill */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] text-xs text-[var(--lm-text-primary)] shadow-xs">
+            <DatabaseIcon className="w-3.5 h-3.5 text-[#059669]" />
+            <span className="font-semibold truncate max-w-[130px]">
+              {activeDataset?.fileName || 'Active Dataset'}
+            </span>
+            <span className="text-[10px] font-mono text-[var(--lm-text-tertiary)]">
+              ({datasetStats.rowCount.toLocaleString()} rows)
+            </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Dataset Selector / Indicator */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs">
-              <DatabaseIcon className="w-4 h-4 text-emerald-500" />
-              <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">
-                {activeDataset?.fileName || 'Active Dataset'}
-              </span>
-              <span className="text-[11px] font-mono text-slate-500">
-                ({datasetStats.rowCount.toLocaleString()} rows)
-              </span>
-            </div>
+          {/* Quick jump to SQL Studio */}
+          <button
+            onClick={() => setActiveView('sql')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--lm-bg-elevated)] hover:bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-xs font-semibold text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] transition-colors shadow-xs cursor-pointer"
+            title="Open SQL Studio"
+          >
+            <TerminalIcon className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <span>SQL Studio</span>
+          </button>
 
-            {/* Quick SQL jump */}
-            <button
-              onClick={() => setActiveView('sql')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-              title="Open SQL Studio"
-            >
-              <TerminalIcon className="w-3.5 h-3.5 text-blue-500" />
-              <span>SQL Studio</span>
-            </button>
-
-            {/* Generate Primary Action Button */}
-            <button
-              onClick={handleGenerateWorkbook}
-              disabled={isGenerating || datasetStats.rowCount === 0}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold text-xs transition-all shadow-md shadow-emerald-600/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {isGenerating ? (
-                <>
-                  <RefreshCwIcon className="w-4 h-4 animate-spin" />
-                  <span>Compiling OpenXML...</span>
-                </>
-              ) : (
-                <>
-                  <DownloadIcon className="w-4 h-4" />
-                  <span>Generate &amp; Download .xlsx</span>
-                </>
-              )}
-            </button>
-          </div>
+          {/* Primary Action Button */}
+          <button
+            onClick={handleGenerateWorkbook}
+            disabled={isGenerating || datasetStats.rowCount === 0}
+            className="px-4 py-2 rounded-xl bg-[#059669] hover:bg-[#047857] active:scale-95 text-[#FAF8F5] text-xs font-bold transition-all shadow-md shadow-[#059669]/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2 whitespace-nowrap"
+          >
+            {isGenerating ? (
+              <>
+                <RefreshCwIcon className="w-4 h-4 animate-spin" />
+                <span>Compiling OpenXML...</span>
+              </>
+            ) : (
+              <>
+                <DownloadIcon className="w-4 h-4" />
+                <span>Generate &amp; Download .xlsx</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* SUCCESS DOWNLOAD TOAST / BANNER                                */}
+      {/* SUCCESS DOWNLOAD NOTIFICATION BANNER                          */}
       {/* ══════════════════════════════════════════════════════════════ */}
       {downloadSuccess && (
-        <div className="mx-6 mt-4 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-200 animate-fadeIn">
+        <div className="p-4 rounded-2xl bg-[#ECFDF5] dark:bg-[#064E3B]/40 border border-[#059669]/30 flex items-center justify-between text-xs text-[#065F46] dark:text-[#34D399] shadow-xs animate-fadeIn">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-full bg-[#059669] text-white flex items-center justify-center font-bold">
               ✓
             </div>
             <div>
               <p className="font-bold text-sm">
                 Workbook compiled and downloaded successfully!
               </p>
-              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono">
+              <p className="text-[11px] font-mono opacity-90">
                 File: {downloadSuccess.fileName} • Size: {(downloadSuccess.fileSizeBytes / 1024).toFixed(1)} KB • Render Time: {downloadSuccess.durationMs}ms • 100% ECMA-376 Validated
               </p>
             </div>
           </div>
           <button
             onClick={() => setDownloadSuccess(null)}
-            className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 font-bold px-2 py-1 rounded-md"
+            className="text-[#065F46] dark:text-[#34D399] hover:opacity-75 font-bold px-2 py-1 rounded-md cursor-pointer"
           >
             ✕ Dismiss
           </button>
@@ -1399,16 +1329,16 @@ export function ExcelAutomatorView() {
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* MAIN TWO-COLUMN WORKSPACE                                      */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* LEFT COLUMN: AUTOMATION CATALOG (7 COLS) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* LEFT COLUMN: AUTOMATION CATALOG (8 COLS) */}
         <div className="lg:col-span-8 space-y-6">
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                <SparklesIcon className="w-4 h-4 text-emerald-500" />
+              <h2 className="text-xs font-bold tracking-wider uppercase text-[var(--lm-text-secondary)] flex items-center gap-2">
+                <SparklesIcon className="w-4 h-4 text-[#059669]" />
                 Select Desired Excel Automation Outcome
               </h2>
-              <span className="text-xs text-slate-500">6 Available Deliverables</span>
+              <span className="text-xs text-[var(--lm-text-tertiary)] font-mono">6 Available Deliverables</span>
             </div>
 
             {/* Catalog Grid */}
@@ -1419,38 +1349,38 @@ export function ExcelAutomatorView() {
                   <div
                     key={item.id}
                     onClick={() => setSelectedAutomation(item.id)}
-                    className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    className={`p-5 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
                       isSelected
-                        ? 'bg-white dark:bg-slate-900 border-emerald-500 dark:border-emerald-500 shadow-md ring-2 ring-emerald-500/20'
-                        : 'bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                        ? 'bg-[var(--lm-bg-elevated)] border-[#059669] shadow-md ring-2 ring-[#059669]/20'
+                        : 'bg-[var(--lm-bg-elevated)] border-[var(--lm-border-default)] hover:border-[#059669]/40 hover:shadow-xs'
                     }`}
                   >
                     <div>
-                      <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center justify-between gap-2 mb-2.5">
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${item.tagColor}`}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.tagColor}`}
                         >
                           {item.badge}
                         </span>
-                        <span className="text-[10px] uppercase font-semibold text-slate-400">
+                        <span className="text-[10px] uppercase font-semibold text-[var(--lm-text-tertiary)] font-mono">
                           {item.category}
                         </span>
                       </div>
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-1.5">
+                      <h3 className="font-bold text-sm text-[var(--lm-text-primary)] mb-1.5">
                         {item.title}
                       </h3>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mb-3">
+                      <p className="text-xs text-[var(--lm-text-secondary)] line-clamp-2 mb-3">
                         {item.description}
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
-                      <span className="text-slate-500 font-mono">
+                    <div className="pt-3 border-t border-[var(--lm-border-default)]/70 flex items-center justify-between text-[11px]">
+                      <span className="text-[var(--lm-text-tertiary)] font-mono">
                         {item.sheetsGenerated.length} Tabs Included
                       </span>
                       <span
-                        className={`font-semibold flex items-center gap-1 ${
-                          isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
+                        className={`font-semibold flex items-center gap-1.5 ${
+                          isSelected ? 'text-[#059669] dark:text-[#34D399]' : 'text-[var(--lm-text-tertiary)]'
                         }`}
                       >
                         {isSelected ? '● Active' : 'Select →'}
@@ -1463,22 +1393,22 @@ export function ExcelAutomatorView() {
           </div>
 
           {/* ACTIVE DELIVERABLE INSPECTION & TABS BREAKDOWN */}
-          <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-4">
+          <div className="p-5 rounded-2xl bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] shadow-xs">
+            <div className="flex items-center justify-between border-b border-[var(--lm-border-default)] pb-3 mb-4">
               <div className="flex items-center gap-2">
-                <TableIcon className="w-5 h-5 text-emerald-500" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <TableIcon className="w-4 h-4 text-[#059669]" />
+                <h3 className="text-sm font-bold text-[var(--lm-text-primary)]">
                   Workbook Blueprint &amp; Generated Sheets
                 </h3>
               </div>
-              <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+              <span className="text-xs font-mono text-[#059669] dark:text-[#34D399] font-semibold">
                 Target: Microsoft Excel / Google Sheets
               </span>
             </div>
 
             {/* Sheets Preview */}
-            <div className="space-y-3">
-              <p className="text-xs text-slate-600 dark:text-slate-400">
+            <div className="space-y-3.5">
+              <p className="text-xs text-[var(--lm-text-secondary)]">
                 When you click <strong>Generate &amp; Download</strong>, Lumetric compiles the following validated sheets into an ECMA-376 OpenXML package:
               </p>
 
@@ -1486,16 +1416,16 @@ export function ExcelAutomatorView() {
                 {currentCard.sheetsGenerated.map((sheet, sIdx) => (
                   <div
                     key={sIdx}
-                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-start gap-2.5"
+                    className="p-3 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)]/80 flex items-start gap-2.5"
                   >
-                    <span className="w-5 h-5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                    <span className="w-5 h-5 rounded-lg bg-[#ECFDF5] dark:bg-[#064E3B]/60 text-[#065F46] dark:text-[#34D399] font-mono font-bold text-xs flex items-center justify-center shrink-0 border border-[#059669]/20">
                       {sIdx + 1}
                     </span>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      <h4 className="text-xs font-bold text-[var(--lm-text-primary)]">
                         {sheet}
                       </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      <p className="text-[11px] text-[var(--lm-text-tertiary)]">
                         Zebra-striped • Frozen Pane • ECMA Validated
                       </p>
                     </div>
@@ -1504,14 +1434,14 @@ export function ExcelAutomatorView() {
               </div>
 
               {/* Injected Features List */}
-              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+              <div className="mt-4 pt-4 border-t border-[var(--lm-border-default)]/70">
+                <h4 className="text-xs font-bold text-[var(--lm-text-primary)] mb-2">
                   Engineered Mathematical Guarantees:
                 </h4>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-400">
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[var(--lm-text-secondary)]">
                   {currentCard.features.map((feat, fIdx) => (
                     <li key={fIdx} className="flex items-center gap-2">
-                      <span className="text-emerald-500 font-bold">✓</span>
+                      <span className="text-[#059669] font-bold">✓</span>
                       <span>{feat}</span>
                     </li>
                   ))}
@@ -1519,12 +1449,12 @@ export function ExcelAutomatorView() {
               </div>
 
               {/* Sample Formula Box */}
-              <div className="mt-3 p-3 rounded-xl bg-slate-900 text-slate-200 font-mono text-xs flex items-center justify-between">
+              <div className="mt-3 p-3 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-[var(--lm-text-primary)] font-mono text-xs flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">fx</span>
+                  <span className="text-[#059669] dark:text-[#34D399] font-bold">fx</span>
                   <span>{currentCard.sampleFormula}</span>
                 </div>
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">
+                <span className="text-[10px] text-[var(--lm-text-tertiary)] uppercase tracking-wider font-semibold">
                   Live Injected Formula
                 </span>
               </div>
@@ -1534,46 +1464,46 @@ export function ExcelAutomatorView() {
 
         {/* RIGHT COLUMN: WORKBOOK CUSTOMIZER & SETTINGS (4 COLS) */}
         <div className="lg:col-span-4 space-y-6">
-          <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <SettingsIcon className="w-4 h-4 text-emerald-500" />
+          <div className="p-5 rounded-2xl bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--lm-border-default)] pb-3">
+              <h3 className="text-sm font-bold text-[var(--lm-text-primary)] flex items-center gap-2">
+                <SettingsIcon className="w-4 h-4 text-[#059669]" />
                 Workbook Configuration
               </h3>
-              <span className="text-[11px] font-mono text-slate-400">v3.0 Engine</span>
+              <span className="text-[11px] font-mono text-[var(--lm-text-tertiary)]">v3.0 Engine</span>
             </div>
 
             {/* Company / Workspace Branding */}
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-[var(--lm-text-primary)] mb-1">
                 Company / Organization Header
               </label>
               <input
                 type="text"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-colors"
                 placeholder="e.g. Acme Corp"
               />
             </div>
 
             {/* Report Subtitle */}
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-[var(--lm-text-primary)] mb-1">
                 Report Title
               </label>
               <input
                 type="text"
                 value={reportTitle}
                 onChange={(e) => setReportTitle(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-colors"
                 placeholder="e.g. Q4 Executive Report"
               />
             </div>
 
             {/* Color Palette Theme */}
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-[var(--lm-text-primary)] mb-1.5">
                 Executive Color Palette
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -1586,11 +1516,11 @@ export function ExcelAutomatorView() {
                       onClick={() => setSelectedTheme(p.id)}
                       className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
                         isThemeSelected
-                          ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 font-bold ring-2 ring-emerald-500/20'
-                          : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                          ? 'border-[#059669] bg-[#ECFDF5] dark:bg-[#064E3B]/30 text-[#065F46] dark:text-[#34D399] font-bold ring-2 ring-[#059669]/20'
+                          : 'border-[var(--lm-border-default)] bg-[var(--lm-bg-secondary)] text-[var(--lm-text-secondary)] hover:border-[#059669]/40'
                       }`}
                     >
-                      <div className="w-full h-3 rounded-md mb-1.5 flex overflow-hidden">
+                      <div className="w-full h-3 rounded-md mb-1.5 flex overflow-hidden border border-[var(--lm-border-default)]/60">
                         <div
                           className="w-1/2 h-full"
                           style={{ backgroundColor: `#${p.headerBg.slice(2)}` }}
@@ -1600,7 +1530,7 @@ export function ExcelAutomatorView() {
                           style={{ backgroundColor: `#${p.accentBg.slice(2)}` }}
                         />
                       </div>
-                      <span className="text-[10px] block truncate">{p.name.split(' ')[0]}</span>
+                      <span className="text-[10px] block truncate font-medium">{p.name.split(' ')[0]}</span>
                     </button>
                   );
                 })}
@@ -1609,12 +1539,12 @@ export function ExcelAutomatorView() {
 
             {/* Growth Scenario Slider (for financial model) */}
             {selectedAutomation === 'financial_runway' && (
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="pt-2 border-t border-[var(--lm-border-default)]/70">
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  <label className="text-xs font-semibold text-[var(--lm-text-primary)]">
                     Monthly Growth Scenario:
                   </label>
-                  <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  <span className="text-xs font-mono font-bold text-[#059669] dark:text-[#34D399]">
                     {growthScenarioPct}% MoM
                   </span>
                 </div>
@@ -1625,9 +1555,9 @@ export function ExcelAutomatorView() {
                   step="1"
                   value={growthScenarioPct}
                   onChange={(e) => setGrowthScenarioPct(Number(e.target.value))}
-                  className="w-full accent-emerald-600 cursor-pointer"
+                  className="w-full accent-[#059669] cursor-pointer"
                 />
-                <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                <div className="flex justify-between text-[10px] text-[var(--lm-text-tertiary)] mt-1 font-mono">
                   <span>3% (Cautious)</span>
                   <span>12% (Target)</span>
                   <span>30% (Hyper)</span>
@@ -1636,20 +1566,20 @@ export function ExcelAutomatorView() {
             )}
 
             {/* Quick Metrics Summary Box */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+            <div className="pt-3 border-t border-[var(--lm-border-default)]/70 space-y-2">
+              <span className="text-[10px] font-bold text-[var(--lm-text-tertiary)] uppercase tracking-wider block font-mono">
                 Source Data Checksum
               </span>
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                  <span className="text-[10px] text-slate-500 block">Row Count</span>
-                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                <div className="p-2.5 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)]/80">
+                  <span className="text-[10px] text-[var(--lm-text-tertiary)] block font-medium">Row Count</span>
+                  <span className="font-mono font-bold text-[var(--lm-text-primary)]">
                     {datasetStats.rowCount.toLocaleString()}
                   </span>
                 </div>
-                <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                  <span className="text-[10px] text-slate-500 block">Total ARR</span>
-                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                <div className="p-2.5 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)]/80">
+                  <span className="text-[10px] text-[var(--lm-text-tertiary)] block font-medium">Total ARR</span>
+                  <span className="font-mono font-bold text-[#059669] dark:text-[#34D399]">
                     ${(datasetStats.totalArr / 1000000).toFixed(2)}M
                   </span>
                 </div>
@@ -1660,7 +1590,7 @@ export function ExcelAutomatorView() {
             <button
               onClick={handleGenerateWorkbook}
               disabled={isGenerating || datasetStats.rowCount === 0}
-              className="w-full mt-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs transition-all shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full mt-2 py-3 rounded-xl bg-[#059669] hover:bg-[#047857] active:scale-95 text-[#FAF8F5] font-bold text-xs transition-all shadow-md shadow-[#059669]/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isGenerating ? (
                 <>
@@ -1674,7 +1604,7 @@ export function ExcelAutomatorView() {
                 </>
               )}
             </button>
-            <p className="text-[10px] text-slate-400 text-center">
+            <p className="text-[10px] text-[var(--lm-text-tertiary)] text-center">
               Compiles natively on your device. Zero cloud data transmission.
             </p>
           </div>
