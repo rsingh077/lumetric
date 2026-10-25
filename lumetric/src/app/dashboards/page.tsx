@@ -19,6 +19,7 @@ import {
   UploadIcon,
   SearchIcon,
   BarChart3Icon,
+  FileSpreadsheetIcon,
 } from '@/components/icons';
 import { DatasetProfile } from '@/types';
 import { CustomChartBuilder } from '@/components/charts/CustomChartBuilder';
@@ -944,6 +945,15 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
               title="Executive PDF Print Dossier"
             >
               PDF
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setActiveView('excel')}
+              icon={<FileSpreadsheetIcon className="w-3.5 h-3.5 text-[#059669]" />}
+              title="Automate & Download Excel Spreadsheet (.xlsx)"
+            >
+              Excel (.xlsx)
             </Button>
             <Button
               variant="secondary"

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Workbook } from 'exceljs';
 import { StatusBadge, Button, Input } from '@/components/ui';
 import { LumetricAuthService, AuthUser, validateEmailAuthenticity } from '@/lib/auth';
 import { useApp } from '@/contexts/AppContext';
@@ -33,6 +34,7 @@ export function UserAuthProfileModal({
     deleteDocumentFile,
     storageFootprintBytes,
     currentWorkspace,
+    activeRows,
     updateWorkspace,
     loadSampleDataIntoProfile,
     clearProfileData,
@@ -344,6 +346,89 @@ export function UserAuthProfileModal({
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const emailToUse = authUser?.email || currentUser.email || 'user';
+      const wb = new Workbook();
+      wb.creator = `${currentUser?.name || 'Lumetric User'} [Lumetric Enterprise]`;
+      wb.created = new Date();
+
+      // Tab 1: Workspace Overview
+      const wsOverview = wb.addWorksheet('Workspace Overview');
+      wsOverview.columns = [{ width: 28 }, { width: 50 }];
+      wsOverview.addRow(['Workspace Parameter', 'Value']);
+      wsOverview.getRow(1).height = 24;
+      wsOverview.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      wsOverview.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
+
+      wsOverview.addRow(['Workspace Name', currentWorkspace?.name || 'Default Workspace']);
+      wsOverview.addRow(['Account Email', emailToUse]);
+      wsOverview.addRow(['Export Timestamp', new Date().toISOString()]);
+      wsOverview.addRow(['Total Ingested Datasets', datasets.length]);
+      wsOverview.addRow(['Total Document Dossiers', documentFiles.length]);
+      wsOverview.addRow(['Storage Footprint', formatBytes(storageFootprintBytes)]);
+
+      // Tab 2: Active Dataset Ledger (if available)
+      if (activeRows && activeRows.length > 0) {
+        const sheetName = (activeDataset?.fileName || 'Active Dataset').replace(/[^a-zA-Z0-9 ]/g, '_').slice(0, 31);
+        const wsData = wb.addWorksheet(sheetName, {
+          views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }],
+        });
+        const cols = Object.keys(activeRows[0] || {});
+        wsData.columns = cols.map((c) => ({ header: c, key: c, width: Math.max(16, c.length + 4) }));
+        wsData.getRow(1).height = 24;
+        wsData.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        wsData.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+        activeRows.forEach((r) => wsData.addRow(r));
+      }
+
+      // Tab 3: Dataset Catalog
+      if (datasets.length > 0) {
+        const wsCatalog = wb.addWorksheet('Dataset Catalog');
+        wsCatalog.columns = [
+          { header: 'Dataset ID', key: 'id', width: 20 },
+          { header: 'File Name', key: 'fileName', width: 28 },
+          { header: 'Row Count', key: 'rowCount', width: 14 },
+          { header: 'Column Count', key: 'columnCount', width: 14 },
+          { header: 'Status', key: 'status', width: 14 },
+          { header: 'Uploaded At', key: 'uploadedAt', width: 24 },
+        ];
+        wsCatalog.getRow(1).height = 24;
+        wsCatalog.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        wsCatalog.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
+        datasets.forEach((d) => {
+          wsCatalog.addRow({
+            id: d.id,
+            fileName: d.fileName,
+            rowCount: d.rowCount,
+            columnCount: d.columnCount,
+            status: d.status,
+            uploadedAt: d.uploadedAt,
+          });
+        });
+      }
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const filename = `lumetric_workspace_${emailToUse.replace(/[^a-z0-9]/gi, '_')}.xlsx`;
+      const url = window.URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', url);
+      downloadAnchor.setAttribute('download', filename);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      window.URL.revokeObjectURL(url);
+
+      setFeedback({ type: 'success', message: 'Workspace successfully exported as an Excel (.xlsx) workbook!' });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (e: any) {
+      setFeedback({ type: 'error', message: `Excel export failed: ${e?.message || 'Unknown error'}` });
+    }
   };
 
   const handleExportBackup = () => {
@@ -1041,7 +1126,7 @@ export function UserAuthProfileModal({
                 <span className="text-xs font-bold text-[var(--lm-text-primary)] block">
                   Profile Workspace Controls
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -1055,10 +1140,18 @@ export function UserAuthProfileModal({
                   </button>
                   <button
                     type="button"
+                    onClick={handleExportExcel}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#059669] hover:bg-[#047857] text-[#FAF8F5] text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                  >
+                    <span>📊 Export Excel (.xlsx)</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleExportBackup}
                     className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--lm-bg-primary)] hover:bg-[var(--lm-bg-tertiary)] text-[var(--lm-text-primary)] text-xs font-semibold border border-[var(--lm-border-default)] transition-all cursor-pointer"
+                    title="Export raw developer JSON backup"
                   >
-                    <span>💾 Export JSON</span>
+                    <span>💾 Backup JSON</span>
                   </button>
                   <button
                     type="button"
