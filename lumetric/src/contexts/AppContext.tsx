@@ -65,6 +65,7 @@ interface AppContextType {
   datasets: DatasetProfile[];
   activeDataset: DatasetProfile | null;
   activeRows: Record<string, string>[];
+  datasetRowsMap: Record<string, Record<string, string>[]>;
   setActiveDataset: (dataset: DatasetProfile | null, rows?: Record<string, string>[]) => void;
   addDataset: (dataset: DatasetProfile, rows?: Record<string, string>[]) => void;
   deleteDataset: (id: string) => void;
@@ -1176,6 +1177,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         datasets,
         activeDataset,
         activeRows,
+        datasetRowsMap,
         setActiveDataset,
         addDataset,
         deleteDataset,

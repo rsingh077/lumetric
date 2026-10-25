@@ -116,6 +116,8 @@ export function Header() {
       stories: 'Story Studio',
       operations: 'Operations',
       settings: 'Workspace Settings',
+      sql: 'SQL Studio',
+      excel: 'Excel Automator',
     };
     return titles[activeView] || 'Studio Overview';
   };

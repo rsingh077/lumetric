@@ -20,6 +20,8 @@ import {
   ChevronDownIcon,
   PlusIcon,
   LogOutIcon,
+  TerminalIcon,
+  FileSpreadsheetIcon,
 } from '@/components/icons';
 import { UserRole, ActiveView } from '@/types';
 
@@ -45,6 +47,8 @@ const navSections: NavSection[] = [
       { id: 'analysis', label: 'Analysis & EDA', badge: 'Active', icon: BarChart3Icon },
       { id: 'pipelines', label: 'Data Pipelines', icon: GitBranchIcon },
       { id: 'models', label: 'ML Models & AI', icon: BrainIcon },
+      { id: 'sql', label: 'SQL Studio', badge: 'New', icon: TerminalIcon },
+      { id: 'excel', label: 'Excel Automator', badge: 'Pro', icon: FileSpreadsheetIcon },
     ],
   },
   {

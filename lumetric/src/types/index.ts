@@ -148,6 +148,8 @@ export type ActiveView =
   | 'pipelines'
   | 'analysis'
   | 'models'
+  | 'sql'
+  | 'excel'
   | 'dashboards'
   | 'stories'
   | 'operations'
