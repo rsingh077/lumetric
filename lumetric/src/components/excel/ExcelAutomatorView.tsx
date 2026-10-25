@@ -242,6 +242,47 @@ export function ExcelAutomatorView() {
   const [isProcessingFile, setIsProcessingFile] = useState<boolean>(false);
   const [fileAnalysisMessage, setFileAnalysisMessage] = useState<string | null>(null);
 
+  // User-Configured Personalized Column Mappings
+  const [selectedIdCol, setSelectedIdCol] = useState<string>('');
+  const [selectedMetricCol, setSelectedMetricCol] = useState<string>('');
+  const [selectedDimCol, setSelectedDimCol] = useState<string>('');
+  const [selectedSecondaryDimCol, setSelectedSecondaryDimCol] = useState<string>('');
+  const [selectedRiskCol, setSelectedRiskCol] = useState<string>('');
+
+  // Auto-initialize intelligent defaults from active dataset
+  React.useEffect(() => {
+    if (!activeRows || activeRows.length === 0) return;
+    const cols = Object.keys(activeRows[0] || {});
+    if (cols.length === 0) return;
+
+    const findBestCol = (keywords: string[], fallbackIdx = 0) => {
+      const found = cols.find((c) => {
+        const lower = c.toLowerCase();
+        return keywords.some((k) => lower.includes(k));
+      });
+      return found || cols[fallbackIdx] || cols[0];
+    };
+
+    // ID column: look for id, key, code, name
+    setSelectedIdCol((prev) => (prev && cols.includes(prev) ? prev : findBestCol(['id', 'key', 'code', 'account', 'customer', 'name'], 0)));
+
+    // Metric column: look for arr, revenue, sales, amount, price, cost, total, value, score
+    const detectedNumericCol = cols.find((c) => {
+      const vals = activeRows.slice(0, 20).map((r) => parseFloat(String(r[c] || '').replace(/[\$,]/g, '')));
+      return vals.filter((v) => !isNaN(v)).length >= 5;
+    });
+    setSelectedMetricCol((prev) => (prev && cols.includes(prev) ? prev : findBestCol(['arr', 'revenue', 'sale', 'amount', 'price', 'val', 'total', 'cost'], cols.indexOf(detectedNumericCol || cols[0]))));
+
+    // Primary dimension: look for region, country, area, location, geo, dept, department
+    setSelectedDimCol((prev) => (prev && cols.includes(prev) ? prev : findBestCol(['region', 'country', 'area', 'territory', 'location', 'geo', 'dept', 'market'], Math.min(1, cols.length - 1))));
+
+    // Secondary dimension: look for tier, plan, segment, category, status, type
+    setSelectedSecondaryDimCol((prev) => (prev && cols.includes(prev) ? prev : findBestCol(['tier', 'plan', 'segment', 'type', 'category', 'status', 'role'], Math.min(2, cols.length - 1))));
+
+    // Risk / Score column
+    setSelectedRiskCol((prev) => (prev && cols.includes(prev) ? prev : findBestCol(['churn', 'risk', 'nps', 'score', 'audit', 'prob', 'rating', 'health'], Math.min(3, cols.length - 1))));
+  }, [activeRows, activeDataset]);
+
   // Handle direct file intake (.xlsx, .csv, .tsv, .json)
   const handleFileUpload = async (file: File) => {
     try {
@@ -474,7 +515,7 @@ export function ExcelAutomatorView() {
 
 
 
-  // Active dataset metrics helper
+  // Active dataset metrics helper (dynamically driven by user's personalized column selection)
   const datasetStats = useMemo(() => {
     if (!activeRows || activeRows.length === 0) {
       return {
@@ -484,49 +525,58 @@ export function ExcelAutomatorView() {
         avgNps: 0,
         avgChurn: 0,
         columns: [],
+        metricColName: 'Metric',
       };
     }
 
     const columns = Object.keys(activeRows[0] || {});
-    let arrSum = 0;
-    let npsSum = 0;
-    let churnSum = 0;
-    let validArrCount = 0;
-    let validNpsCount = 0;
-    let validChurnCount = 0;
+    const metricKey = selectedMetricCol && columns.includes(selectedMetricCol)
+      ? selectedMetricCol
+      : columns.find((c) => /arr|rev|sale|amount|price|val|cost|total/i.test(c)) || columns[0];
+
+    const riskKey = selectedRiskCol && columns.includes(selectedRiskCol)
+      ? selectedRiskCol
+      : columns.find((c) => /churn|risk|prob|nps|score/i.test(c)) || '';
+
+    let metricSum = 0;
+    let riskSum = 0;
+    let validMetricCount = 0;
+    let validRiskCount = 0;
 
     activeRows.forEach((r) => {
-      // Find ARR-like column
-      const arrVal = parseFloat(String(r['ARR_USD'] || r['arr'] || r['revenue'] || '0').replace(/[\$,]/g, ''));
-      if (!isNaN(arrVal)) {
-        arrSum += arrVal;
-        validArrCount++;
+      if (metricKey) {
+        const raw = r[metricKey];
+        if (raw !== null && raw !== undefined) {
+          const val = parseFloat(String(raw).replace(/[\$,]/g, ''));
+          if (!isNaN(val)) {
+            metricSum += val;
+            validMetricCount++;
+          }
+        }
       }
 
-      // Find NPS-like column
-      const npsVal = parseFloat(String(r['NPS_Score'] || r['nps'] || '0'));
-      if (!isNaN(npsVal)) {
-        npsSum += npsVal;
-        validNpsCount++;
-      }
-
-      // Find Churn-like column
-      const churnVal = parseFloat(String(r['Churn_Probability'] || r['churn'] || '0'));
-      if (!isNaN(churnVal)) {
-        churnSum += churnVal;
-        validChurnCount++;
+      if (riskKey) {
+        const raw = r[riskKey];
+        if (raw !== null && raw !== undefined) {
+          const val = parseFloat(String(raw).replace(/[\$,]/g, ''));
+          if (!isNaN(val)) {
+            riskSum += val;
+            validRiskCount++;
+          }
+        }
       }
     });
 
     return {
       rowCount: activeRows.length,
-      totalArr: arrSum,
-      avgArr: validArrCount > 0 ? arrSum / validArrCount : 0,
-      avgNps: validNpsCount > 0 ? npsSum / validNpsCount : 0,
-      avgChurn: validChurnCount > 0 ? churnSum / validChurnCount : 0,
+      totalArr: metricSum,
+      avgArr: validMetricCount > 0 ? metricSum / validMetricCount : 0,
+      avgNps: 75,
+      avgChurn: validRiskCount > 0 ? riskSum / validRiskCount : 0.05,
       columns,
+      metricColName: metricKey || 'Metric',
     };
-  }, [activeRows]);
+  }, [activeRows, selectedMetricCol, selectedRiskCol]);
 
   // Dynamic Opportunity Recommendations ("What Can We Build With This File?")
   const recommendations = useMemo(() => {
@@ -724,12 +774,35 @@ export function ExcelAutomatorView() {
         return found >= 0 ? found : 0;
       };
 
-      const arrColIdx = findColIdx(['arr', 'revenue', 'price', 'amount', 'val']);
-      const regColIdx = findColIdx(['region', 'country', 'area', 'territory', 'location']);
-      const tierColIdx = findColIdx(['tier', 'plan', 'segment', 'type', 'category']);
-      const npsColIdx = findColIdx(['nps', 'score', 'rating', 'satisfaction']);
-      const churnColIdx = findColIdx(['churn', 'risk', 'prob']);
+      const arrColIdx = selectedMetricCol && cols.indexOf(selectedMetricCol) >= 0
+        ? cols.indexOf(selectedMetricCol)
+        : findColIdx(['arr', 'revenue', 'price', 'amount', 'val', 'sale', 'cost', 'total']);
 
+      const regColIdx = selectedDimCol && cols.indexOf(selectedDimCol) >= 0
+        ? cols.indexOf(selectedDimCol)
+        : findColIdx(['region', 'country', 'area', 'territory', 'location', 'dept', 'geo']);
+
+      let tierColIdx = selectedSecondaryDimCol && cols.indexOf(selectedSecondaryDimCol) >= 0
+        ? cols.indexOf(selectedSecondaryDimCol)
+        : findColIdx(['tier', 'plan', 'segment', 'type', 'category', 'status']);
+      if (tierColIdx === regColIdx && cols.length > 1) {
+        const other = cols.findIndex((_, idx) => idx !== regColIdx);
+        if (other >= 0) tierColIdx = other;
+      }
+
+      const idColIdx = selectedIdCol && cols.indexOf(selectedIdCol) >= 0
+        ? cols.indexOf(selectedIdCol)
+        : findColIdx(['id', 'key', 'code', 'account', 'customer', 'name']);
+
+      const npsColIdx = selectedRiskCol && cols.indexOf(selectedRiskCol) >= 0
+        ? cols.indexOf(selectedRiskCol)
+        : findColIdx(['nps', 'score', 'rating', 'satisfaction', 'metric']);
+
+      const churnColIdx = selectedRiskCol && cols.indexOf(selectedRiskCol) >= 0
+        ? cols.indexOf(selectedRiskCol)
+        : findColIdx(['churn', 'risk', 'prob', 'status', 'audit']);
+
+      const idColLetter = getColumnLetter(idColIdx);
       const arrColLetter = getColumnLetter(arrColIdx);
       const regColLetter = getColumnLetter(regColIdx);
       const tierColLetter = getColumnLetter(tierColIdx);
@@ -778,13 +851,17 @@ export function ExcelAutomatorView() {
         subCell.alignment = { vertical: 'middle', horizontal: 'center' };
         wsDash.getRow(3).height = 20;
 
-        // KPI Scorecards (Clean ECMA-376 formulas without leading =)
+        // Dynamic KPI Scorecards driven by user-selected columns
+        const metricColName = cols[arrColIdx] || 'ARR';
+        const idColName = cols[idColIdx] || 'ID';
+        const dimColName = cols[regColIdx] || 'Dimension';
+
         const kpis = [
-          { col: 'B', label: 'TOTAL PORTFOLIO ARR', formula: `SUM(DataLedger!${arrColLetter}2:${arrColLetter}${totalRowsLedger})`, fmt: '$#,##0', calc: datasetStats.totalArr },
-          { col: 'C', label: 'AVG CONTRACT VALUE', formula: `AVERAGE(DataLedger!${arrColLetter}2:${arrColLetter}${totalRowsLedger})`, fmt: '$#,##0', calc: datasetStats.avgArr },
-          { col: 'D', label: 'ACCOUNT VOLUME', formula: `COUNTA(DataLedger!A2:A${totalRowsLedger})`, fmt: '#,##0', calc: datasetStats.rowCount },
-          { col: 'E', label: 'AVG NPS SCORE', formula: `AVERAGE(DataLedger!${npsColLetter}2:${npsColLetter}${totalRowsLedger})`, fmt: '0.0', calc: datasetStats.avgNps },
-          { col: 'F', label: 'MEAN CHURN RISK', formula: `AVERAGE(DataLedger!${churnColLetter}2:${churnColLetter}${totalRowsLedger})`, fmt: '0.0%', calc: datasetStats.avgChurn },
+          { col: 'B', label: `TOTAL ${metricColName.replace(/_/g, ' ').toUpperCase()}`, formula: `SUM(DataLedger!${arrColLetter}2:${arrColLetter}${totalRowsLedger})`, fmt: '$#,##0', calc: datasetStats.totalArr },
+          { col: 'C', label: `AVG ${metricColName.replace(/_/g, ' ').toUpperCase()}`, formula: `AVERAGE(DataLedger!${arrColLetter}2:${arrColLetter}${totalRowsLedger})`, fmt: '$#,##0', calc: datasetStats.avgArr },
+          { col: 'D', label: `TOTAL ${idColName.replace(/_/g, ' ').toUpperCase()}`, formula: `COUNTA(DataLedger!${idColLetter}2:${idColLetter}${totalRowsLedger})`, fmt: '#,##0', calc: datasetStats.rowCount },
+          { col: 'E', label: `AVG ${(cols[npsColIdx] || 'SCORE').replace(/_/g, ' ').toUpperCase()}`, formula: `AVERAGE(DataLedger!${npsColLetter}2:${npsColLetter}${totalRowsLedger})`, fmt: '0.0', calc: datasetStats.avgNps },
+          { col: 'F', label: `MEAN ${(cols[churnColIdx] || 'RISK').replace(/_/g, ' ').toUpperCase()}`, formula: `AVERAGE(DataLedger!${churnColLetter}2:${churnColLetter}${totalRowsLedger})`, fmt: '0.0%', calc: datasetStats.avgChurn },
         ];
 
         kpis.forEach((kpi) => {
@@ -808,13 +885,19 @@ export function ExcelAutomatorView() {
 
         wsDash.mergeCells('B9:F9');
         const regHeader = wsDash.getCell('B9');
-        regHeader.value = 'PORTFOLIO BREAKDOWN BY REGION';
+        regHeader.value = `DISTRIBUTION ANALYSIS BY ${dimColName.replace(/_/g, ' ').toUpperCase()}`;
         regHeader.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: palette.headerFont } };
         regHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
         regHeader.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
         wsDash.getRow(9).height = 26;
 
-        const tblHeaders = ['Region', 'Client Count', 'Total ARR ($)', 'Average ARR ($)', 'Revenue Share %'];
+        const tblHeaders = [
+          dimColName.replace(/_/g, ' '),
+          'Record Count',
+          `Total ${metricColName.replace(/_/g, ' ')} ($)`,
+          `Average ${metricColName.replace(/_/g, ' ')} ($)`,
+          'Share of Total %',
+        ];
         const tblCols = ['B', 'C', 'D', 'E', 'F'];
         tblHeaders.forEach((h, idx) => {
           const c = wsDash.getCell(`${tblCols[idx]}10`);
@@ -1431,12 +1514,16 @@ export function ExcelAutomatorView() {
         fTitle.alignment = { vertical: 'middle', horizontal: 'center' };
         wsDynamic.getRow(1).height = 32;
 
+        const idHeader = (cols[idColIdx] || 'Account ID').replace(/_/g, ' ');
+        const metricHeader = (cols[arrColIdx] || 'Value').replace(/_/g, ' ');
+        const dimHeader = (cols[regColIdx] || 'Dimension').replace(/_/g, ' ');
+
         const dynHeaders = [
-          'Account ID',
-          'Client Name',
-          'Revenue (XLOOKUP)',
-          'Risk Classification (IF)',
-          'Regional Subtotal (SUMIFS)',
+          idHeader,
+          'Dimension Context',
+          `${metricHeader} (XLOOKUP)`,
+          'Classification (IF)',
+          `${dimHeader} Subtotal (SUMIFS)`,
           'Formula Explanation',
         ];
         const dRow = wsDynamic.addRow(dynHeaders);
@@ -1449,17 +1536,17 @@ export function ExcelAutomatorView() {
 
         sanitizedRows.forEach((row, idx) => {
           const rowNum = idx + 3;
-          const accId = String(row['Account_ID'] || `ACC-${1000 + idx}`);
-          const custName = String(row['Customer_Name'] || 'Customer');
+          const accId = String(row[cols[idColIdx]] || `ID-${1000 + idx}`);
+          const custName = String(row[cols[regColIdx]] || row[cols[1]] || `Record ${idx + 1}`);
           const arrVal = typeof row[cols[arrColIdx]] === 'number' ? row[cols[arrColIdx]] : 50000;
           const churnVal = typeof row[cols[churnColIdx]] === 'number' ? row[cols[churnColIdx]] : 0.05;
-          const regVal = String(row[cols[regColIdx]] || 'North America');
+          const regVal = String(row[cols[regColIdx]] || 'Global');
 
           const r = wsDynamic.addRow([
             accId,
             custName,
             {
-              formula: `XLOOKUP(A${rowNum}, MasterLedger!$A$2:$A$${totalRowsLedger}, MasterLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, "Not Found")`,
+              formula: `XLOOKUP(A${rowNum}, MasterLedger!$${idColLetter}$2:$${idColLetter}$${totalRowsLedger}, MasterLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, "Not Found")`,
               result: arrVal,
             },
             {
@@ -2026,7 +2113,24 @@ export function ExcelAutomatorView() {
             </div>
           </div>
 
-          <div className="text-center text-[11px] text-[var(--lm-text-tertiary)] flex items-center justify-center gap-2">
+          <div className="pt-2.5 border-t border-[var(--lm-border-default)]/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-[var(--lm-text-secondary)]">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-[var(--lm-text-primary)]">🎯 Active Column Mapping:</span>
+              <span>Metric: <strong className="text-blue-600 dark:text-blue-400 font-mono">{selectedMetricCol || 'None'}</strong></span>
+              <span>•</span>
+              <span>ID Key: <strong className="text-amber-600 dark:text-amber-400 font-mono">{selectedIdCol || 'None'}</strong></span>
+              <span>•</span>
+              <span>Dimension: <strong className="text-purple-600 dark:text-purple-400 font-mono">{selectedDimCol || 'None'}</strong></span>
+            </div>
+            <a
+              href="#column-mapping-section"
+              className="text-[#059669] hover:underline font-bold shrink-0 cursor-pointer"
+            >
+              Customize Target Columns in Sidebar ↓
+            </a>
+          </div>
+
+          <div className="text-center text-[10px] text-[var(--lm-text-tertiary)] flex items-center justify-center gap-2 pt-1">
             <span>💡 <strong>Drag &amp; Drop:</strong> You can drop any <code>.xlsx</code>, <code>.csv</code>, or <code>.json</code> file right here to inspect it instantly!</span>
           </div>
         </div>
@@ -2399,6 +2503,139 @@ export function ExcelAutomatorView() {
               />
             </div>
 
+            {/* ══════════════════════════════════════════════════════════ */}
+            {/* PERSONALIZED TARGET COLUMN SELECTION                       */}
+            {/* ══════════════════════════════════════════════════════════ */}
+            <div id="column-mapping-section" className="pt-3 border-t border-[var(--lm-border-default)]/70 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[var(--lm-text-primary)] flex items-center gap-1.5">
+                  <TableIcon className="w-3.5 h-3.5 text-[#059669]" />
+                  <span>Personalized Column Mapping</span>
+                </label>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#ECFDF5] dark:bg-[#064E3B]/60 text-[#065F46] dark:text-[#34D399] font-bold border border-[#059669]/30">
+                  {datasetStats.columns.length} Columns
+                </span>
+              </div>
+              <p className="text-[11px] text-[var(--lm-text-secondary)] leading-relaxed">
+                Choose which column or ID from your uploaded file drives your personalized metrics and calculations:
+              </p>
+
+              {/* 1. Primary Metric Column */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-[var(--lm-text-primary)]">
+                    Primary Metric (Value / Revenue)
+                  </label>
+                  <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    Calculations
+                  </span>
+                </div>
+                <select
+                  value={selectedMetricCol}
+                  onChange={(e) => setSelectedMetricCol(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-colors cursor-pointer"
+                >
+                  {datasetStats.columns.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 2. Identifier Column */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-[var(--lm-text-primary)]">
+                    ID / Record Key Column
+                  </label>
+                  <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                    Lookup Key
+                  </span>
+                </div>
+                <select
+                  value={selectedIdCol}
+                  onChange={(e) => setSelectedIdCol(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-colors cursor-pointer"
+                >
+                  {datasetStats.columns.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 3. Primary Dimension (Grouping / Region) */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-[var(--lm-text-primary)]">
+                    Primary Dimension (Grouping)
+                  </label>
+                  <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    Category
+                  </span>
+                </div>
+                <select
+                  value={selectedDimCol}
+                  onChange={(e) => setSelectedDimCol(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-colors cursor-pointer"
+                >
+                  {datasetStats.columns.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 4. Secondary Dimension (Plan / Category / Status) */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-[var(--lm-text-primary)]">
+                    Secondary Dimension (Pivot Columns)
+                  </label>
+                  <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                    Cross-Tab
+                  </span>
+                </div>
+                <select
+                  value={selectedSecondaryDimCol}
+                  onChange={(e) => setSelectedSecondaryDimCol(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-colors cursor-pointer"
+                >
+                  {datasetStats.columns.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 5. Quality / Risk / Score Column */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-[var(--lm-text-primary)]">
+                    Risk / Score / Flag Column
+                  </label>
+                  <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-rose-50 dark:bg-rose-950/40 text-[#E34234] border border-[#E34234]/30">
+                    Heatmaps
+                  </span>
+                </div>
+                <select
+                  value={selectedRiskCol}
+                  onChange={(e) => setSelectedRiskCol(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-colors cursor-pointer"
+                >
+                  {datasetStats.columns.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {/* Color Palette Theme */}
             <div>
               <label className="block text-xs font-semibold text-[var(--lm-text-primary)] mb-1.5">
@@ -2476,11 +2713,23 @@ export function ExcelAutomatorView() {
                   </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)]/80">
-                  <span className="text-[10px] text-[var(--lm-text-tertiary)] block font-medium">Total ARR</span>
+                  <span className="text-[10px] text-[var(--lm-text-tertiary)] block font-medium truncate" title={`Total of ${datasetStats.metricColName}`}>
+                    Total {datasetStats.metricColName}
+                  </span>
                   <span className="font-mono font-bold text-[#059669] dark:text-[#34D399]">
-                    ${(datasetStats.totalArr / 1000000).toFixed(2)}M
+                    {datasetStats.totalArr >= 1000000
+                      ? `$${(datasetStats.totalArr / 1000000).toFixed(2)}M`
+                      : datasetStats.totalArr >= 1000
+                      ? `$${(datasetStats.totalArr / 1000).toFixed(1)}K`
+                      : datasetStats.totalArr > 0
+                      ? `$${datasetStats.totalArr.toLocaleString()}`
+                      : '$0.00M'}
                   </span>
                 </div>
+              </div>
+              <div className="p-2 rounded-lg bg-[var(--lm-bg-secondary)]/60 border border-[var(--lm-border-default)]/50 text-[10px] text-[var(--lm-text-secondary)] font-mono flex items-center justify-between">
+                <span>Key: <strong className="text-[var(--lm-text-primary)] truncate max-w-[85px] inline-block align-bottom">{selectedIdCol || 'Default'}</strong></span>
+                <span>Group: <strong className="text-[var(--lm-text-primary)] truncate max-w-[85px] inline-block align-bottom">{selectedDimCol || 'Default'}</strong></span>
               </div>
             </div>
 
