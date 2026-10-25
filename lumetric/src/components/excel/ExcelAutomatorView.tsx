@@ -19,6 +19,19 @@ import {
 } from '@/components/icons';
 
 // ════════════════════════════════════════════════════════════════════════════
+// HELPER: Convert 0-indexed column integer to Excel Column Letter (A..Z, AA..)
+// ════════════════════════════════════════════════════════════════════════════
+function getColumnLetter(colIndex: number): string {
+  let letter = '';
+  let idx = colIndex;
+  while (idx >= 0) {
+    letter = String.fromCharCode((idx % 26) + 65) + letter;
+    idx = Math.floor(idx / 26) - 1;
+  }
+  return letter || 'A';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // SELF-DEALING AUTOMATION CATALOG DEFINITIONS
 // ════════════════════════════════════════════════════════════════════════════
 export type AutomationType =
@@ -50,14 +63,14 @@ const AUTOMATION_CATALOG: AutomationCard[] = [
     category: 'Executive',
     description:
       'Creates a 4-tab C-suite ready workbook featuring styled KPI metric callouts, frozen headers, auto-filters, summary aggregation tables, and audit checksum metadata.',
-    sheetsGenerated: ['1. Executive Dashboard', '2. Pivot & Distribution', '3. Data Ledger', '4. Audit & Verification'],
+    sheetsGenerated: ['Dashboard', 'PivotSummary', 'DataLedger', 'AuditTrail'],
     features: [
       'Top KPI scorecards with currency ($) & percentage formatting',
       'Frozen top header pane & auto-filter range',
       'Categorical distribution matrix with dynamic sub-totals',
       'Automated SHA-256 integrity checksum & metadata audit sheet',
     ],
-    sampleFormula: '=SUM(Ledger!E2:E101)',
+    sampleFormula: 'SUM(DataLedger!E2:E101)',
   },
   {
     id: 'financial_runway',
@@ -67,14 +80,14 @@ const AUTOMATION_CATALOG: AutomationCard[] = [
     category: 'Financial',
     description:
       'Generates a forward-looking 12-month financial model with compound growth rates, COGS allocation, gross margin calculations, and Budget vs. Actual variance tracking.',
-    sheetsGenerated: ['1. 12-Month P&L Runway', '2. Variance Analysis (BvA)', '3. Growth Scenarios'],
+    sheetsGenerated: ['FinancialRunway', 'VarianceAnalysis'],
     features: [
-      '12-month sequential compound growth formulas: =B5*(1+$B$2)',
-      'Gross Profit & Operating Margin % formulas: =(Revenue - COGS)',
-      'Variance Analysis with =Actual - Budget and =(Actual - Budget)/Budget',
+      '12-month sequential compound growth formulas: B5*(1+$B$2)',
+      'Gross Profit & Operating Margin % formulas: (Revenue - COGS)',
+      'Variance Analysis with Actual - Budget and (Actual - Budget)/Budget',
       'Three scenario runways: Conservative (5%), Target (12%), Hyper-growth (25%)',
     ],
-    sampleFormula: '=C5*(1+$B$2)',
+    sampleFormula: 'C5*(1+$B$2)',
   },
   {
     id: 'pivot_master',
@@ -84,14 +97,14 @@ const AUTOMATION_CATALOG: AutomationCard[] = [
     category: 'Analytics',
     description:
       'Engineers a multi-dimensional cross-tabulation matrix across two categorical dimensions with native formula row sums, column totals, and global grand totals.',
-    sheetsGenerated: ['1. Cross-Tab Matrix', '2. Percentage of Total', '3. Source Data'],
+    sheetsGenerated: ['CrossTabMatrix', 'SourceData'],
     features: [
       'Two-dimensional cross-tabulation (e.g., Region × Plan Tier)',
-      'Row sum formulas: =SUM(C4:E4) and column sum formulas: =SUM(C4:C8)',
-      'Global grand total formula: =SUM(F4:F8)',
-      'Percentage share distribution matrix: =(F4/$F$9)*100',
+      'Row sum formulas: SUM(C4:E4) and column sum formulas: SUM(C4:C8)',
+      'Global grand total formula: SUM(F4:F8)',
+      'Percentage share distribution matrix: (F4/$F$9)*100',
     ],
-    sampleFormula: '=SUM(C4:E4)',
+    sampleFormula: 'SUM(C4:E4)',
   },
   {
     id: 'formula_suite',
@@ -100,15 +113,15 @@ const AUTOMATION_CATALOG: AutomationCard[] = [
     tagColor: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
     category: 'Engineering',
     description:
-      'Injects active corporate Excel formulas into your sheets: =XLOOKUP(), =SUMIFS(), =COUNTIFS(), =AVERAGEIFS(), and nested =IF() risk rules with pre-evaluated cached results.',
-    sheetsGenerated: ['1. Dynamic Formulas', '2. Multi-Criteria Aggregates', '3. Formula Documentation'],
+      'Injects active corporate Excel formulas into your sheets: XLOOKUP(), SUMIFS(), COUNTIFS(), AVERAGEIFS(), and nested IF() risk rules with pre-evaluated cached results.',
+    sheetsGenerated: ['DynamicFormulas', 'MasterLedger'],
     features: [
-      '=XLOOKUP(A2, Ledger!$A$2:$A$100, Ledger!$E$2:$E$100, "N/A")',
-      '=SUMIFS(Ledger!$E$2:$E$100, Ledger!$C$2:$C$100, "North America")',
-      '=IF(G2>0.2, "CRITICAL RISK", IF(G2>0.1, "WATCHLIST", "HEALTHY"))',
-      'Dual-engine compatibility: Works in Microsoft 365, Google Sheets, & LibreOffice',
+      'XLOOKUP(A2, MasterLedger!$A$2:$A$100, MasterLedger!$E$2:$E$100, "N/A")',
+      'SUMIFS(MasterLedger!$E$2:$E$100, MasterLedger!$C$2:$C$100, "North America")',
+      'IF(G2>0.2, "CRITICAL RISK", IF(G2>0.1, "WATCHLIST", "HEALTHY"))',
+      'Dual-engine compatibility: 100% ECMA-376 OpenXML standard',
     ],
-    sampleFormula: '=XLOOKUP(A2, Ledger!$A$2:$A$50, Ledger!$D$2:$D$50)',
+    sampleFormula: 'XLOOKUP(A2, MasterLedger!$A$2:$A$50, MasterLedger!$D$2:$D$50)',
   },
   {
     id: 'conditional_heatmap',
@@ -118,14 +131,14 @@ const AUTOMATION_CATALOG: AutomationCard[] = [
     category: 'Analytics',
     description:
       'Applies subtle, presentation-grade cell highlights to numbers, risk scores, and audit flags using pastel corporate tones (soft green, soft amber, and soft crimson).',
-    sheetsGenerated: ['1. Heatmap Ledger', '2. Outlier & Flagged Records', '3. Threshold Key'],
+    sheetsGenerated: ['HeatmapLedger', 'ThresholdKey'],
     features: [
       'Soft green fill (#D1FAE5) for top ARR accounts & verified status',
       'Soft amber fill (#FEF3C7) for elevated churn watchlist (10% - 20%)',
       'Soft rose fill (#FEE2E2) for high risk (>20%) or unverified audits',
       'Strict currency ($#,##0.00) & percentage (0.0%) number formatting',
     ],
-    sampleFormula: '=IF(Churn_Prob>0.2, "ALERT", "OK")',
+    sampleFormula: 'IF(Churn_Prob>0.2, "ALERT", "OK")',
   },
   {
     id: 'clean_standardize',
@@ -135,14 +148,14 @@ const AUTOMATION_CATALOG: AutomationCard[] = [
     category: 'Engineering',
     description:
       'Trims whitespace, capitalizes names to Title Case, fills missing values with standardized placeholders or medians, and outputs a clean dataset with a full cleaning log.',
-    sheetsGenerated: ['1. Cleaned & Standardized Data', '2. Data Cleaning Audit Log'],
+    sheetsGenerated: ['StandardizedData', 'CleaningAuditLog'],
     features: [
-      'Automated string trimming (=TRIM equivalent applied)',
+      'Automated string trimming (TRIM equivalent applied)',
       'Title-case normalization for customer & product names',
       'Null value imputation (standardized "N/A" and numeric medians)',
       'Itemized anomaly repair log with exact row & column coordinates',
     ],
-    sampleFormula: '=TRIM(CLEAN(A2))',
+    sampleFormula: 'TRIM(CLEAN(A2))',
   },
 ];
 
@@ -211,6 +224,8 @@ export function ExcelAutomatorView() {
   const [reportTitle, setReportTitle] = useState<string>('Executive Intelligence Report');
   const [growthScenarioPct, setGrowthScenarioPct] = useState<number>(12); // 12% default
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [previewTab, setPreviewTab] = useState<'blueprint' | 'data_grid' | 'formulas'>('blueprint');
+  const [showHowToOpenModal, setShowHowToOpenModal] = useState<boolean>(false);
   const [downloadSuccess, setDownloadSuccess] = useState<{
     fileName: string;
     fileSizeBytes: number;
@@ -276,8 +291,31 @@ export function ExcelAutomatorView() {
     return AUTOMATION_CATALOG.find((c) => c.id === selectedAutomation) || AUTOMATION_CATALOG[0];
   }, [selectedAutomation]);
 
+  // Quick CSV fallback download
+  const handleExportCSV = () => {
+    if (!activeRows || activeRows.length === 0) return;
+    const headers = Object.keys(activeRows[0]);
+    const csvLines = [headers.join(',')];
+    activeRows.forEach((r) => {
+      const rowVals = headers.map((h) => {
+        const val = String(r[h] ?? '');
+        return val.includes(',') ? `"${val.replace(/"/g, '""')}"` : val;
+      });
+      csvLines.push(rowVals.join(','));
+    });
+    const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lumetric_${selectedAutomation}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
   // ════════════════════════════════════════════════════════════════════════════
-  // COMPREHENSIVE EXCELJS WORKBOOK GENERATION ENGINE
+  // COMPREHENSIVE EXCELJS WORKBOOK GENERATION ENGINE (ECMA-376 COMPLIANT)
   // ════════════════════════════════════════════════════════════════════════════
   const handleGenerateWorkbook = async () => {
     if (!activeRows || activeRows.length === 0) {
@@ -317,6 +355,29 @@ export function ExcelAutomatorView() {
 
       const cols = Object.keys(sanitizedRows[0] || {});
 
+      // Dynamic column coordinate resolution
+      const findColIdx = (keywords: string[]) => {
+        const found = cols.findIndex((c) => {
+          const lower = c.toLowerCase();
+          return keywords.some((k) => lower.includes(k));
+        });
+        return found >= 0 ? found : 0;
+      };
+
+      const arrColIdx = findColIdx(['arr', 'revenue', 'price', 'amount', 'val']);
+      const regColIdx = findColIdx(['region', 'country', 'area', 'territory', 'location']);
+      const tierColIdx = findColIdx(['tier', 'plan', 'segment', 'type', 'category']);
+      const npsColIdx = findColIdx(['nps', 'score', 'rating', 'satisfaction']);
+      const churnColIdx = findColIdx(['churn', 'risk', 'prob']);
+
+      const arrColLetter = getColumnLetter(arrColIdx);
+      const regColLetter = getColumnLetter(regColIdx);
+      const tierColLetter = getColumnLetter(tierColIdx);
+      const npsColLetter = getColumnLetter(npsColIdx);
+      const churnColLetter = getColumnLetter(churnColIdx);
+
+      const totalRowsLedger = datasetStats.rowCount + 1;
+
       const borderThin = {
         top: { style: 'thin' as const, color: { argb: palette.borderColor } },
         left: { style: 'thin' as const, color: { argb: palette.borderColor } },
@@ -324,9 +385,11 @@ export function ExcelAutomatorView() {
         right: { style: 'thin' as const, color: { argb: palette.borderColor } },
       };
 
+      // ────────────────────────────────────────────────────────────────────────
       // GENERATOR 1: INTERACTIVE EXECUTIVE DASHBOARD
+      // ────────────────────────────────────────────────────────────────────────
       if (selectedAutomation === 'executive_dashboard') {
-        const wsDash = wb.addWorksheet('1. Executive Dashboard', {
+        const wsDash = wb.addWorksheet('Dashboard', {
           views: [{ showGridLines: true }],
         });
 
@@ -355,12 +418,13 @@ export function ExcelAutomatorView() {
         subCell.alignment = { vertical: 'middle', horizontal: 'center' };
         wsDash.getRow(3).height = 20;
 
+        // KPI Scorecards (Clean ECMA-376 formulas without leading =)
         const kpis = [
-          { col: 'B', label: 'TOTAL PORTFOLIO ARR', formula: '=SUM(\'3. Data Ledger\'!E2:E' + (datasetStats.rowCount + 1) + ')', fmt: '$#,##0', calc: datasetStats.totalArr },
-          { col: 'C', label: 'AVG CONTRACT VALUE', formula: '=AVERAGE(\'3. Data Ledger\'!E2:E' + (datasetStats.rowCount + 1) + ')', fmt: '$#,##0', calc: datasetStats.avgArr },
-          { col: 'D', label: 'ACCOUNT VOLUME', formula: '=COUNTA(\'3. Data Ledger\'!A2:A' + (datasetStats.rowCount + 1) + ')', fmt: '#,##0', calc: datasetStats.rowCount },
-          { col: 'E', label: 'AVG NPS SCORE', formula: '=AVERAGE(\'3. Data Ledger\'!F2:F' + (datasetStats.rowCount + 1) + ')', fmt: '0.0', calc: datasetStats.avgNps },
-          { col: 'F', label: 'MEAN CHURN RISK', formula: '=AVERAGE(\'3. Data Ledger\'!G2:G' + (datasetStats.rowCount + 1) + ')', fmt: '0.0%', calc: datasetStats.avgChurn },
+          { col: 'B', label: 'TOTAL PORTFOLIO ARR', formula: `SUM(DataLedger!${arrColLetter}2:${arrColLetter}${totalRowsLedger})`, fmt: '$#,##0', calc: datasetStats.totalArr },
+          { col: 'C', label: 'AVG CONTRACT VALUE', formula: `AVERAGE(DataLedger!${arrColLetter}2:${arrColLetter}${totalRowsLedger})`, fmt: '$#,##0', calc: datasetStats.avgArr },
+          { col: 'D', label: 'ACCOUNT VOLUME', formula: `COUNTA(DataLedger!A2:A${totalRowsLedger})`, fmt: '#,##0', calc: datasetStats.rowCount },
+          { col: 'E', label: 'AVG NPS SCORE', formula: `AVERAGE(DataLedger!${npsColLetter}2:${npsColLetter}${totalRowsLedger})`, fmt: '0.0', calc: datasetStats.avgNps },
+          { col: 'F', label: 'MEAN CHURN RISK', formula: `AVERAGE(DataLedger!${churnColLetter}2:${churnColLetter}${totalRowsLedger})`, fmt: '0.0%', calc: datasetStats.avgChurn },
         ];
 
         kpis.forEach((kpi) => {
@@ -404,15 +468,14 @@ export function ExcelAutomatorView() {
 
         const regionGroups: Record<string, { count: number; arr: number }> = {};
         sanitizedRows.forEach((r) => {
-          const reg = String(r['Region'] || r['region'] || 'Global');
-          const arr = typeof r['ARR_USD'] === 'number' ? r['ARR_USD'] : 0;
+          const reg = String(r[cols[regColIdx]] || r['Region'] || 'Global');
+          const arr = typeof r[cols[arrColIdx]] === 'number' ? r[cols[arrColIdx]] : 0;
           if (!regionGroups[reg]) regionGroups[reg] = { count: 0, arr: 0 };
           regionGroups[reg].count++;
           regionGroups[reg].arr += arr;
         });
 
         let curRow = 11;
-        const totalRowsLedger = datasetStats.rowCount + 1;
         Object.entries(regionGroups).forEach(([regName, stats]) => {
           const cReg = wsDash.getCell(`B${curRow}`);
           cReg.value = regName;
@@ -421,7 +484,7 @@ export function ExcelAutomatorView() {
 
           const cCount = wsDash.getCell(`C${curRow}`);
           cCount.value = {
-            formula: `=COUNTIF('3. Data Ledger'!$C$2:$C$${totalRowsLedger}, "${regName}")`,
+            formula: `COUNTIF(DataLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${regName}")`,
             result: stats.count,
           };
           cCount.font = { name: 'Segoe UI', size: 10 };
@@ -431,7 +494,7 @@ export function ExcelAutomatorView() {
 
           const cArr = wsDash.getCell(`D${curRow}`);
           cArr.value = {
-            formula: `=SUMIF('3. Data Ledger'!$C$2:$C$${totalRowsLedger}, "${regName}", '3. Data Ledger'!$E$2:$E$${totalRowsLedger})`,
+            formula: `SUMIF(DataLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${regName}", DataLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger})`,
             result: stats.arr,
           };
           cArr.font = { name: 'Segoe UI', size: 10, bold: true };
@@ -441,7 +504,7 @@ export function ExcelAutomatorView() {
 
           const cAvg = wsDash.getCell(`E${curRow}`);
           cAvg.value = {
-            formula: `=D${curRow}/C${curRow}`,
+            formula: `D${curRow}/C${curRow}`,
             result: stats.count > 0 ? stats.arr / stats.count : 0,
           };
           cAvg.font = { name: 'Segoe UI', size: 10 };
@@ -451,7 +514,7 @@ export function ExcelAutomatorView() {
 
           const cShare = wsDash.getCell(`F${curRow}`);
           cShare.value = {
-            formula: `=D${curRow}/$D$${11 + Object.keys(regionGroups).length}`,
+            formula: `D${curRow}/$D$${11 + Object.keys(regionGroups).length}`,
             result: datasetStats.totalArr > 0 ? stats.arr / datasetStats.totalArr : 0,
           };
           cShare.font = { name: 'Segoe UI', size: 10 };
@@ -469,28 +532,28 @@ export function ExcelAutomatorView() {
         wsDash.getCell(`B${totRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
         wsDash.getCell(`B${totRow}`).border = borderThin;
 
-        wsDash.getCell(`C${totRow}`).value = { formula: `=SUM(C11:C${totRow - 1})`, result: datasetStats.rowCount };
+        wsDash.getCell(`C${totRow}`).value = { formula: `SUM(C11:C${totRow - 1})`, result: datasetStats.rowCount };
         wsDash.getCell(`C${totRow}`).font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: palette.headerFont } };
         wsDash.getCell(`C${totRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
         wsDash.getCell(`C${totRow}`).numFmt = '#,##0';
         wsDash.getCell(`C${totRow}`).alignment = { horizontal: 'right' };
         wsDash.getCell(`C${totRow}`).border = borderThin;
 
-        wsDash.getCell(`D${totRow}`).value = { formula: `=SUM(D11:D${totRow - 1})`, result: datasetStats.totalArr };
+        wsDash.getCell(`D${totRow}`).value = { formula: `SUM(D11:D${totRow - 1})`, result: datasetStats.totalArr };
         wsDash.getCell(`D${totRow}`).font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: palette.headerFont } };
         wsDash.getCell(`D${totRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
         wsDash.getCell(`D${totRow}`).numFmt = '$#,##0';
         wsDash.getCell(`D${totRow}`).alignment = { horizontal: 'right' };
         wsDash.getCell(`D${totRow}`).border = borderThin;
 
-        wsDash.getCell(`E${totRow}`).value = { formula: `=AVERAGE(E11:E${totRow - 1})`, result: datasetStats.avgArr };
+        wsDash.getCell(`E${totRow}`).value = { formula: `AVERAGE(E11:E${totRow - 1})`, result: datasetStats.avgArr };
         wsDash.getCell(`E${totRow}`).font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: palette.headerFont } };
         wsDash.getCell(`E${totRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
         wsDash.getCell(`E${totRow}`).numFmt = '$#,##0';
         wsDash.getCell(`E${totRow}`).alignment = { horizontal: 'right' };
         wsDash.getCell(`E${totRow}`).border = borderThin;
 
-        wsDash.getCell(`F${totRow}`).value = { formula: `=SUM(F11:F${totRow - 1})`, result: 1.0 };
+        wsDash.getCell(`F${totRow}`).value = { formula: `SUM(F11:F${totRow - 1})`, result: 1.0 };
         wsDash.getCell(`F${totRow}`).font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: palette.headerFont } };
         wsDash.getCell(`F${totRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
         wsDash.getCell(`F${totRow}`).numFmt = '0.0%';
@@ -498,8 +561,8 @@ export function ExcelAutomatorView() {
         wsDash.getCell(`F${totRow}`).border = borderThin;
         wsDash.getRow(totRow).height = 24;
 
-        // TAB 2: PIVOT & DISTRIBUTION
-        const wsPivot = wb.addWorksheet('2. Pivot & Distribution', {
+        // TAB 2: PIVOT SUMMARY
+        const wsPivot = wb.addWorksheet('PivotSummary', {
           views: [{ showGridLines: true }],
         });
         wsPivot.columns = [{ width: 22 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 22 }];
@@ -520,9 +583,9 @@ export function ExcelAutomatorView() {
 
         const tierGroups: Record<string, { count: number; arr: number; npsSum: number }> = {};
         sanitizedRows.forEach((r) => {
-          const tier = String(r['Plan_Tier'] || r['tier'] || 'Standard');
-          const arr = typeof r['ARR_USD'] === 'number' ? r['ARR_USD'] : 0;
-          const nps = typeof r['NPS_Score'] === 'number' ? r['NPS_Score'] : 50;
+          const tier = String(r[cols[tierColIdx]] || r['Plan_Tier'] || 'Standard');
+          const arr = typeof r[cols[arrColIdx]] === 'number' ? r[cols[arrColIdx]] : 0;
+          const nps = typeof r[cols[npsColIdx]] === 'number' ? r[cols[npsColIdx]] : 50;
           if (!tierGroups[tier]) tierGroups[tier] = { count: 0, arr: 0, npsSum: 0 };
           tierGroups[tier].count++;
           tierGroups[tier].arr += arr;
@@ -533,10 +596,10 @@ export function ExcelAutomatorView() {
         Object.entries(tierGroups).forEach(([tierName, tStat]) => {
           wsPivot.addRow([
             tierName,
-            { formula: `=COUNTIF('3. Data Ledger'!$D$2:$D$${totalRowsLedger}, "${tierName}")`, result: tStat.count },
-            { formula: `=SUMIF('3. Data Ledger'!$D$2:$D$${totalRowsLedger}, "${tierName}", '3. Data Ledger'!$E$2:$E$${totalRowsLedger})`, result: tStat.arr },
-            { formula: `=C${pRow}/B${pRow}`, result: tStat.count > 0 ? tStat.arr / tStat.count : 0 },
-            { formula: `=AVERAGEIF('3. Data Ledger'!$D$2:$D$${totalRowsLedger}, "${tierName}", '3. Data Ledger'!$F$2:$F$${totalRowsLedger})`, result: tStat.count > 0 ? tStat.npsSum / tStat.count : 0 },
+            { formula: `COUNTIF(DataLedger!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${tierName}")`, result: tStat.count },
+            { formula: `SUMIF(DataLedger!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${tierName}", DataLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger})`, result: tStat.arr },
+            { formula: `C${pRow}/B${pRow}`, result: tStat.count > 0 ? tStat.arr / tStat.count : 0 },
+            { formula: `AVERAGEIF(DataLedger!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${tierName}", DataLedger!$${npsColLetter}$2:$${npsColLetter}$${totalRowsLedger})`, result: tStat.count > 0 ? tStat.npsSum / tStat.count : 0 },
           ]);
           const r = wsPivot.getRow(pRow);
           r.getCell(2).numFmt = '#,##0';
@@ -548,7 +611,7 @@ export function ExcelAutomatorView() {
         });
 
         // TAB 3: DATA LEDGER
-        const wsLedger = wb.addWorksheet('3. Data Ledger', {
+        const wsLedger = wb.addWorksheet('DataLedger', {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, activeCell: 'A2', showGridLines: true }],
         });
 
@@ -567,7 +630,7 @@ export function ExcelAutomatorView() {
           cell.border = borderThin;
         });
 
-        const lastColLetter = String.fromCharCode(65 + cols.length - 1);
+        const lastColLetter = getColumnLetter(cols.length - 1);
         wsLedger.autoFilter = `A1:${lastColLetter}1`;
 
         sanitizedRows.forEach((row, rowIdx) => {
@@ -596,8 +659,8 @@ export function ExcelAutomatorView() {
           });
         });
 
-        // TAB 4: AUDIT & METADATA
-        const wsAudit = wb.addWorksheet('4. Audit & Verification', {
+        // TAB 4: AUDIT TRAIL
+        const wsAudit = wb.addWorksheet('AuditTrail', {
           views: [{ showGridLines: true }],
         });
         wsAudit.columns = [{ width: 28 }, { width: 50 }];
@@ -631,9 +694,11 @@ export function ExcelAutomatorView() {
         });
       }
 
+      // ────────────────────────────────────────────────────────────────────────
       // GENERATOR 2: 12-MONTH ARR & FINANCIAL PROJECTION MODEL
+      // ────────────────────────────────────────────────────────────────────────
       else if (selectedAutomation === 'financial_runway') {
-        const wsFin = wb.addWorksheet('1. 12-Month P&L Runway', {
+        const wsFin = wb.addWorksheet('FinancialRunway', {
           views: [{ showGridLines: true, state: 'frozen', xSplit: 2, ySplit: 3 }],
         });
 
@@ -713,7 +778,7 @@ export function ExcelAutomatorView() {
             const prevCol = m === 0 ? 'B' : colLetters[m - 1];
             if (isFormulaRow) {
               cells.push({
-                formula: `=${prevCol}${wsFin.rowCount + 1}*(1+${rateRef})`,
+                formula: `${prevCol}${wsFin.rowCount + 1}*(1+${rateRef})`,
                 result: baseVal * Math.pow(1 + (growthScenarioPct / 100) * multiplier, m + 1),
               });
             } else {
@@ -723,7 +788,7 @@ export function ExcelAutomatorView() {
 
           const curR = wsFin.rowCount + 1;
           cells.push({
-            formula: `=SUM(C${curR}:N${curR})`,
+            formula: `SUM(C${curR}:N${curR})`,
             result: baseVal * 12,
           });
 
@@ -747,12 +812,12 @@ export function ExcelAutomatorView() {
         for (let m = 0; m < 12; m++) {
           const col = colLetters[m];
           cogsCells.push({
-            formula: `=${col}${revRow}*0.22`,
+            formula: `${col}${revRow}*0.22`,
             result: (baselineRevenue * Math.pow(1 + growthScenarioPct / 100, m + 1)) * 0.22,
           });
         }
         const cogsRowNum = wsFin.rowCount + 1;
-        cogsCells.push({ formula: `=SUM(C${cogsRowNum}:N${cogsRowNum})`, result: baselineRevenue * 0.22 * 12 });
+        cogsCells.push({ formula: `SUM(C${cogsRowNum}:N${cogsRowNum})`, result: baselineRevenue * 0.22 * 12 });
         const cogsR = wsFin.addRow(cogsCells);
         cogsR.height = 20;
         cogsR.eachCell({ includeEmpty: true }, (c, idx) => {
@@ -767,12 +832,12 @@ export function ExcelAutomatorView() {
         for (let m = 0; m < 12; m++) {
           const col = colLetters[m];
           gpCells.push({
-            formula: `=${col}${revRow}-${col}${cogsRowNum}`,
+            formula: `${col}${revRow}-${col}${cogsRowNum}`,
             result: (baselineRevenue * Math.pow(1 + growthScenarioPct / 100, m + 1)) * 0.78,
           });
         }
         const gpRowNum = wsFin.rowCount + 1;
-        gpCells.push({ formula: `=SUM(C${gpRowNum}:N${gpRowNum})`, result: baselineRevenue * 0.78 * 12 });
+        gpCells.push({ formula: `SUM(C${gpRowNum}:N${gpRowNum})`, result: baselineRevenue * 0.78 * 12 });
         const gpR = wsFin.addRow(gpCells);
         gpR.height = 22;
         gpR.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: palette.accentBg } };
@@ -787,7 +852,7 @@ export function ExcelAutomatorView() {
         });
 
         // TAB 2: VARIANCE ANALYSIS (BvA)
-        const wsBvA = wb.addWorksheet('2. Variance Analysis (BvA)', {
+        const wsBvA = wb.addWorksheet('VarianceAnalysis', {
           views: [{ showGridLines: true }],
         });
         wsBvA.columns = [
@@ -833,8 +898,8 @@ export function ExcelAutomatorView() {
             item,
             numBudget,
             numActual,
-            { formula: `=C${rowNum}-B${rowNum}`, result: varAmt },
-            { formula: `=D${rowNum}/B${rowNum}`, result: varPct },
+            { formula: `C${rowNum}-B${rowNum}`, result: varAmt },
+            { formula: `D${rowNum}/B${rowNum}`, result: varPct },
             isFavorable ? 'FAVORABLE' : 'UNFAVORABLE',
           ]);
           r.height = 20;
@@ -847,14 +912,19 @@ export function ExcelAutomatorView() {
         });
       }
 
+      // ────────────────────────────────────────────────────────────────────────
       // GENERATOR 3: MULTI-LEVEL PIVOT MASTER
+      // ────────────────────────────────────────────────────────────────────────
       else if (selectedAutomation === 'pivot_master') {
-        const wsPivotMaster = wb.addWorksheet('1. Cross-Tab Matrix', {
+        const wsPivotMaster = wb.addWorksheet('CrossTabMatrix', {
           views: [{ showGridLines: true }],
         });
 
-        const regions = Array.from(new Set(sanitizedRows.map((r) => String(r['Region'] || 'Global')))).sort();
-        const tiers = Array.from(new Set(sanitizedRows.map((r) => String(r['Plan_Tier'] || 'Standard')))).sort();
+        const regColName = cols[regColIdx] || 'Region';
+        const tierColName = cols[tierColIdx] || 'Plan_Tier';
+
+        const regions = Array.from(new Set(sanitizedRows.map((r) => String(r[regColName] || 'Global')))).sort();
+        const tiers = Array.from(new Set(sanitizedRows.map((r) => String(r[tierColName] || 'Standard')))).sort();
 
         wsPivotMaster.columns = [
           { width: 24 },
@@ -864,7 +934,7 @@ export function ExcelAutomatorView() {
         ];
 
         const totalCols = tiers.length + 3;
-        const lastColLetter = String.fromCharCode(65 + totalCols - 1);
+        const lastColLetter = getColumnLetter(totalCols - 1);
         wsPivotMaster.mergeCells(`A1:${lastColLetter}1`);
         const pTitle = wsPivotMaster.getCell('A1');
         pTitle.value = `${companyName.toUpperCase()} — MULTI-DIMENSIONAL CROSS-TABULATION MATRIX`;
@@ -885,7 +955,6 @@ export function ExcelAutomatorView() {
 
         let startRow = 3;
         const grandTotalRow = startRow + regions.length;
-        const totalRowsLedger = datasetStats.rowCount + 1;
 
         regions.forEach((reg, rIdx) => {
           const curR = startRow + rIdx;
@@ -894,28 +963,28 @@ export function ExcelAutomatorView() {
           let rowSumCalc = 0;
           tiers.forEach((tier) => {
             const matchingRows = sanitizedRows.filter(
-              (r) => String(r['Region']) === reg && String(r['Plan_Tier']) === tier
+              (r) => String(r[regColName]) === reg && String(r[tierColName]) === tier
             );
-            const sumVal = matchingRows.reduce((acc, curr) => acc + (typeof curr['ARR_USD'] === 'number' ? curr['ARR_USD'] : 0), 0);
+            const sumVal = matchingRows.reduce((acc, curr) => acc + (typeof curr[cols[arrColIdx]] === 'number' ? curr[cols[arrColIdx]] : 0), 0);
             rowSumCalc += sumVal;
 
             rowVals.push({
-              formula: `=SUMIFS('3. Source Data'!$E$2:$E$${totalRowsLedger}, '3. Source Data'!$C$2:$C$${totalRowsLedger}, "${reg}", '3. Source Data'!$D$2:$D$${totalRowsLedger}, "${tier}")`,
+              formula: `SUMIFS(SourceData!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, SourceData!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${reg}", SourceData!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${tier}")`,
               result: sumVal,
             });
           });
 
           const firstTierCol = 'B';
-          const lastTierCol = String.fromCharCode(65 + tiers.length);
-          const totalColLetter = String.fromCharCode(66 + tiers.length);
+          const lastTierCol = getColumnLetter(tiers.length);
+          const totalColLetter = getColumnLetter(tiers.length + 1);
 
           rowVals.push({
-            formula: `=SUM(${firstTierCol}${curR}:${lastTierCol}${curR})`,
+            formula: `SUM(${firstTierCol}${curR}:${lastTierCol}${curR})`,
             result: rowSumCalc,
           });
 
           rowVals.push({
-            formula: `=${totalColLetter}${curR}/$${totalColLetter}$${grandTotalRow}`,
+            formula: `${totalColLetter}${curR}/$${totalColLetter}$${grandTotalRow}`,
             result: datasetStats.totalArr > 0 ? rowSumCalc / datasetStats.totalArr : 0,
           });
 
@@ -935,22 +1004,21 @@ export function ExcelAutomatorView() {
         });
 
         const grandTotalsVals: any[] = ['GRAND TOTAL'];
-        tiers.forEach((tier, tIdx) => {
-          const colLetter = String.fromCharCode(66 + tIdx);
+        tiers.forEach((tier) => {
           grandTotalsVals.push({
-            formula: `=SUM(${colLetter}${startRow}:${colLetter}${grandTotalRow - 1})`,
+            formula: `SUM(${getColumnLetter(grandTotalsVals.length)}${startRow}:${getColumnLetter(grandTotalsVals.length)}${grandTotalRow - 1})`,
             result: sanitizedRows
-              .filter((r) => String(r['Plan_Tier']) === tier)
-              .reduce((acc, curr) => acc + (typeof curr['ARR_USD'] === 'number' ? curr['ARR_USD'] : 0), 0),
+              .filter((r) => String(r[tierColName]) === tier)
+              .reduce((acc, curr) => acc + (typeof curr[cols[arrColIdx]] === 'number' ? curr[cols[arrColIdx]] : 0), 0),
           });
         });
 
-        const totalColLetter = String.fromCharCode(66 + tiers.length);
+        const totalColLetter = getColumnLetter(tiers.length + 1);
         grandTotalsVals.push({
-          formula: `=SUM(${totalColLetter}${startRow}:${totalColLetter}${grandTotalRow - 1})`,
+          formula: `SUM(${totalColLetter}${startRow}:${totalColLetter}${grandTotalRow - 1})`,
           result: datasetStats.totalArr,
         });
-        grandTotalsVals.push({ formula: `=SUM(${String.fromCharCode(67 + tiers.length)}${startRow}:${String.fromCharCode(67 + tiers.length)}${grandTotalRow - 1})`, result: 1.0 });
+        grandTotalsVals.push({ formula: `SUM(${getColumnLetter(tiers.length + 2)}${startRow}:${getColumnLetter(tiers.length + 2)}${grandTotalRow - 1})`, result: 1.0 });
 
         const gRow = wsPivotMaster.addRow(grandTotalsVals);
         gRow.height = 24;
@@ -967,7 +1035,7 @@ export function ExcelAutomatorView() {
           }
         });
 
-        const wsSource = wb.addWorksheet('3. Source Data', {
+        const wsSource = wb.addWorksheet('SourceData', {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }],
         });
         wsSource.columns = cols.map((c) => ({ header: c, key: c, width: 18 }));
@@ -978,9 +1046,11 @@ export function ExcelAutomatorView() {
         sanitizedRows.forEach((r) => wsSource.addRow(r));
       }
 
-      // GENERATOR 4: FORMULA SUITE
+      // ────────────────────────────────────────────────────────────────────────
+      // GENERATOR 4: FORMULA INJECTION & DYNAMIC LOOKUPS SUITE
+      // ────────────────────────────────────────────────────────────────────────
       else if (selectedAutomation === 'formula_suite') {
-        const wsDynamic = wb.addWorksheet('1. Dynamic Formulas', {
+        const wsDynamic = wb.addWorksheet('DynamicFormulas', {
           views: [{ showGridLines: true, state: 'frozen', xSplit: 0, ySplit: 2 }],
         });
 
@@ -995,7 +1065,7 @@ export function ExcelAutomatorView() {
 
         wsDynamic.mergeCells('A1:F1');
         const fTitle = wsDynamic.getCell('A1');
-        fTitle.value = 'ENTERPRISE FORMULA INJECTION SUITE (=XLOOKUP, =SUMIFS, =IF)';
+        fTitle.value = 'ENTERPRISE FORMULA INJECTION SUITE (XLOOKUP, SUMIFS, IF)';
         fTitle.font = { name: 'Segoe UI', size: 12, bold: true, color: { argb: palette.headerFont } };
         fTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
         fTitle.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -1004,9 +1074,9 @@ export function ExcelAutomatorView() {
         const dynHeaders = [
           'Account ID',
           'Client Name',
-          'Revenue (=XLOOKUP)',
-          'Risk Classification (=IF)',
-          'Regional Subtotal (=SUMIFS)',
+          'Revenue (XLOOKUP)',
+          'Risk Classification (IF)',
+          'Regional Subtotal (SUMIFS)',
           'Formula Explanation',
         ];
         const dRow = wsDynamic.addRow(dynHeaders);
@@ -1017,28 +1087,27 @@ export function ExcelAutomatorView() {
           c.border = borderThin;
         });
 
-        const totalRowsLedger = datasetStats.rowCount + 1;
         sanitizedRows.forEach((row, idx) => {
           const rowNum = idx + 3;
           const accId = String(row['Account_ID'] || `ACC-${1000 + idx}`);
           const custName = String(row['Customer_Name'] || 'Customer');
-          const arrVal = typeof row['ARR_USD'] === 'number' ? row['ARR_USD'] : 50000;
-          const churnVal = typeof row['Churn_Probability'] === 'number' ? row['Churn_Probability'] : 0.05;
-          const regVal = String(row['Region'] || 'North America');
+          const arrVal = typeof row[cols[arrColIdx]] === 'number' ? row[cols[arrColIdx]] : 50000;
+          const churnVal = typeof row[cols[churnColIdx]] === 'number' ? row[cols[churnColIdx]] : 0.05;
+          const regVal = String(row[cols[regColIdx]] || 'North America');
 
           const r = wsDynamic.addRow([
             accId,
             custName,
             {
-              formula: `=XLOOKUP(A${rowNum}, '3. Master Ledger'!$A$2:$A$${totalRowsLedger}, '3. Master Ledger'!$E$2:$E$${totalRowsLedger}, "Not Found")`,
+              formula: `XLOOKUP(A${rowNum}, MasterLedger!$A$2:$A$${totalRowsLedger}, MasterLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, "Not Found")`,
               result: arrVal,
             },
             {
-              formula: `=IF('3. Master Ledger'!G${idx + 2}>=0.2, "CRITICAL RISK", IF('3. Master Ledger'!G${idx + 2}>=0.1, "WATCHLIST", "HEALTHY"))`,
+              formula: `IF(MasterLedger!${churnColLetter}${idx + 2}>=0.2, "CRITICAL RISK", IF(MasterLedger!${churnColLetter}${idx + 2}>=0.1, "WATCHLIST", "HEALTHY"))`,
               result: churnVal >= 0.2 ? 'CRITICAL RISK' : churnVal >= 0.1 ? 'WATCHLIST' : 'HEALTHY',
             },
             {
-              formula: `=SUMIFS('3. Master Ledger'!$E$2:$E$${totalRowsLedger}, '3. Master Ledger'!$C$2:$C$${totalRowsLedger}, "${regVal}")`,
+              formula: `SUMIFS(MasterLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, MasterLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${regVal}")`,
               result: datasetStats.totalArr * 0.35,
             },
             `Injected live XLOOKUP and multi-branch nested IF statement`,
@@ -1056,7 +1125,7 @@ export function ExcelAutomatorView() {
           r.eachCell((c) => (c.border = borderThin));
         });
 
-        const wsMaster = wb.addWorksheet('3. Master Ledger', {
+        const wsMaster = wb.addWorksheet('MasterLedger', {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }],
         });
         wsMaster.columns = cols.map((c) => ({ header: c, key: c, width: 18 }));
@@ -1067,9 +1136,11 @@ export function ExcelAutomatorView() {
         sanitizedRows.forEach((r) => wsMaster.addRow(r));
       }
 
-      // GENERATOR 5: CONDITIONAL FORMATTING
+      // ────────────────────────────────────────────────────────────────────────
+      // GENERATOR 5: CONDITIONAL FORMATTING & ANOMALY HEATMAP
+      // ────────────────────────────────────────────────────────────────────────
       else if (selectedAutomation === 'conditional_heatmap') {
-        const wsHeatmap = wb.addWorksheet('1. Heatmap Ledger', {
+        const wsHeatmap = wb.addWorksheet('HeatmapLedger', {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }],
         });
 
@@ -1086,8 +1157,8 @@ export function ExcelAutomatorView() {
           const r = wsHeatmap.addRow(row);
           r.height = 20;
 
-          const arr = typeof row['ARR_USD'] === 'number' ? row['ARR_USD'] : 0;
-          const churn = typeof row['Churn_Probability'] === 'number' ? row['Churn_Probability'] : 0;
+          const arr = typeof row[cols[arrColIdx]] === 'number' ? row[cols[arrColIdx]] : 0;
+          const churn = typeof row[cols[churnColIdx]] === 'number' ? row[cols[churnColIdx]] : 0;
           const auditStatus = String(row['Last_Audit_Status'] || 'Verified');
 
           r.eachCell({ includeEmpty: true }, (cell, colIdx) => {
@@ -1119,7 +1190,7 @@ export function ExcelAutomatorView() {
           });
         });
 
-        const wsKey = wb.addWorksheet('2. Threshold Key', { views: [{ showGridLines: true }] });
+        const wsKey = wb.addWorksheet('ThresholdKey', { views: [{ showGridLines: true }] });
         wsKey.columns = [{ width: 24 }, { width: 36 }, { width: 30 }];
         wsKey.addRow(['Indicator Color', 'Condition / Threshold', 'Action Trigger']);
         wsKey.getRow(1).eachCell((c) => {
@@ -1140,9 +1211,11 @@ export function ExcelAutomatorView() {
         });
       }
 
-      // GENERATOR 6: AUTOMATED DATA CLEANER
+      // ────────────────────────────────────────────────────────────────────────
+      // GENERATOR 6: AUTOMATED DATA CLEANER & STANDARDIZER
+      // ────────────────────────────────────────────────────────────────────────
       else if (selectedAutomation === 'clean_standardize') {
-        const wsClean = wb.addWorksheet('1. Cleaned & Standardized Data', {
+        const wsClean = wb.addWorksheet('StandardizedData', {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }],
         });
 
@@ -1183,7 +1256,7 @@ export function ExcelAutomatorView() {
           r.eachCell((c) => (c.border = borderThin));
         });
 
-        const wsLog = wb.addWorksheet('2. Cleaning Audit Log', { views: [{ showGridLines: true }] });
+        const wsLog = wb.addWorksheet('CleaningAuditLog', { views: [{ showGridLines: true }] });
         wsLog.columns = [{ width: 14 }, { width: 22 }, { width: 50 }];
         wsLog.addRow(['Row Number', 'Column Name', 'Sanitization Action Applied']);
         wsLog.getRow(1).eachCell((c) => {
@@ -1268,6 +1341,15 @@ export function ExcelAutomatorView() {
             </span>
           </div>
 
+          {/* How to Open .xlsx Help Button */}
+          <button
+            onClick={() => setShowHowToOpenModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--lm-bg-elevated)] hover:bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-xs font-semibold text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] transition-colors shadow-xs cursor-pointer"
+            title="How to view and open your .xlsx file"
+          >
+            <span>💡 How to Open</span>
+          </button>
+
           {/* Quick jump to SQL Studio */}
           <button
             onClick={() => setActiveView('sql')}
@@ -1276,6 +1358,15 @@ export function ExcelAutomatorView() {
           >
             <TerminalIcon className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>SQL Studio</span>
+          </button>
+
+          {/* Direct CSV fallback button */}
+          <button
+            onClick={handleExportCSV}
+            className="px-3 py-2 rounded-xl bg-[var(--lm-bg-elevated)] hover:bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-xs font-bold text-[var(--lm-text-primary)] transition-colors shadow-xs cursor-pointer whitespace-nowrap"
+            title="Instant CSV export compatible with any software"
+          >
+            Export CSV
           </button>
 
           {/* Primary Action Button */}
@@ -1300,12 +1391,87 @@ export function ExcelAutomatorView() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════ */}
+      {/* HOW TO OPEN MODAL / GUIDE                                      */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {showHowToOpenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--lm-border-default)]">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-[#059669]/10 text-[#059669]">
+                  <FileSpreadsheetIcon className="w-5 h-5" />
+                </span>
+                <h3 className="font-bold text-base text-[var(--lm-text-primary)]">
+                  How to Open Your .xlsx Spreadsheet
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowHowToOpenModal(false)}
+                className="p-1 rounded-lg hover:bg-[var(--lm-bg-secondary)] text-[var(--lm-text-tertiary)] hover:text-[var(--lm-text-primary)] text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-[var(--lm-text-secondary)]">
+              Your generated workbook is a standard <strong>ECMA-376 OpenXML (.xlsx)</strong> file with real formulas and frozen tables. Depending on what software is installed on your computer:
+            </p>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="p-3 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-1">
+                <span className="font-bold text-[var(--lm-text-primary)] block">
+                  1. If Microsoft Office / Excel is installed:
+                </span>
+                <span className="text-[var(--lm-text-secondary)] block">
+                  Double-click the downloaded <code>.xlsx</code> file in your Downloads folder to open it directly.
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-1">
+                <span className="font-bold text-[var(--lm-text-primary)] block">
+                  2. Free with Google Sheets (No Excel needed!):
+                </span>
+                <span className="text-[var(--lm-text-secondary)] block">
+                  Open <a href="https://drive.google.com" target="_blank" rel="noreferrer" className="text-[#059669] underline font-semibold">Google Drive</a>, drag the <code>.xlsx</code> file into Drive, and double-click it. It will open instantly in Google Sheets with all formulas and sheets active!
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-1">
+                <span className="font-bold text-[var(--lm-text-primary)] block">
+                  3. Free with Microsoft Excel Online:
+                </span>
+                <span className="text-[var(--lm-text-secondary)] block">
+                  Go to <a href="https://www.office.com" target="_blank" rel="noreferrer" className="text-[#059669] underline font-semibold">office.com</a> and upload your file to view it in Excel on the web for free.
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-1">
+                <span className="font-bold text-[var(--lm-text-primary)] block">
+                  4. Instant CSV Export:
+                </span>
+                <span className="text-[var(--lm-text-secondary)] block">
+                  If you prefer a lightweight format that opens in Notepad, Apple Numbers, or basic tools, click the <strong>&quot;Export CSV&quot;</strong> button in the top bar!
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowHowToOpenModal(false)}
+              className="w-full py-2.5 rounded-xl bg-[#059669] hover:bg-[#047857] text-[#FAF8F5] text-xs font-bold transition-all shadow-sm"
+            >
+              Got it, thanks!
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════ */}
       {/* SUCCESS DOWNLOAD NOTIFICATION BANNER                          */}
       {/* ══════════════════════════════════════════════════════════════ */}
       {downloadSuccess && (
-        <div className="p-4 rounded-2xl bg-[#ECFDF5] dark:bg-[#064E3B]/40 border border-[#059669]/30 flex items-center justify-between text-xs text-[#065F46] dark:text-[#34D399] shadow-xs animate-fadeIn">
+        <div className="p-4 rounded-2xl bg-[#ECFDF5] dark:bg-[#064E3B]/40 border border-[#059669]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#065F46] dark:text-[#34D399] shadow-xs animate-fadeIn">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#059669] text-white flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-full bg-[#059669] text-white flex items-center justify-center font-bold shrink-0">
               ✓
             </div>
             <div>
@@ -1317,12 +1483,20 @@ export function ExcelAutomatorView() {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setDownloadSuccess(null)}
-            className="text-[#065F46] dark:text-[#34D399] hover:opacity-75 font-bold px-2 py-1 rounded-md cursor-pointer"
-          >
-            ✕ Dismiss
-          </button>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={() => setShowHowToOpenModal(true)}
+              className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-[#059669]/30 text-xs font-bold hover:bg-[#ECFDF5] cursor-pointer"
+            >
+              How to Open
+            </button>
+            <button
+              onClick={() => setDownloadSuccess(null)}
+              className="text-[#065F46] dark:text-[#34D399] hover:opacity-75 font-bold px-2 py-1 rounded-md cursor-pointer"
+            >
+              ✕ Dismiss
+            </button>
+          </div>
         </div>
       )}
 
@@ -1392,73 +1566,164 @@ export function ExcelAutomatorView() {
             </div>
           </div>
 
-          {/* ACTIVE DELIVERABLE INSPECTION & TABS BREAKDOWN */}
-          <div className="p-5 rounded-2xl bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] shadow-xs">
-            <div className="flex items-center justify-between border-b border-[var(--lm-border-default)] pb-3 mb-4">
+          {/* ACTIVE DELIVERABLE INSPECTION & LIVE IN-BROWSER PREVIEW */}
+          <div className="p-5 rounded-2xl bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--lm-border-default)] pb-3 gap-2">
               <div className="flex items-center gap-2">
                 <TableIcon className="w-4 h-4 text-[#059669]" />
                 <h3 className="text-sm font-bold text-[var(--lm-text-primary)]">
-                  Workbook Blueprint &amp; Generated Sheets
+                  Workbook Blueprint &amp; Live In-Browser Preview
                 </h3>
               </div>
-              <span className="text-xs font-mono text-[#059669] dark:text-[#34D399] font-semibold">
-                Target: Microsoft Excel / Google Sheets
-              </span>
+
+              {/* Segmented Controls for preview tab */}
+              <div className="flex items-center gap-1 bg-[var(--lm-bg-secondary)] p-1 rounded-xl border border-[var(--lm-border-default)] text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPreviewTab('blueprint')}
+                  className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                    previewTab === 'blueprint'
+                      ? 'bg-[var(--lm-bg-elevated)] text-[#059669] dark:text-[#34D399] shadow-xs'
+                      : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'
+                  }`}
+                >
+                  Blueprint ({currentCard.sheetsGenerated.length} Tabs)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewTab('data_grid')}
+                  className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                    previewTab === 'data_grid'
+                      ? 'bg-[var(--lm-bg-elevated)] text-[#059669] dark:text-[#34D399] shadow-xs'
+                      : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'
+                  }`}
+                >
+                  Live Spreadsheet Grid
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewTab('formulas')}
+                  className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                    previewTab === 'formulas'
+                      ? 'bg-[var(--lm-bg-elevated)] text-[#059669] dark:text-[#34D399] shadow-xs'
+                      : 'text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)]'
+                  }`}
+                >
+                  Formula Syntax
+                </button>
+              </div>
             </div>
 
-            {/* Sheets Preview */}
-            <div className="space-y-3.5">
-              <p className="text-xs text-[var(--lm-text-secondary)]">
-                When you click <strong>Generate &amp; Download</strong>, Lumetric compiles the following validated sheets into an ECMA-376 OpenXML package:
-              </p>
+            {/* TAB 1: BLUEPRINT */}
+            {previewTab === 'blueprint' && (
+              <div className="space-y-3.5">
+                <p className="text-xs text-[var(--lm-text-secondary)]">
+                  When you click <strong>Generate &amp; Download</strong>, Lumetric compiles the following validated sheets into an ECMA-376 OpenXML package:
+                </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {currentCard.sheetsGenerated.map((sheet, sIdx) => (
-                  <div
-                    key={sIdx}
-                    className="p-3 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)]/80 flex items-start gap-2.5"
-                  >
-                    <span className="w-5 h-5 rounded-lg bg-[#ECFDF5] dark:bg-[#064E3B]/60 text-[#065F46] dark:text-[#34D399] font-mono font-bold text-xs flex items-center justify-center shrink-0 border border-[#059669]/20">
-                      {sIdx + 1}
-                    </span>
-                    <div>
-                      <h4 className="text-xs font-bold text-[var(--lm-text-primary)]">
-                        {sheet}
-                      </h4>
-                      <p className="text-[11px] text-[var(--lm-text-tertiary)]">
-                        Zebra-striped • Frozen Pane • ECMA Validated
-                      </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {currentCard.sheetsGenerated.map((sheet, sIdx) => (
+                    <div
+                      key={sIdx}
+                      className="p-3 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)]/80 flex items-start gap-2.5"
+                    >
+                      <span className="w-5 h-5 rounded-lg bg-[#ECFDF5] dark:bg-[#064E3B]/60 text-[#065F46] dark:text-[#34D399] font-mono font-bold text-xs flex items-center justify-center shrink-0 border border-[#059669]/20">
+                        {sIdx + 1}
+                      </span>
+                      <div>
+                        <h4 className="text-xs font-bold text-[var(--lm-text-primary)]">
+                          {sheet}
+                        </h4>
+                        <p className="text-[11px] text-[var(--lm-text-tertiary)]">
+                          Zebra-striped • Frozen Pane • ECMA Validated
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Injected Features List */}
-              <div className="mt-4 pt-4 border-t border-[var(--lm-border-default)]/70">
-                <h4 className="text-xs font-bold text-[var(--lm-text-primary)] mb-2">
-                  Engineered Mathematical Guarantees:
-                </h4>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[var(--lm-text-secondary)]">
-                  {currentCard.features.map((feat, fIdx) => (
-                    <li key={fIdx} className="flex items-center gap-2">
-                      <span className="text-[#059669] font-bold">✓</span>
-                      <span>{feat}</span>
-                    </li>
                   ))}
-                </ul>
-              </div>
-
-              {/* Sample Formula Box */}
-              <div className="mt-3 p-3 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-[var(--lm-text-primary)] font-mono text-xs flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-[#059669] dark:text-[#34D399] font-bold">fx</span>
-                  <span>{currentCard.sampleFormula}</span>
                 </div>
-                <span className="text-[10px] text-[var(--lm-text-tertiary)] uppercase tracking-wider font-semibold">
-                  Live Injected Formula
-                </span>
+
+                <div className="mt-4 pt-4 border-t border-[var(--lm-border-default)]/70">
+                  <h4 className="text-xs font-bold text-[var(--lm-text-primary)] mb-2">
+                    Engineered Mathematical Guarantees:
+                  </h4>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[var(--lm-text-secondary)]">
+                    {currentCard.features.map((feat, fIdx) => (
+                      <li key={fIdx} className="flex items-center gap-2">
+                        <span className="text-[#059669] font-bold">✓</span>
+                        <span>{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* TAB 2: LIVE SPREADSHEET GRID */}
+            {previewTab === 'data_grid' && (
+              <div className="space-y-3">
+                <p className="text-xs text-[var(--lm-text-secondary)]">
+                  Live in-browser preview of your source dataset formatted for export:
+                </p>
+                <div className="overflow-x-auto max-h-64 border border-[var(--lm-border-default)] rounded-xl scrollbar-thin">
+                  <table className="w-full text-left text-xs text-[var(--lm-text-secondary)]">
+                    <thead className="bg-[var(--lm-bg-secondary)] text-[var(--lm-text-primary)] font-bold text-[11px] uppercase tracking-wider sticky top-0 border-b border-[var(--lm-border-default)]">
+                      <tr>
+                        {datasetStats.columns.map((c, i) => (
+                          <th key={i} className="px-3 py-2 border-r border-[var(--lm-border-default)] last:border-r-0 whitespace-nowrap">
+                            {c}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--lm-border-default)] font-mono text-[11px]">
+                      {activeRows.slice(0, 8).map((row, rIdx) => (
+                        <tr key={rIdx} className={rIdx % 2 === 0 ? 'bg-[var(--lm-bg-elevated)]' : 'bg-[var(--lm-bg-secondary)]/50'}>
+                          {datasetStats.columns.map((col, cIdx) => (
+                            <td key={cIdx} className="px-3 py-1.5 border-r border-[var(--lm-border-default)] last:border-r-0 whitespace-nowrap">
+                              {String(row[col] ?? '')}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-[var(--lm-text-tertiary)]">
+                  <span>Showing first 8 of {datasetStats.rowCount.toLocaleString()} records</span>
+                  <span>100% rows included in downloaded .xlsx</span>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: FORMULA SYNTAX */}
+            {previewTab === 'formulas' && (
+              <div className="space-y-3">
+                <p className="text-xs text-[var(--lm-text-secondary)]">
+                  Live formula definitions written into the OpenXML workbook cells:
+                </p>
+                <div className="p-3.5 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-2 font-mono text-xs">
+                  <div className="flex items-center justify-between text-[#059669] dark:text-[#34D399]">
+                    <span className="font-bold">Metric Summary:</span>
+                    <span>=SUM(DataLedger!E2:E{datasetStats.rowCount + 1})</span>
+                  </div>
+                  <div className="flex items-center justify-between text-blue-600 dark:text-blue-400">
+                    <span className="font-bold">Regional Aggregate:</span>
+                    <span>=SUMIF(DataLedger!$C$2:$C${datasetStats.rowCount + 1}, &quot;North America&quot;, DataLedger!$E$2:$E${datasetStats.rowCount + 1})</span>
+                  </div>
+                  <div className="flex items-center justify-between text-purple-600 dark:text-purple-400">
+                    <span className="font-bold">Dynamic XLOOKUP:</span>
+                    <span>=XLOOKUP(A2, MasterLedger!$A$2:$A${datasetStats.rowCount + 1}, MasterLedger!$E$2:$E${datasetStats.rowCount + 1}, &quot;Not Found&quot;)</span>
+                  </div>
+                  <div className="flex items-center justify-between text-amber-600 dark:text-amber-400">
+                    <span className="font-bold">Risk Classification:</span>
+                    <span>=IF(G2&gt;=0.2, &quot;CRITICAL RISK&quot;, &quot;HEALTHY&quot;)</span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-[var(--lm-text-tertiary)]">
+                  Formulas are serialized with clean ECMA-376 &lt;f&gt; tags with zero double-equal syntax, ensuring clean loading across Microsoft Excel, Google Sheets, and LibreOffice.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
