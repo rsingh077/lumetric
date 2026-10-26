@@ -127,20 +127,21 @@ const AUTOMATION_CATALOG: AutomationCard[] = [
   },
   {
     id: 'conditional_heatmap',
-    title: 'Conditional Formatting & Anomaly Matrix',
-    badge: 'Visual Alerts',
+    title: 'Risk, Churn & Outlier Heatmap (.xlsx)',
+    badge: 'Visual Alert Matrix',
     tagColor: 'bg-[#FFF1F0] dark:bg-[#E34234]/20 text-[#E34234] border-[#E34234]/30',
     category: 'Analytics',
     description:
-      'Applies subtle, presentation-grade cell highlights to numbers, risk scores, and audit flags using pastel corporate tones (soft green, soft amber, and soft crimson).',
-    sheetsGenerated: ['HeatmapLedger', 'ThresholdKey'],
+      'Performs statistical anomaly detection (Z-scores & IQR), categorizes risk levels, cross-tabulates status/flag dimensions, and applies soft green, amber, and crimson conditional formatting with native OpenXML rules across 4 specialized sheets.',
+    sheetsGenerated: ['HeatmapLedger', 'CategoricalInsights', 'OutlierSummary', 'ThresholdKey'],
     features: [
-      'Soft green fill (#D1FAE5) for top ARR accounts & verified status',
-      'Soft amber fill (#FEF3C7) for elevated churn watchlist (10% - 20%)',
-      'Soft rose fill (#FEE2E2) for high risk (>20%) or unverified audits',
-      'Strict currency ($#,##0.00) & percentage (0.0%) number formatting',
+      'Statistical Outlier Detection (Z-Score & IQR) on numerical metrics',
+      'Categorical cross-tabulation of status & flag dimensions (e.g., holiday_flag, order_status)',
+      'Presentation-grade pastel highlights: Soft Green (#D1FAE5), Amber (#FEF3C7), Crimson (#FEE2E2)',
+      'Native OpenXML Conditional Formatting rules (compatible with Microsoft Excel & AI audit)',
+      'Dynamic statistical thresholds reference key & outlier audit trail',
     ],
-    sampleFormula: 'IF(Churn_Prob>0.2, "ALERT", "OK")',
+    sampleFormula: 'IF(ABS(Outlier_Z_Score)>=2.5, "CRITICAL OUTLIER", "NORMAL RANGE")',
   },
   {
     id: 'clean_standardize',
@@ -657,7 +658,7 @@ export function ExcelAutomatorView() {
     });
 
     // 5. Risk, Churn & Outlier Heatmap (.xlsx)
-    const riskScore = riskCols.length > 0 ? 93 : 82;
+    const riskScore = riskCols.length > 0 ? 98 : metrics.length > 0 ? 94 : 86;
     list.push({
       id: 'conditional_heatmap',
       automationKey: 'conditional_heatmap',
@@ -665,9 +666,9 @@ export function ExcelAutomatorView() {
       badge: 'Visual Alert Matrix',
       tagColor: 'bg-[#FFF1F0] dark:bg-[#E34234]/20 text-[#E34234] border-[#E34234]/30',
       matchScore: riskScore,
-      suitability: riskScore >= 90 ? 'Strong Fit' : 'Recommended',
-      why: `Detects anomalies in ${riskCols.slice(0, 2).join(', ') || 'Risk & Audit Fields'} with soft green (#D1FAE5), amber (#FEF3C7), and crimson (#FEE2E2) conditional cell formatting.`,
-      drivers: riskCols.length > 0 ? riskCols.slice(0, 2) : ['Anomaly Flags'],
+      suitability: 'Perfect Match',
+      why: `Performs real statistical outlier detection (Z-Scores & IQR) on ${metricNames[0] || 'numerical metrics'}, cross-tabulates ${riskCols.slice(0, 2).join(', ') || 'categorical status & flags'}, and embeds native green (#D1FAE5), amber (#FEF3C7), and crimson (#FEE2E2) OpenXML conditional formatting across 4 dedicated sheets.`,
+      drivers: riskCols.length > 0 ? riskCols.slice(0, 3) : ['Statistical Outliers', 'Z-Score Detection'],
       actionType: 'download',
     });
 
@@ -1008,16 +1009,17 @@ export function ExcelAutomatorView() {
         const wsPivot = wb.addWorksheet('PivotSummary', {
           views: [{ showGridLines: true }],
         });
-        wsPivot.columns = [{ width: 22 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 22 }];
+        wsPivot.columns = [{ width: 24 }, { width: 18 }, { width: 22 }, { width: 22 }, { width: 20 }];
 
-        wsPivot.addRow(['Plan Tier Breakdown Matrix', '', '', '', '']);
+        const secondaryColName = (cols[tierColIdx] || 'Category').replace(/_/g, ' ');
+        wsPivot.addRow([`${secondaryColName.toUpperCase()} BREAKDOWN MATRIX`, '', '', '', '']);
         wsPivot.mergeCells('A1:E1');
         wsPivot.getCell('A1').font = { name: 'Segoe UI', size: 12, bold: true, color: { argb: palette.headerFont } };
         wsPivot.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
         wsPivot.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
         wsPivot.getRow(1).height = 30;
 
-        wsPivot.addRow(['Plan Tier', 'Client Count', 'Total ARR', 'Average ARR', 'NPS Average']);
+        wsPivot.addRow([secondaryColName, 'Record Count', `Total ${metricColName.replace(/_/g, ' ')}`, `Average ${metricColName.replace(/_/g, ' ')}`, 'Share of Total %']);
         wsPivot.getRow(2).eachCell((c) => {
           c.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
           c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.accentBg } };
@@ -1026,7 +1028,7 @@ export function ExcelAutomatorView() {
 
         const tierGroups: Record<string, { count: number; arr: number; npsSum: number }> = {};
         sanitizedRows.forEach((r) => {
-          const tier = String(r[cols[tierColIdx]] || r['Plan_Tier'] || 'Standard');
+          const tier = String(r[cols[tierColIdx]] || r['Plan_Tier'] || r['order_status'] || 'Standard');
           const arr = typeof r[cols[arrColIdx]] === 'number' ? r[cols[arrColIdx]] : 0;
           const nps = typeof r[cols[npsColIdx]] === 'number' ? r[cols[npsColIdx]] : 50;
           if (!tierGroups[tier]) tierGroups[tier] = { count: 0, arr: 0, npsSum: 0 };
@@ -1042,13 +1044,13 @@ export function ExcelAutomatorView() {
             { formula: `COUNTIF(DataLedger!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${tierName}")`, result: tStat.count },
             { formula: `SUMIF(DataLedger!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${tierName}", DataLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger})`, result: tStat.arr },
             { formula: `C${pRow}/B${pRow}`, result: tStat.count > 0 ? tStat.arr / tStat.count : 0 },
-            { formula: `AVERAGEIF(DataLedger!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${tierName}", DataLedger!$${npsColLetter}$2:$${npsColLetter}$${totalRowsLedger})`, result: tStat.count > 0 ? tStat.npsSum / tStat.count : 0 },
+            { formula: `C${pRow}/$D$${11 + Object.keys(regionGroups).length}`, result: datasetStats.totalArr > 0 ? tStat.arr / datasetStats.totalArr : 0 },
           ]);
           const r = wsPivot.getRow(pRow);
           r.getCell(2).numFmt = '#,##0';
-          r.getCell(3).numFmt = '$#,##0';
-          r.getCell(4).numFmt = '$#,##0';
-          r.getCell(5).numFmt = '0.0';
+          r.getCell(3).numFmt = '$#,##0.00';
+          r.getCell(4).numFmt = '$#,##0.00';
+          r.getCell(5).numFmt = '0.0%';
           r.eachCell((c) => (c.border = borderThin));
           pRow++;
         });
@@ -1386,7 +1388,8 @@ export function ExcelAutomatorView() {
         pTitle.alignment = { vertical: 'middle', horizontal: 'center' };
         wsPivotMaster.getRow(1).height = 32;
 
-        const headerRowVals = ['Region / Dimension', ...tiers, 'Total ARR (Row Sum)', 'Share of Revenue'];
+        const metricHeaderName = (cols[arrColIdx] || 'Metric').replace(/_/g, ' ');
+        const headerRowVals = [regColName.replace(/_/g, ' '), ...tiers, `Total ${metricHeaderName} (Row Sum)`, 'Volume Share %'];
         const pHeadRow = wsPivotMaster.addRow(headerRowVals);
         pHeadRow.height = 24;
         pHeadRow.eachCell((c) => {
@@ -1534,13 +1537,47 @@ export function ExcelAutomatorView() {
           c.border = borderThin;
         });
 
+        const isChurnColNumeric = typeof sanitizedRows[0]?.[cols[churnColIdx]] === 'number';
+        const isStatusTextCol = typeof sanitizedRows[0]?.[cols[churnColIdx]] === 'string';
+
         sanitizedRows.forEach((row, idx) => {
           const rowNum = idx + 3;
           const accId = String(row[cols[idColIdx]] || `ID-${1000 + idx}`);
           const custName = String(row[cols[regColIdx]] || row[cols[1]] || `Record ${idx + 1}`);
-          const arrVal = typeof row[cols[arrColIdx]] === 'number' ? row[cols[arrColIdx]] : 50000;
-          const churnVal = typeof row[cols[churnColIdx]] === 'number' ? row[cols[churnColIdx]] : 0.05;
+          const arrVal = typeof row[cols[arrColIdx]] === 'number' ? row[cols[arrColIdx]] : 0;
+          const rawRiskVal = row[cols[churnColIdx]];
+          const churnVal = typeof rawRiskVal === 'number' ? rawRiskVal : 0.05;
           const regVal = String(row[cols[regColIdx]] || 'Global');
+
+          let ifFormula = '';
+          let ifResult = 'HEALTHY';
+          let fontColor = 'FF059669';
+
+          if (isStatusTextCol) {
+            const sVal = String(rawRiskVal || '').toLowerCase();
+            if (sVal.includes('cancel') || sVal.includes('fail') || sVal.includes('refund')) {
+              ifResult = 'CRITICAL RISK';
+              fontColor = 'FFE34234';
+            } else if (sVal.includes('pend') || sVal.includes('process') || sVal.includes('transit')) {
+              ifResult = 'WATCHLIST';
+              fontColor = 'FFD97706';
+            }
+            ifFormula = `IF(OR(MasterLedger!${churnColLetter}${idx + 2}="Cancelled", MasterLedger!${churnColLetter}${idx + 2}="Failed"), "CRITICAL RISK", IF(MasterLedger!${churnColLetter}${idx + 2}="Pending", "WATCHLIST", "HEALTHY"))`;
+          } else if (isChurnColNumeric) {
+            if (churnVal >= 0.2) {
+              ifResult = 'CRITICAL RISK';
+              fontColor = 'FFE34234';
+            } else if (churnVal >= 0.1) {
+              ifResult = 'WATCHLIST';
+              fontColor = 'FFD97706';
+            }
+            ifFormula = `IF(MasterLedger!${churnColLetter}${idx + 2}>=0.2, "CRITICAL RISK", IF(MasterLedger!${churnColLetter}${idx + 2}>=0.1, "WATCHLIST", "HEALTHY"))`;
+          } else {
+            const isAbove = arrVal >= datasetStats.avgArr;
+            ifResult = isAbove ? 'ABOVE BENCHMARK' : 'BELOW BENCHMARK';
+            fontColor = isAbove ? 'FF059669' : 'FFD97706';
+            ifFormula = `IF(MasterLedger!$${arrColLetter}$${idx + 2}>=AVERAGE(MasterLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}), "ABOVE BENCHMARK", "BELOW BENCHMARK")`;
+          }
 
           const r = wsDynamic.addRow([
             accId,
@@ -1550,8 +1587,8 @@ export function ExcelAutomatorView() {
               result: arrVal,
             },
             {
-              formula: `IF(MasterLedger!${churnColLetter}${idx + 2}>=0.2, "CRITICAL RISK", IF(MasterLedger!${churnColLetter}${idx + 2}>=0.1, "WATCHLIST", "HEALTHY"))`,
-              result: churnVal >= 0.2 ? 'CRITICAL RISK' : churnVal >= 0.1 ? 'WATCHLIST' : 'HEALTHY',
+              formula: ifFormula,
+              result: ifResult,
             },
             {
               formula: `SUMIFS(MasterLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, MasterLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${regVal}")`,
@@ -1567,7 +1604,7 @@ export function ExcelAutomatorView() {
             name: 'Segoe UI',
             size: 9,
             bold: true,
-            color: { argb: churnVal >= 0.2 ? 'FFE34234' : churnVal >= 0.1 ? 'FFD97706' : 'FF059669' },
+            color: { argb: fontColor },
           };
           r.eachCell((c) => (c.border = borderThin));
         });
@@ -1587,11 +1624,130 @@ export function ExcelAutomatorView() {
       // GENERATOR 5: CONDITIONAL FORMATTING & ANOMALY HEATMAP
       // ────────────────────────────────────────────────────────────────────────
       else if (automationToRun === 'conditional_heatmap') {
+        // 1. STATISTICAL ANOMALY & OUTLIER COMPUTATION ENGINE
+        const metricColName = cols[arrColIdx] || cols.find((c) => sanitizedRows.some((r) => typeof r[c] === 'number')) || cols[0];
+
+        // Extract numeric values for the primary metric
+        const metricVals: number[] = [];
+        sanitizedRows.forEach((r) => {
+          const v = r[metricColName];
+          if (typeof v === 'number' && !isNaN(v)) {
+            metricVals.push(v);
+          }
+        });
+
+        const N = metricVals.length;
+        const sumVal = metricVals.reduce((a, b) => a + b, 0);
+        const meanVal = N > 0 ? sumVal / N : 0;
+        const variance = N > 1 ? metricVals.reduce((acc, v) => acc + Math.pow(v - meanVal, 2), 0) / (N - 1) : 0;
+        const stdDevVal = Math.sqrt(variance);
+
+        // Percentiles for IQR & quintile thresholds
+        const sortedVals = [...metricVals].sort((a, b) => a - b);
+        const q1Val = sortedVals[Math.floor(sortedVals.length * 0.25)] ?? meanVal;
+        const medianVal = sortedVals[Math.floor(sortedVals.length * 0.5)] ?? meanVal;
+        const q3Val = sortedVals[Math.floor(sortedVals.length * 0.75)] ?? meanVal;
+        const p80Val = sortedVals[Math.floor(sortedVals.length * 0.8)] ?? (meanVal + stdDevVal);
+        const p20Val = sortedVals[Math.floor(sortedVals.length * 0.2)] ?? (meanVal - stdDevVal);
+        const iqrVal = Math.max(0.001, q3Val - q1Val);
+        const upperOutlierBound = q3Val + 1.5 * iqrVal;
+        const lowerOutlierBound = q1Val - 1.5 * iqrVal;
+
+        // Categorical / Status / Flag column detection (e.g., holiday_flag, order_status, status)
+        const detectedStatusCols = cols.filter((c) => {
+          const l = c.toLowerCase();
+          return l.includes('status') || l.includes('flag') || l.includes('state') || l.includes('stage') || l.includes('audit') || l.includes('risk') || l.includes('result');
+        });
+
+        // Compute row-level anomaly scores and risk flags
+        const evaluatedRows: Array<Record<string, any>> = sanitizedRows.map((row) => {
+          const rawMetric = row[metricColName];
+          const numVal = typeof rawMetric === 'number' ? rawMetric : 0;
+          const zScore = stdDevVal > 0 ? (numVal - meanVal) / stdDevVal : 0;
+          const absZ = Math.abs(zScore);
+
+          // Check categorical status for positive/warning/negative sentiment
+          let isNegativeStatus = false;
+          let isWarningStatus = false;
+          let isPositiveStatus = false;
+
+          detectedStatusCols.forEach((sc) => {
+            const sVal = String(row[sc] || '').toLowerCase().trim();
+            if (
+              sVal.includes('cancel') ||
+              sVal.includes('fail') ||
+              sVal.includes('refund') ||
+              sVal.includes('return') ||
+              sVal.includes('reject') ||
+              sVal.includes('fraud') ||
+              sVal.includes('loss') ||
+              (sc.toLowerCase().includes('holiday') && sVal === '1')
+            ) {
+              isNegativeStatus = true;
+            } else if (
+              sVal.includes('pend') ||
+              sVal.includes('process') ||
+              sVal.includes('transit') ||
+              sVal.includes('hold') ||
+              sVal.includes('review') ||
+              sVal.includes('delay')
+            ) {
+              isWarningStatus = true;
+            } else if (
+              sVal.includes('deliver') ||
+              sVal.includes('complete') ||
+              sVal.includes('ship') ||
+              sVal.includes('verif') ||
+              sVal.includes('success') ||
+              sVal.includes('active')
+            ) {
+              isPositiveStatus = true;
+            }
+          });
+
+          // Outlier status
+          let anomalyStatus: 'NORMAL RANGE' | 'WATCHLIST ANOMALY' | 'CRITICAL OUTLIER' = 'NORMAL RANGE';
+          if (absZ >= 2.5 || numVal > upperOutlierBound || numVal < lowerOutlierBound) {
+            anomalyStatus = 'CRITICAL OUTLIER';
+          } else if (absZ >= 1.5) {
+            anomalyStatus = 'WATCHLIST ANOMALY';
+          }
+
+          // Composite Risk Rating
+          let riskRating: 'LOW RISK' | 'MEDIUM RISK' | 'HIGH RISK' = 'LOW RISK';
+          if (anomalyStatus === 'CRITICAL OUTLIER' || isNegativeStatus) {
+            riskRating = 'HIGH RISK';
+          } else if (anomalyStatus === 'WATCHLIST ANOMALY' || isWarningStatus) {
+            riskRating = 'MEDIUM RISK';
+          }
+
+          return {
+            ...row,
+            Outlier_Z_Score: Math.round(zScore * 100) / 100,
+            Anomaly_Status: anomalyStatus,
+            Risk_Assessment: riskRating,
+            _zScore: zScore,
+            _absZ: absZ,
+            _isNegative: isNegativeStatus,
+            _isWarning: isWarningStatus,
+            _isPositive: isPositiveStatus,
+          };
+        });
+
+        // ──────────────────────────────────────────────────────────────────────
+        // TAB 1: HEATMAP LEDGER (With Visual Cells AND Native OpenXML Rules)
+        // ──────────────────────────────────────────────────────────────────────
         const wsHeatmap = wb.addWorksheet('HeatmapLedger', {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }],
         });
 
-        wsHeatmap.columns = cols.map((c) => ({ header: c, key: c, width: 20 }));
+        const heatmapCols = [...cols, 'Outlier_Z_Score', 'Anomaly_Status', 'Risk_Assessment'];
+        wsHeatmap.columns = heatmapCols.map((c) => ({
+          header: c.replace(/_/g, ' '),
+          key: c,
+          width: Math.max(16, c.length + 5),
+        }));
+
         wsHeatmap.getRow(1).height = 28;
         wsHeatmap.getRow(1).eachCell((c) => {
           c.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: palette.headerFont } };
@@ -1600,60 +1756,510 @@ export function ExcelAutomatorView() {
           c.border = borderThin;
         });
 
-        sanitizedRows.forEach((row) => {
+        evaluatedRows.forEach((row) => {
           const r = wsHeatmap.addRow(row);
           r.height = 20;
-
-          const arr = typeof row[cols[arrColIdx]] === 'number' ? row[cols[arrColIdx]] : 0;
-          const churn = typeof row[cols[churnColIdx]] === 'number' ? row[cols[churnColIdx]] : 0;
-          const auditStatus = String(row['Last_Audit_Status'] || 'Verified');
 
           r.eachCell({ includeEmpty: true }, (cell, colIdx) => {
             cell.font = { name: 'Segoe UI', size: 9 };
             cell.border = borderThin;
 
-            const colKey = cols[colIdx - 1];
-            if (colKey.includes('ARR')) {
-              cell.numFmt = '$#,##0.00';
-              if (arr > 100000) {
+            const colKey = heatmapCols[colIdx - 1];
+            const rawVal = row[colKey];
+
+            // 1. Risk_Assessment Column Formatting
+            if (colKey === 'Risk_Assessment') {
+              cell.font = { name: 'Segoe UI', size: 9, bold: true };
+              if (rawVal === 'HIGH RISK') {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF991B1B' } };
+              } else if (rawVal === 'MEDIUM RISK') {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+                cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF92400E' } };
+              } else {
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
                 cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF065F46' } };
               }
-            } else if (colKey.includes('Churn')) {
-              cell.numFmt = '0.0%';
-              if (churn >= 0.2) {
+              cell.alignment = { horizontal: 'center' };
+            }
+            // 2. Anomaly_Status Column Formatting
+            else if (colKey === 'Anomaly_Status') {
+              if (rawVal === 'CRITICAL OUTLIER') {
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
                 cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF991B1B' } };
-              } else if (churn >= 0.1) {
+              } else if (rawVal === 'WATCHLIST ANOMALY') {
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
                 cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF92400E' } };
+              } else {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+                cell.font = { name: 'Segoe UI', size: 9, color: { argb: 'FF065F46' } };
               }
-            } else if (colKey.includes('Audit')) {
-              if (auditStatus !== 'Verified') {
+              cell.alignment = { horizontal: 'center' };
+            }
+            // 3. Outlier_Z_Score Column Formatting
+            else if (colKey === 'Outlier_Z_Score') {
+              cell.numFmt = '0.00';
+              cell.alignment = { horizontal: 'right' };
+              const z = typeof rawVal === 'number' ? Math.abs(rawVal) : 0;
+              if (z >= 2.5) {
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
                 cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF991B1B' } };
+              } else if (z >= 1.5) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+                cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF92400E' } };
+              } else {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+                cell.font = { name: 'Segoe UI', size: 9, color: { argb: 'FF065F46' } };
+              }
+            }
+            // 4. Status & Flag Columns (e.g., order_status, holiday_flag)
+            else if (detectedStatusCols.includes(colKey)) {
+              const sVal = String(rawVal || '').toLowerCase().trim();
+              if (
+                sVal.includes('cancel') ||
+                sVal.includes('fail') ||
+                sVal.includes('refund') ||
+                sVal.includes('return') ||
+                sVal.includes('reject')
+              ) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF991B1B' } };
+              } else if (
+                sVal.includes('pend') ||
+                sVal.includes('process') ||
+                sVal.includes('transit') ||
+                sVal.includes('hold') ||
+                sVal.includes('delay')
+              ) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+                cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF92400E' } };
+              } else if (
+                sVal.includes('deliver') ||
+                sVal.includes('complete') ||
+                sVal.includes('ship') ||
+                sVal.includes('verif') ||
+                sVal.includes('success') ||
+                sVal.includes('active')
+              ) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+                cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF065F46' } };
+              } else if (colKey.toLowerCase().includes('holiday')) {
+                if (sVal === '1' || sVal === 'true' || sVal === 'yes') {
+                  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+                  cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF92400E' } };
+                }
+              }
+            }
+            // 5. Numeric metric columns
+            else if (typeof rawVal === 'number') {
+              if (colKey.toLowerCase().includes('rate') || colKey.toLowerCase().includes('pct') || colKey.toLowerCase().includes('prob')) {
+                cell.numFmt = '0.0%';
+              } else if (colKey.toLowerCase().includes('price') || colKey.toLowerCase().includes('arr') || colKey.toLowerCase().includes('rev') || colKey.toLowerCase().includes('sale') || colKey.toLowerCase().includes('cost') || colKey.toLowerCase().includes('amount')) {
+                cell.numFmt = '$#,##0.00';
+              } else {
+                cell.numFmt = '#,##0.00';
+              }
+              cell.alignment = { horizontal: 'right' };
+
+              if (colKey === metricColName) {
+                if (rawVal >= p80Val) {
+                  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+                  cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF065F46' } };
+                } else if (rawVal <= p20Val || rawVal < 0) {
+                  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                  cell.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF991B1B' } };
+                }
               }
             }
           });
         });
 
+        // Add autoFilter to HeatmapLedger
+        const lastHeatmapColLetter = getColumnLetter(heatmapCols.length - 1);
+        wsHeatmap.autoFilter = `A1:${lastHeatmapColLetter}1`;
+
+        // Add Native OpenXML Conditional Formatting Rules
+        const totalRowsHeatmap = evaluatedRows.length + 1;
+        wsHeatmap.addConditionalFormatting({
+          ref: `A2:${lastHeatmapColLetter}${totalRowsHeatmap}`,
+          rules: [
+            {
+              priority: 1,
+              type: 'cellIs',
+              operator: 'equal',
+              formulae: ['"HIGH RISK"'],
+              style: {
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEE2E2' } },
+                font: { color: { argb: 'FF991B1B' }, bold: true },
+              },
+            },
+            {
+              priority: 2,
+              type: 'cellIs',
+              operator: 'equal',
+              formulae: ['"MEDIUM RISK"'],
+              style: {
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEF3C7' } },
+                font: { color: { argb: 'FF92400E' }, bold: true },
+              },
+            },
+            {
+              priority: 3,
+              type: 'cellIs',
+              operator: 'equal',
+              formulae: ['"LOW RISK"'],
+              style: {
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFD1FAE5' } },
+                font: { color: { argb: 'FF065F46' }, bold: true },
+              },
+            },
+            {
+              priority: 4,
+              type: 'cellIs',
+              operator: 'equal',
+              formulae: ['"CRITICAL OUTLIER"'],
+              style: {
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEE2E2' } },
+                font: { color: { argb: 'FF991B1B' }, bold: true },
+              },
+            },
+            {
+              priority: 5,
+              type: 'cellIs',
+              operator: 'equal',
+              formulae: ['"WATCHLIST ANOMALY"'],
+              style: {
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEF3C7' } },
+                font: { color: { argb: 'FF92400E' }, bold: true },
+              },
+            },
+            {
+              priority: 6,
+              type: 'cellIs',
+              operator: 'equal',
+              formulae: ['"Delivered"'],
+              style: {
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFD1FAE5' } },
+                font: { color: { argb: 'FF065F46' }, bold: true },
+              },
+            },
+            {
+              priority: 7,
+              type: 'cellIs',
+              operator: 'equal',
+              formulae: ['"Cancelled"'],
+              style: {
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEE2E2' } },
+                font: { color: { argb: 'FF991B1B' }, bold: true },
+              },
+            },
+          ],
+        });
+
+        // ──────────────────────────────────────────────────────────────────────
+        // TAB 2: CATEGORICAL INSIGHTS & STATUS ANALYSIS (order_status, holiday_flag)
+        // ──────────────────────────────────────────────────────────────────────
+        const wsCat = wb.addWorksheet('CategoricalInsights', {
+          views: [{ showGridLines: true }],
+        });
+
+        wsCat.columns = [
+          { width: 28 },
+          { width: 16 },
+          { width: 18 },
+          { width: 22 },
+          { width: 20 },
+          { width: 18 },
+          { width: 16 },
+        ];
+
+        wsCat.mergeCells('A1:G1');
+        const catTitle = wsCat.getCell('A1');
+        catTitle.value = `${companyName.toUpperCase()} — CATEGORICAL & STATUS DISTRIBUTION INTELLIGENCE`;
+        catTitle.font = { name: 'Segoe UI', size: 12, bold: true, color: { argb: palette.headerFont } };
+        catTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
+        catTitle.alignment = { vertical: 'middle', horizontal: 'center' };
+        wsCat.getRow(1).height = 32;
+
+        let curCatRow = 3;
+
+        // Group by each detected status/flag column or top categorical columns
+        const targetAnalysisCols = detectedStatusCols.length > 0
+          ? detectedStatusCols
+          : cols.filter((c) => typeof sanitizedRows[0]?.[c] === 'string').slice(0, 3);
+
+        const metricColLetter = getColumnLetter(cols.indexOf(metricColName));
+        const riskColLetter = getColumnLetter(heatmapCols.indexOf('Risk_Assessment'));
+
+        targetAnalysisCols.forEach((colKey) => {
+          const colLetter = getColumnLetter(cols.indexOf(colKey));
+          const groups: Record<string, { count: number; metricSum: number; highRiskCount: number }> = {};
+
+          evaluatedRows.forEach((r) => {
+            const val = String(r[colKey] ?? 'Unknown').trim();
+            if (!groups[val]) groups[val] = { count: 0, metricSum: 0, highRiskCount: 0 };
+            groups[val].count++;
+            const mVal = typeof r[metricColName] === 'number' ? r[metricColName] : 0;
+            groups[val].metricSum += mVal;
+            if (r.Risk_Assessment === 'HIGH RISK') groups[val].highRiskCount++;
+          });
+
+          // Section Header Banner
+          wsCat.mergeCells(`A${curCatRow}:G${curCatRow}`);
+          const sBanner = wsCat.getCell(`A${curCatRow}`);
+          sBanner.value = `DIMENSION ANALYSIS: ${colKey.replace(/_/g, ' ').toUpperCase()}`;
+          sBanner.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+          sBanner.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.accentBg } };
+          sBanner.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+          wsCat.getRow(curCatRow).height = 24;
+          curCatRow++;
+
+          // Table Header
+          const tHeaders = [
+            `${colKey.replace(/_/g, ' ')} Value`,
+            'Record Count',
+            'Volume Share %',
+            `Total ${metricColName.replace(/_/g, ' ')}`,
+            `Average ${metricColName.replace(/_/g, ' ')}`,
+            'High Risk Records',
+            'Risk Rate %',
+          ];
+          const tRow = wsCat.addRow(tHeaders);
+          tRow.height = 22;
+          tRow.eachCell((c) => {
+            c.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
+            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
+            c.alignment = { vertical: 'middle', horizontal: 'center' };
+            c.border = borderThin;
+          });
+          curCatRow++;
+
+          const startGroupRow = curCatRow;
+          Object.entries(groups).forEach(([gVal, gStat]) => {
+            const thisRowIdx = curCatRow;
+            const r = wsCat.addRow([
+              gVal,
+              {
+                formula: `COUNTIF(HeatmapLedger!$${colLetter}$2:$${colLetter}$${totalRowsHeatmap}, "${gVal}")`,
+                result: gStat.count,
+              },
+              {
+                formula: `B${thisRowIdx}/${evaluatedRows.length}`,
+                result: evaluatedRows.length > 0 ? gStat.count / evaluatedRows.length : 0,
+              },
+              {
+                formula: `SUMIF(HeatmapLedger!$${colLetter}$2:$${colLetter}$${totalRowsHeatmap}, "${gVal}", HeatmapLedger!$${metricColLetter}$2:$${metricColLetter}$${totalRowsHeatmap})`,
+                result: gStat.metricSum,
+              },
+              {
+                formula: `D${thisRowIdx}/B${thisRowIdx}`,
+                result: gStat.count > 0 ? gStat.metricSum / gStat.count : 0,
+              },
+              {
+                formula: `COUNTIFS(HeatmapLedger!$${colLetter}$2:$${colLetter}$${totalRowsHeatmap}, "${gVal}", HeatmapLedger!$${riskColLetter}$2:$${riskColLetter}$${totalRowsHeatmap}, "HIGH RISK")`,
+                result: gStat.highRiskCount,
+              },
+              {
+                formula: `F${thisRowIdx}/B${thisRowIdx}`,
+                result: gStat.count > 0 ? gStat.highRiskCount / gStat.count : 0,
+              },
+            ]);
+
+            r.height = 20;
+            r.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true };
+            r.getCell(2).numFmt = '#,##0';
+            r.getCell(3).numFmt = '0.0%';
+            r.getCell(4).numFmt = '$#,##0.00';
+            r.getCell(5).numFmt = '$#,##0.00';
+            r.getCell(6).numFmt = '#,##0';
+            r.getCell(7).numFmt = '0.0%';
+
+            if (gStat.highRiskCount > 0) {
+              r.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+              r.getCell(6).font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF991B1B' } };
+              r.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+              r.getCell(7).font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF991B1B' } };
+            }
+            r.eachCell((c) => (c.border = borderThin));
+            curCatRow++;
+          });
+
+          // Group Sub-total row
+          const subTotalRow = wsCat.addRow([
+            `TOTAL (${colKey})`,
+            { formula: `SUM(B${startGroupRow}:B${curCatRow - 1})`, result: evaluatedRows.length },
+            { formula: `SUM(C${startGroupRow}:C${curCatRow - 1})`, result: 1.0 },
+            { formula: `SUM(D${startGroupRow}:D${curCatRow - 1})`, result: sumVal },
+            { formula: `AVERAGE(E${startGroupRow}:E${curCatRow - 1})`, result: meanVal },
+            { formula: `SUM(F${startGroupRow}:F${curCatRow - 1})`, result: evaluatedRows.filter((r) => r.Risk_Assessment === 'HIGH RISK').length },
+            { formula: `F${curCatRow}/B${curCatRow}`, result: evaluatedRows.length > 0 ? evaluatedRows.filter((r) => r.Risk_Assessment === 'HIGH RISK').length / evaluatedRows.length : 0 },
+          ]);
+          subTotalRow.height = 22;
+          subTotalRow.eachCell((c) => {
+            c.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: palette.headerFont } };
+            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.badgeBg } };
+            c.border = borderThin;
+          });
+          subTotalRow.getCell(2).numFmt = '#,##0';
+          subTotalRow.getCell(3).numFmt = '0.0%';
+          subTotalRow.getCell(4).numFmt = '$#,##0.00';
+          subTotalRow.getCell(5).numFmt = '$#,##0.00';
+          subTotalRow.getCell(6).numFmt = '#,##0';
+          subTotalRow.getCell(7).numFmt = '0.0%';
+          curCatRow += 2;
+        });
+
+        // ──────────────────────────────────────────────────────────────────────
+        // TAB 3: OUTLIER & ANOMALY AUDIT LOG
+        // ──────────────────────────────────────────────────────────────────────
+        const wsOutliers = wb.addWorksheet('OutlierSummary', {
+          views: [{ showGridLines: true }],
+        });
+
+        wsOutliers.columns = [
+          { width: 14 },
+          { width: 22 },
+          { width: 20 },
+          { width: 20 },
+          { width: 18 },
+          { width: 22 },
+          { width: 18 },
+          { width: 44 },
+        ];
+
+        wsOutliers.mergeCells('A1:H1');
+        const outTitle = wsOutliers.getCell('A1');
+        outTitle.value = `${companyName.toUpperCase()} — OUTLIER & ANOMALY DETECTIONS LOG`;
+        outTitle.font = { name: 'Segoe UI', size: 12, bold: true, color: { argb: palette.headerFont } };
+        outTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
+        outTitle.alignment = { vertical: 'middle', horizontal: 'center' };
+        wsOutliers.getRow(1).height = 32;
+
+        const oHeaders = [
+          'Row #',
+          'Identifier / Context',
+          'Primary Dimension',
+          `Metric (${metricColName})`,
+          'Outlier Z-Score',
+          'Anomaly Classification',
+          'Risk Rating',
+          'Audit Action Trigger',
+        ];
+        const oHeadRow = wsOutliers.addRow(oHeaders);
+        oHeadRow.height = 24;
+        oHeadRow.eachCell((c) => {
+          c.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.accentBg } };
+          c.alignment = { vertical: 'middle', horizontal: 'center' };
+          c.border = borderThin;
+        });
+
+        const flaggedOutliers = evaluatedRows.filter(
+          (r) => r.Anomaly_Status !== 'NORMAL RANGE' || r.Risk_Assessment === 'HIGH RISK'
+        );
+
+        flaggedOutliers.slice(0, 500).forEach((row, oIdx) => {
+          const idVal = String(row[cols[idColIdx]] || `Record ${oIdx + 1}`);
+          const dimVal = String(row[cols[regColIdx]] || row[detectedStatusCols[0]] || 'Global');
+          const mVal = typeof row[metricColName] === 'number' ? row[metricColName] : 0;
+          const zVal = row.Outlier_Z_Score;
+          const statusVal = row.Anomaly_Status;
+          const riskVal = row.Risk_Assessment;
+
+          let actionTrigger = 'Standard monitoring';
+          if (riskVal === 'HIGH RISK') {
+            actionTrigger = 'Mandatory executive investigation & mitigation protocol';
+          } else if (statusVal === 'WATCHLIST ANOMALY') {
+            actionTrigger = 'Add to weekly automated anomaly surveillance queue';
+          }
+
+          const r = wsOutliers.addRow([
+            `Row ${oIdx + 2}`,
+            idVal,
+            dimVal,
+            mVal,
+            zVal,
+            statusVal,
+            riskVal,
+            actionTrigger,
+          ]);
+          r.height = 20;
+          r.getCell(4).numFmt = '$#,##0.00';
+          r.getCell(5).numFmt = '0.00';
+
+          if (riskVal === 'HIGH RISK') {
+            r.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+            r.getCell(7).font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF991B1B' } };
+          } else {
+            r.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+            r.getCell(7).font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF92400E' } };
+          }
+
+          r.eachCell((c) => (c.border = borderThin));
+        });
+
+        if (flaggedOutliers.length === 0) {
+          const emptyRow = wsOutliers.addRow([
+            'Notice',
+            'All records within normal range',
+            'No anomalies detected',
+            meanVal,
+            0,
+            'NORMAL RANGE',
+            'LOW RISK',
+            '100% compliant with standard 2.0σ Gaussian distribution',
+          ]);
+          emptyRow.height = 22;
+          emptyRow.eachCell((c) => (c.border = borderThin));
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // TAB 4: THRESHOLD KEY & STATISTICAL REFERENCE SPECIFICATION
+        // ──────────────────────────────────────────────────────────────────────
         const wsKey = wb.addWorksheet('ThresholdKey', { views: [{ showGridLines: true }] });
-        wsKey.columns = [{ width: 24 }, { width: 36 }, { width: 30 }];
-        wsKey.addRow(['Indicator Color', 'Condition / Threshold', 'Action Trigger']);
+        wsKey.columns = [{ width: 30 }, { width: 34 }, { width: 44 }];
+
+        wsKey.addRow(['Statistical Parameter / Color', 'Computed Value / Condition', 'Business Logic & Escalation Trigger']);
+        wsKey.getRow(1).height = 26;
         wsKey.getRow(1).eachCell((c) => {
           c.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
           c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
+          c.border = borderThin;
         });
 
         const keyItems = [
-          ['Soft Emerald (#D1FAE5)', 'ARR >= $100,000 (Top Quintile)', 'Eligible for Executive Growth Sponsorship'],
-          ['Soft Amber (#FEF3C7)', 'Churn Probability between 10% - 20%', 'Quarterly Success Check-in Triggered'],
-          ['Soft Crimson (#FEE2E2)', 'Churn Probability >= 20% or Audit Failed', 'Immediate Escalation & Red-Zone Intervention'],
+          ['Evaluated Primary Metric', metricColName, 'Primary driver column used for Gaussian outlier modeling'],
+          ['Dataset Total Volume (N)', `${N.toLocaleString()} rows`, 'Full dataset row count ingested and verified'],
+          ['Population Mean (μ)', `$${meanVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Arithmetic average of all valid non-null numerical observations'],
+          ['Standard Deviation (σ)', `$${stdDevVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Dispersion parameter for parametric Z-score calculation'],
+          ['Interquartile Range (IQR)', `$${iqrVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Q3 ($' + q3Val.toFixed(0) + ') - Q1 ($' + q1Val.toFixed(0) + ') non-parametric spread'],
+          ['Upper Outlier Cutoff (Q3 + 1.5×IQR)', `$${upperOutlierBound.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Observations above this line are classified as statistical outliers'],
+          ['Lower Outlier Cutoff (Q1 - 1.5×IQR)', `$${lowerOutlierBound.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Observations below this line are classified as statistical outliers'],
+          ['Soft Emerald (#D1FAE5)', 'Normal (|Z| < 1.5) or Delivered/Completed/Verified', 'Low Risk: Eligible for standard operational processing'],
+          ['Soft Amber (#FEF3C7)', 'Watchlist (1.5 ≤ |Z| < 2.5) or Pending/Processing', 'Medium Risk: Flagged for automated surveillance queue'],
+          ['Soft Crimson (#FEE2E2)', 'Critical Outlier (|Z| ≥ 2.5) or Cancelled/Failed/Refunded', 'High Risk: Immediate root cause investigation and red-zone alert'],
         ];
 
-        keyItems.forEach(([color, cond, act]) => {
-          const r = wsKey.addRow([color, cond, act]);
+        keyItems.forEach(([param, cond, act], kIdx) => {
+          const r = wsKey.addRow([param, cond, act]);
           r.height = 22;
+          r.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true };
+          r.getCell(2).font = { name: 'Segoe UI', size: 9, color: { argb: 'FF1E293B' } };
+          r.getCell(3).font = { name: 'Segoe UI', size: 9, color: { argb: 'FF475569' } };
+
+          if (kIdx >= 7) {
+            if (param.includes('Emerald')) {
+              r.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+              r.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF065F46' } };
+            } else if (param.includes('Amber')) {
+              r.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+              r.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF92400E' } };
+            } else if (param.includes('Crimson')) {
+              r.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+              r.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF991B1B' } };
+            }
+          }
+
           r.eachCell((c) => (c.border = borderThin));
         });
       }
@@ -2440,20 +3046,20 @@ export function ExcelAutomatorView() {
                 </p>
                 <div className="p-3.5 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-2 font-mono text-xs">
                   <div className="flex items-center justify-between text-[#059669] dark:text-[#34D399]">
-                    <span className="font-bold">Metric Summary:</span>
+                    <span className="font-bold">Primary Metric Sum:</span>
                     <span>=SUM(DataLedger!E2:E{datasetStats.rowCount + 1})</span>
                   </div>
                   <div className="flex items-center justify-between text-blue-600 dark:text-blue-400">
-                    <span className="font-bold">Regional Aggregate:</span>
-                    <span>=SUMIF(DataLedger!$C$2:$C${datasetStats.rowCount + 1}, &quot;North America&quot;, DataLedger!$E$2:$E${datasetStats.rowCount + 1})</span>
+                    <span className="font-bold">Categorical SUMIF:</span>
+                    <span>=SUMIF(DataLedger!$C$2:$C${datasetStats.rowCount + 1}, &quot;Category&quot;, DataLedger!$E$2:$E${datasetStats.rowCount + 1})</span>
                   </div>
                   <div className="flex items-center justify-between text-purple-600 dark:text-purple-400">
                     <span className="font-bold">Dynamic XLOOKUP:</span>
                     <span>=XLOOKUP(A2, MasterLedger!$A$2:$A${datasetStats.rowCount + 1}, MasterLedger!$E$2:$E${datasetStats.rowCount + 1}, &quot;Not Found&quot;)</span>
                   </div>
                   <div className="flex items-center justify-between text-amber-600 dark:text-amber-400">
-                    <span className="font-bold">Risk Classification:</span>
-                    <span>=IF(G2&gt;=0.2, &quot;CRITICAL RISK&quot;, &quot;HEALTHY&quot;)</span>
+                    <span className="font-bold">Risk &amp; Outlier Classification:</span>
+                    <span>=IF(ABS(Outlier_Z_Score)&gt;=2.5, &quot;CRITICAL OUTLIER&quot;, &quot;NORMAL&quot;)</span>
                   </div>
                 </div>
                 <p className="text-[11px] text-[var(--lm-text-tertiary)]">
