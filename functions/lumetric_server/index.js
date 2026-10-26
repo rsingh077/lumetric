@@ -1048,7 +1048,10 @@ async function sendOtpEmail(req, recipientEmail, otpCode, purpose, userName) {
           <!-- Footer -->
           <tr>
             <td style="background-color: #0D1612; border-top: 1px solid rgba(229, 217, 200, 0.1); padding: 18px 24px; text-align: center;">
-              <p style="margin: 0; font-size: 11px; color: #76887E; line-height: 1.5;">
+              <p style="margin: 0 0 8px; font-size: 11px; color: #84968C; line-height: 1.4;">
+                🔒 <strong>Automated System Message:</strong> Please do not reply directly to this email. Replies to this address are routed to an unmonitored mailbox.
+              </p>
+              <p style="margin: 0; font-size: 10px; color: #627269; line-height: 1.5;">
                 © 2026 Lumetric Studio • Zero-Trust Account Verification<br>
                 Powered by Zoho Catalyst Cloud Infrastructure
               </p>
@@ -1061,7 +1064,7 @@ async function sendOtpEmail(req, recipientEmail, otpCode, purpose, userName) {
 </body>
 </html>`;
 
-  const textContent = `LUMETRIC STUDIO — ${title.toUpperCase()}\n\nHello ${displayName},\n\nYour 6-digit verification code is:\n\n${otpCode}\n\nThis code expires in 10 minutes.\n\nAnti-Hijack Notice: Never share this code with anyone. If you did not request this, please disregard this email.`;
+  const textContent = `LUMETRIC STUDIO — ${title.toUpperCase()}\n\nHello ${displayName},\n\nYour 6-digit verification code is:\n\n${otpCode}\n\nThis code expires in 10 minutes.\n\nAnti-Hijack Notice: Never share this code with anyone. If you did not request this, please disregard this email.\n\n----------------------------------------\nPLEASE DO NOT REPLY TO THIS EMAIL\nThis is an automated security transmission sent from an unmonitored address. Replies will not be read or answered.`;
 
   let deliveryResult = { dispatched: false, channel: 'none', details: '' };
 
@@ -1090,6 +1093,7 @@ async function sendOtpEmail(req, recipientEmail, otpCode, purpose, userName) {
 
       const info = await transporter.sendMail({
         from: `"${smtpFromName}" <${smtpUser}>`,
+        replyTo: '"Lumetric (Do Not Reply)" <noreply@techexon.app>',
         to: recipientEmail,
         subject,
         text: textContent,
