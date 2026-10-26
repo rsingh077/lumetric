@@ -3,7 +3,15 @@
 		"name": "lumetric_server",
 		"stack": "node18",
 		"type": "advancedio",
-		"env_variables": {}
+		"env_variables": {
+			"SMTP_HOST": "smtp.zoho.in",
+			"SMTP_PORT": "587",
+			"SMTP_SECURE": "false",
+			"SMTP_USER": "security@techexon.app",
+			"SMTP_PASS": "Lassilodu@122",
+			"SMTP_FROM_NAME": "Lumetric Security",
+			"SENDER_EMAIL": "security@techexon.app"
+		}
 	},
 	"execution": {
 		"main": "index.js"
