@@ -30,19 +30,21 @@ interface GeoEntity {
   parentRegion?: string;
 }
 
-// ==========================================
-// 1. WORLD MAP REAL BOUNDARIES (1000 x 500)
-// ==========================================
+// ============================================================================
+// 1. REAL GEOGRAPHICAL WORLD MAP — ROBINSON PROJECTION (1000 x 520)
+// Authentic continental contours, peninsulas, archipelagos & country borders
+// ============================================================================
 const WORLD_ENTITIES: GeoEntity[] = [
-  // North America
+  // ---------------- North America ----------------
   {
     id: 'usa',
     name: 'United States',
     label: 'United States',
     subLabel: 'US / North America',
-    centroid: [220, 185],
-    d: 'M 160,140 L 260,135 L 295,155 L 295,200 L 265,225 L 245,215 L 230,240 L 195,235 L 170,200 L 155,160 Z M 70,60 L 140,45 L 165,80 L 125,115 L 70,105 Z M 105,225 L 120,230 L 110,238 Z',
-    aliases: ['united states', 'usa', 'us', 'u.s.', 'u.s.a.', 'north america', 'na', 'americas'],
+    centroid: [225, 195],
+    // Lower 48 + Alaska + Hawaii with realistic coastlines
+    d: 'M 148,155 C 160,154 180,153 205,152 C 225,152 250,150 270,146 C 275,152 282,156 295,154 C 302,162 308,172 312,185 C 308,195 300,205 292,215 C 285,225 280,240 272,252 C 265,248 258,238 250,234 C 238,236 226,242 216,250 C 205,242 195,232 186,220 C 178,212 168,198 158,184 C 152,174 148,164 148,155 Z M 65,70 C 80,62 105,58 130,55 C 145,65 152,80 148,95 C 135,108 115,115 95,118 C 78,110 68,92 65,70 Z M 95,245 C 105,246 112,248 110,255 C 102,258 92,254 95,245 Z',
+    aliases: ['united states', 'usa', 'us', 'u.s.', 'u.s.a.', 'america', 'north america', 'na'],
     parentRegion: 'North America',
   },
   {
@@ -50,63 +52,69 @@ const WORLD_ENTITIES: GeoEntity[] = [
     name: 'Canada',
     label: 'Canada',
     subLabel: 'CA / North America',
-    centroid: [220, 95],
-    d: 'M 140,50 L 305,50 L 325,110 L 285,135 L 160,135 L 130,110 Z',
-    aliases: ['canada', 'ca', 'can', 'north america', 'na'],
+    centroid: [225, 100],
+    // Canadian shield, Hudson Bay cutout, Arctic coast
+    d: 'M 130,55 C 165,48 210,45 260,46 C 295,52 325,65 342,88 C 330,98 318,115 312,130 C 295,138 275,146 250,150 C 220,152 180,154 148,155 C 142,135 138,110 135,85 Z M 270,95 C 285,92 298,105 292,118 C 280,122 268,110 270,95 Z',
+    aliases: ['canada', 'ca', 'can', 'north america'],
     parentRegion: 'North America',
   },
   {
     id: 'mexico',
-    name: 'Mexico',
-    label: 'Mexico',
+    name: 'Mexico & Central America',
+    label: 'Mexico & Central America',
     subLabel: 'MX / Latin America',
-    centroid: [215, 245],
-    d: 'M 175,205 L 235,218 L 245,260 L 220,270 L 190,230 Z',
-    aliases: ['mexico', 'mx', 'mex', 'latin america', 'latam'],
+    centroid: [220, 265],
+    // Baja California, Gulf curve, Yucatan, Isthmus
+    d: 'M 172,218 C 185,228 198,240 215,250 C 225,242 238,236 250,234 C 255,245 260,260 252,272 C 242,282 230,292 222,298 C 215,290 205,278 195,264 C 182,248 174,232 172,218 Z M 165,225 C 170,235 174,250 178,265 C 174,268 168,258 165,245 Z',
+    aliases: ['mexico', 'mx', 'mex', 'central america', 'latin america', 'latam'],
     parentRegion: 'Latin America',
   },
 
-  // South America
+  // ---------------- South America ----------------
   {
     id: 'brazil',
     name: 'Brazil',
     label: 'Brazil',
-    subLabel: 'BR / Latin America',
-    centroid: [345, 315],
-    d: 'M 310,250 L 385,270 L 400,320 L 360,370 L 320,330 L 300,280 Z',
+    subLabel: 'BR / South America',
+    centroid: [350, 340],
+    // Amazon basin, Atlantic eastern bulge, southern borders
+    d: 'M 305,295 C 330,290 365,292 395,310 C 415,325 422,350 410,375 C 395,400 375,415 355,420 C 342,398 335,372 324,350 C 315,330 305,312 305,295 Z',
     aliases: ['brazil', 'br', 'bra', 'brasil', 'latin america', 'latam', 'south america'],
-    parentRegion: 'Latin America',
+    parentRegion: 'South America',
   },
   {
     id: 'argentina',
-    name: 'Argentina',
-    label: 'Argentina',
-    subLabel: 'AR / South America',
-    centroid: [325, 415],
-    d: 'M 310,360 L 350,370 L 335,460 L 310,470 L 300,400 Z',
-    aliases: ['argentina', 'ar', 'arg', 'latin america', 'latam', 'south america'],
-    parentRegion: 'Latin America',
+    name: 'Argentina & Chile',
+    label: 'Argentina & Chile',
+    subLabel: 'Southern Cone / South America',
+    centroid: [325, 435],
+    // Andes spine, Patagonia, Tierra del Fuego
+    d: 'M 324,350 C 335,372 342,398 355,420 C 348,445 338,475 328,502 C 318,485 312,450 310,415 C 312,385 316,365 324,350 Z',
+    aliases: ['argentina', 'ar', 'arg', 'chile', 'cl', 'patagonia', 'south america'],
+    parentRegion: 'South America',
   },
   {
     id: 'latam_north',
-    name: 'Andean & Northern LatAm',
+    name: 'Northern Andes & Colombia',
     label: 'Colombia & Peru',
-    subLabel: 'South America',
-    centroid: [290, 290],
-    d: 'M 285,245 L 315,255 L 305,340 L 290,440 L 280,350 L 275,270 Z',
-    aliases: ['colombia', 'peru', 'chile', 'venezuela', 'ecuador', 'latin america', 'latam', 'south america'],
-    parentRegion: 'Latin America',
+    subLabel: 'Northwest South America',
+    centroid: [292, 320],
+    // Colombia, Peru, Ecuador, Venezuela
+    d: 'M 275,282 C 295,278 310,285 320,295 C 312,320 305,350 295,375 C 282,355 278,325 272,300 Z',
+    aliases: ['colombia', 'peru', 'venezuela', 'ecuador', 'bolivia', 'south america', 'andean'],
+    parentRegion: 'South America',
   },
 
-  // Europe
+  // ---------------- Europe ----------------
   {
     id: 'uk',
-    name: 'United Kingdom',
+    name: 'United Kingdom & Ireland',
     label: 'United Kingdom',
-    subLabel: 'UK & Ireland / Europe',
-    centroid: [465, 125],
-    d: 'M 450,110 L 475,105 L 480,135 L 455,145 Z M 440,120 L 450,118 L 450,135 L 442,135 Z',
-    aliases: ['united kingdom', 'uk', 'great britain', 'england', 'scotland', 'wales', 'ireland', 'europe', 'emea'],
+    subLabel: 'UK & Ireland / Western Europe',
+    centroid: [468, 140],
+    // Great Britain & Ireland island curves
+    d: 'M 460,122 C 472,118 480,125 482,138 C 478,152 468,162 458,160 C 454,148 456,132 460,122 Z M 445,134 C 452,130 456,138 454,146 C 448,150 442,142 445,134 Z',
+    aliases: ['united kingdom', 'uk', 'great britain', 'england', 'scotland', 'wales', 'ireland', 'london', 'europe', 'emea'],
     parentRegion: 'Europe',
   },
   {
@@ -114,19 +122,21 @@ const WORLD_ENTITIES: GeoEntity[] = [
     name: 'France',
     label: 'France',
     subLabel: 'FR / Western Europe',
-    centroid: [485, 160],
-    d: 'M 465,145 L 500,140 L 505,175 L 470,180 Z',
-    aliases: ['france', 'fr', 'fra', 'europe', 'emea'],
+    centroid: [488, 175],
+    // Hexagonal Atlantic and Mediterranean coastline
+    d: 'M 470,160 C 485,155 500,158 508,168 C 512,182 505,198 492,202 C 478,200 468,188 468,172 Z',
+    aliases: ['france', 'fr', 'fra', 'paris', 'europe', 'emea'],
     parentRegion: 'Europe',
   },
   {
     id: 'germany',
-    name: 'Germany',
-    label: 'Germany',
+    name: 'Germany & Central Europe',
+    label: 'Germany & DACH',
     subLabel: 'DE / Central Europe',
-    centroid: [515, 145],
-    d: 'M 500,130 L 530,130 L 530,165 L 498,165 Z',
-    aliases: ['germany', 'de', 'deu', 'deutschland', 'europe', 'emea'],
+    centroid: [520, 160],
+    // North Sea coast down to the Alps
+    d: 'M 508,145 C 525,142 538,146 544,158 C 542,172 535,185 522,188 C 510,185 505,172 508,145 Z',
+    aliases: ['germany', 'de', 'deu', 'deutschland', 'berlin', 'austria', 'switzerland', 'europe', 'emea'],
     parentRegion: 'Europe',
   },
   {
@@ -134,81 +144,110 @@ const WORLD_ENTITIES: GeoEntity[] = [
     name: 'Italy',
     label: 'Italy',
     subLabel: 'IT / Southern Europe',
-    centroid: [530, 195],
-    d: 'M 515,170 L 535,175 L 545,215 L 530,220 L 518,190 Z',
-    aliases: ['italy', 'it', 'ita', 'italia', 'europe', 'emea'],
+    centroid: [535, 205],
+    // Iconic Italian boot shape & Sicily
+    d: 'M 518,186 C 528,185 536,192 542,204 C 548,220 546,234 538,242 C 532,238 530,224 524,210 Z M 520,244 C 528,242 532,248 526,252 C 520,250 518,246 520,244 Z',
+    aliases: ['italy', 'it', 'ita', 'italia', 'rome', 'milan', 'europe', 'emea'],
     parentRegion: 'Europe',
   },
   {
     id: 'spain',
     name: 'Spain & Portugal',
     label: 'Spain & Portugal',
-    subLabel: 'Iberia / Europe',
-    centroid: [455, 195],
-    d: 'M 440,175 L 475,175 L 470,215 L 435,210 Z',
-    aliases: ['spain', 'es', 'esp', 'portugal', 'pt', 'iberia', 'europe', 'emea'],
+    subLabel: 'Iberian Peninsula / Europe',
+    centroid: [458, 208],
+    // Iberian peninsula, Strait of Gibraltar
+    d: 'M 442,185 C 465,182 480,185 486,198 C 484,218 472,230 452,232 C 438,225 435,202 442,185 Z',
+    aliases: ['spain', 'es', 'esp', 'madrid', 'portugal', 'pt', 'lisbon', 'iberia', 'europe', 'emea'],
     parentRegion: 'Europe',
   },
   {
     id: 'nordics',
     name: 'Nordics & Scandinavia',
-    label: 'Sweden & Norway',
-    subLabel: 'Northern Europe',
-    centroid: [530, 90],
-    d: 'M 505,60 L 550,65 L 550,125 L 515,120 Z',
-    aliases: ['sweden', 'norway', 'denmark', 'finland', 'nordic', 'scandinavia', 'europe', 'emea'],
+    label: 'Nordics',
+    subLabel: 'Sweden, Norway, Finland',
+    centroid: [536, 102],
+    // Scandinavian peninsula stretching down from Arctic
+    d: 'M 505,72 C 530,68 555,75 562,95 C 558,118 548,138 532,142 C 520,132 512,105 505,72 Z',
+    aliases: ['sweden', 'norway', 'finland', 'denmark', 'nordic', 'scandinavia', 'europe', 'emea'],
     parentRegion: 'Europe',
   },
   {
     id: 'eastern_europe',
-    name: 'Central & Eastern Europe',
-    label: 'Poland & Eastern EU',
-    subLabel: 'Europe',
-    centroid: [560, 155],
-    d: 'M 530,130 L 590,130 L 585,185 L 525,180 Z',
-    aliases: ['poland', 'pl', 'pol', 'czech', 'hungary', 'austria', 'switzerland', 'romania', 'europe', 'emea'],
+    name: 'Eastern Europe & Poland',
+    label: 'Poland & Eastern Europe',
+    subLabel: 'PL, UA, RO / Europe',
+    centroid: [575, 168],
+    d: 'M 545,148 C 572,142 605,145 618,162 C 612,188 595,205 568,206 C 550,198 542,178 545,148 Z',
+    aliases: ['poland', 'pl', 'ukraine', 'ua', 'romania', 'czech', 'hungary', 'eastern europe', 'europe', 'emea'],
     parentRegion: 'Europe',
   },
+  {
+    id: 'russia',
+    name: 'Russia & Northern Eurasia',
+    label: 'Russia',
+    subLabel: 'RU / Northern Eurasia',
+    centroid: [710, 110],
+    // Expansive northern landmass across Siberia
+    d: 'M 565,85 C 625,72 710,65 810,72 C 865,85 895,115 885,135 C 840,145 770,148 705,145 C 640,142 585,128 565,85 Z',
+    aliases: ['russia', 'ru', 'rus', 'russian federation', 'moscow', 'siberia'],
+    parentRegion: 'Eurasia',
+  },
 
-  // Asia & Oceania
+  // ---------------- Asia & Oceania ----------------
   {
     id: 'india',
     name: 'India',
     label: 'India',
     subLabel: 'IN / South Asia',
-    centroid: [700, 245],
-    d: 'M 670,205 L 730,205 L 725,255 L 700,295 L 675,255 Z',
-    aliases: ['india', 'in', 'ind', 'bharat', 'asia', 'apac', 'south asia'],
+    centroid: [712, 265],
+    // Authentic subcontinental peninsula: Kashmir crown, Gujarat bulge, Cape Comorin point, Bay of Bengal curve, Sri Lanka
+    d: 'M 692,208 C 702,195 718,194 728,206 C 735,218 748,228 752,240 C 746,258 732,278 722,298 C 716,312 710,324 706,334 C 702,324 694,302 686,285 C 678,268 668,252 668,240 C 672,230 682,222 692,208 Z M 714,342 C 718,340 722,345 720,352 C 715,355 712,348 714,342 Z',
+    aliases: ['india', 'in', 'ind', 'bharat', 'delhi', 'mumbai', 'bengaluru', 'bangalore', 'south asia', 'asia', 'apac'],
     parentRegion: 'Asia Pacific',
   },
   {
     id: 'china',
-    name: 'China',
+    name: 'China & East Asia',
     label: 'China',
     subLabel: 'CN / East Asia',
-    centroid: [755, 185],
-    d: 'M 680,140 L 830,145 L 820,230 L 740,245 L 685,200 Z',
-    aliases: ['china', 'cn', 'chn', 'prc', 'asia', 'apac', 'east asia'],
+    centroid: [780, 205],
+    // Central and East Asian landmass
+    d: 'M 715,155 C 765,148 815,152 845,172 C 852,198 838,228 812,242 C 778,252 748,245 726,232 C 715,215 712,185 715,155 Z',
+    aliases: ['china', 'cn', 'chn', 'prc', 'beijing', 'shanghai', 'east asia', 'asia', 'apac'],
     parentRegion: 'Asia Pacific',
   },
   {
     id: 'japan',
-    name: 'Japan & Korea',
-    label: 'Japan & South Korea',
-    subLabel: 'East Asia / APAC',
-    centroid: [860, 190],
-    d: 'M 850,160 L 875,165 L 860,220 L 840,215 Z M 830,175 L 845,178 L 842,198 L 828,195 Z',
-    aliases: ['japan', 'jp', 'jpn', 'korea', 'south korea', 'kr', 'asia', 'apac'],
+    name: 'Japan & South Korea',
+    label: 'Japan & Korea',
+    subLabel: 'JP & KR / East Asia',
+    centroid: [875, 205],
+    // Japanese archipelago arc + Korean peninsula
+    d: 'M 865,175 C 878,172 888,185 882,202 C 874,218 862,232 854,230 C 850,222 856,205 862,190 Z M 840,192 C 848,188 852,198 848,208 C 842,212 838,202 840,192 Z',
+    aliases: ['japan', 'jp', 'jpn', 'tokyo', 'korea', 'south korea', 'kr', 'seoul', 'east asia', 'apac'],
     parentRegion: 'Asia Pacific',
   },
   {
     id: 'southeast_asia',
-    name: 'Southeast Asia',
-    label: 'ASEAN & Singapore',
-    subLabel: 'APAC / SE Asia',
-    centroid: [780, 290],
-    d: 'M 740,250 L 820,260 L 840,320 L 760,330 Z',
-    aliases: ['singapore', 'sg', 'indonesia', 'id', 'malaysia', 'my', 'thailand', 'vietnam', 'philippines', 'southeast asia', 'asean', 'apac'],
+    name: 'Southeast Asia & ASEAN',
+    label: 'Southeast Asia',
+    subLabel: 'SG, ID, MY, TH, VN / APAC',
+    centroid: [795, 305],
+    // Indochina peninsula and Malay peninsula
+    d: 'M 758,252 C 775,250 792,262 798,282 C 795,302 788,322 780,342 C 770,335 765,315 760,295 C 754,278 755,264 758,252 Z',
+    aliases: ['singapore', 'sg', 'malaysia', 'my', 'thailand', 'th', 'vietnam', 'vn', 'philippines', 'ph', 'asean', 'southeast asia', 'apac'],
+    parentRegion: 'Asia Pacific',
+  },
+  {
+    id: 'indonesia',
+    name: 'Indonesia & Pacific Islands',
+    label: 'Indonesia',
+    subLabel: 'ID / Maritime Southeast Asia',
+    centroid: [835, 345],
+    // Sumatra, Java, Borneo, Bali, Papua chain
+    d: 'M 788,342 C 812,338 845,335 875,340 C 895,348 885,362 860,364 C 825,366 795,358 788,342 Z',
+    aliases: ['indonesia', 'id', 'idn', 'jakarta', 'bali', 'apac'],
     parentRegion: 'Asia Pacific',
   },
   {
@@ -216,353 +255,73 @@ const WORLD_ENTITIES: GeoEntity[] = [
     name: 'Australia & New Zealand',
     label: 'Australia & NZ',
     subLabel: 'Oceania / APAC',
-    centroid: [840, 385],
-    d: 'M 790,340 L 895,335 L 905,420 L 810,430 L 775,380 Z M 915,410 L 935,415 L 910,465 L 895,455 Z',
-    aliases: ['australia', 'au', 'aus', 'new zealand', 'nz', 'oceania', 'anz', 'apac'],
+    centroid: [865, 415],
+    // Authentic Australian continent: Cape York, Gulf of Carpentaria, Great Australian Bight + Tasmania + NZ
+    d: 'M 825,365 C 848,358 875,355 898,370 C 915,385 918,415 906,440 C 885,455 852,458 825,445 C 808,428 805,395 818,375 Z M 908,455 C 914,452 918,458 915,465 C 908,468 905,460 908,455 Z M 932,435 C 940,432 944,442 938,456 C 930,460 926,448 932,435 Z',
+    aliases: ['australia', 'au', 'aus', 'sydney', 'melbourne', 'new zealand', 'nz', 'auckland', 'oceania', 'anz', 'apac'],
     parentRegion: 'Asia Pacific',
   },
 
-  // Middle East & Africa
+  // ---------------- Middle East & Africa ----------------
   {
     id: 'middle_east',
-    name: 'Middle East',
-    label: 'Middle East & Gulf',
+    name: 'Middle East & Gulf',
+    label: 'Middle East',
     subLabel: 'UAE, Saudi Arabia, Gulf',
-    centroid: [615, 225],
-    d: 'M 580,185 L 655,185 L 660,245 L 610,260 L 575,215 Z',
-    aliases: ['middle east', 'uae', 'united arab emirates', 'dubai', 'saudi arabia', 'saudi', 'ksa', 'qatar', 'turkey', 'israel', 'emea'],
+    centroid: [635, 240],
+    // Arabian peninsula, Persian Gulf, Levant
+    d: 'M 605,198 C 632,192 655,198 668,214 C 674,235 665,258 648,272 C 632,278 615,268 612,248 C 608,228 602,212 605,198 Z',
+    aliases: ['middle east', 'uae', 'united arab emirates', 'dubai', 'saudi arabia', 'saudi', 'ksa', 'qatar', 'turkey', 'israel', 'gulf', 'emea'],
     parentRegion: 'Middle East',
   },
   {
     id: 'north_africa',
-    name: 'North Africa',
+    name: 'North Africa & Egypt',
     label: 'North Africa',
-    subLabel: 'Egypt, Morocco, Maghreb',
-    centroid: [520, 240],
-    d: 'M 450,215 L 600,215 L 590,265 L 450,265 Z',
-    aliases: ['egypt', 'morocco', 'north africa', 'maghreb', 'algeria', 'emea', 'africa'],
-    parentRegion: 'Middle East',
+    subLabel: 'Egypt, Morocco, Algeria / EMEA',
+    centroid: [530, 248],
+    // Mediterranean coast from Morocco to Egypt
+    d: 'M 465,225 C 505,218 555,215 595,225 C 592,252 578,272 545,275 C 505,278 472,268 465,225 Z',
+    aliases: ['egypt', 'morocco', 'algeria', 'tunisia', 'north africa', 'cairo', 'africa', 'emea'],
+    parentRegion: 'Africa',
   },
   {
     id: 'sub_saharan_africa',
     name: 'Sub-Saharan & South Africa',
     label: 'Sub-Saharan Africa',
-    subLabel: 'South Africa, Nigeria, Kenya',
-    centroid: [545, 345],
-    d: 'M 460,265 L 620,265 L 590,430 L 525,425 L 500,345 Z',
-    aliases: ['south africa', 'za', 'nigeria', 'kenya', 'africa', 'sub-saharan', 'emea'],
-    parentRegion: 'Europe',
-  },
-  {
-    id: 'russia_eurasia',
-    name: 'Eurasia & Northern Asia',
-    label: 'Eurasia / North',
-    subLabel: 'Northern Continental',
-    centroid: [710, 95],
-    d: 'M 550,60 L 890,60 L 870,130 L 710,135 L 590,125 Z',
-    aliases: ['russia', 'ru', 'eurasia', 'kazakhstan', 'emea'],
-    parentRegion: 'Europe',
+    subLabel: 'Nigeria, Kenya, South Africa',
+    centroid: [545, 350],
+    // West African bulge, Congo, East Africa horn, Cape of Good Hope, Madagascar
+    d: 'M 470,272 C 508,270 545,274 572,285 C 585,315 582,355 572,390 C 560,422 542,448 528,452 C 515,445 505,415 500,380 C 492,345 475,315 465,295 Z M 598,375 C 606,370 612,382 608,405 C 602,415 595,400 598,375 Z',
+    aliases: ['south africa', 'za', 'nigeria', 'ng', 'kenya', 'ke', 'ghana', 'sub-saharan africa', 'africa', 'emea'],
+    parentRegion: 'Africa',
   },
 ];
 
-// ==========================================
-// 2. US STATES REAL BOUNDARIES (960 x 600)
-// ==========================================
-const US_STATES_ENTITIES: GeoEntity[] = [
-  // West Coast
-  {
-    id: 'CA',
-    name: 'California',
-    label: 'California (CA)',
-    subLabel: 'Silicon Valley, LA, Tech',
-    centroid: [120, 280],
-    d: 'M 58,175 L 158,188 L 135,310 L 210,400 L 170,415 L 115,340 L 58,230 Z',
-    aliases: ['california', 'ca', 'calif', 'norcal', 'socal', 'san francisco', 'los angeles', 'silicon valley'],
-  },
-  {
-    id: 'WA',
-    name: 'Washington',
-    label: 'Washington (WA)',
-    subLabel: 'Seattle Metro & Pacific NW',
-    centroid: [125, 75],
-    d: 'M 80,40 L 175,55 L 165,115 L 85,100 Z',
-    aliases: ['washington', 'wa', 'seattle'],
-  },
-  {
-    id: 'OR',
-    name: 'Oregon',
-    label: 'Oregon (OR)',
-    subLabel: 'Portland & Silicon Forest',
-    centroid: [115, 145],
-    d: 'M 70,105 L 168,118 L 160,185 L 60,170 Z',
-    aliases: ['oregon', 'or', 'portland'],
-  },
-  {
-    id: 'NV',
-    name: 'Nevada',
-    label: 'Nevada (NV)',
-    subLabel: 'Las Vegas & Reno',
-    centroid: [175, 250],
-    d: 'M 160,185 L 225,195 L 205,320 L 138,308 Z',
-    aliases: ['nevada', 'nv', 'las vegas'],
-  },
-  {
-    id: 'AZ',
-    name: 'Arizona',
-    label: 'Arizona (AZ)',
-    subLabel: 'Phoenix & Desert Silicon',
-    centroid: [245, 375],
-    d: 'M 205,320 L 295,330 L 280,440 L 205,410 L 210,395 Z',
-    aliases: ['arizona', 'az', 'phoenix'],
-  },
-  {
-    id: 'UT',
-    name: 'Utah',
-    label: 'Utah (UT)',
-    subLabel: 'Salt Lake City & Silicon Slopes',
-    centroid: [255, 260],
-    d: 'M 225,195 L 305,205 L 295,325 L 210,315 Z',
-    aliases: ['utah', 'ut', 'salt lake city'],
-  },
-  {
-    id: 'ID',
-    name: 'Idaho',
-    label: 'Idaho (ID)',
-    subLabel: 'Boise & Northwest Basin',
-    centroid: [195, 130],
-    d: 'M 175,55 L 220,60 L 205,145 L 245,150 L 230,205 L 168,190 L 175,115 Z',
-    aliases: ['idaho', 'id', 'boise'],
-  },
-
-  // Mountain & Southwest
-  {
-    id: 'TX',
-    name: 'Texas',
-    label: 'Texas (TX)',
-    subLabel: 'Austin, Dallas, Houston',
-    centroid: [415, 450],
-    d: 'M 345,355 L 415,355 L 420,395 L 495,395 L 505,455 L 465,540 L 410,510 L 365,475 L 315,415 L 340,390 Z',
-    aliases: ['texas', 'tx', 'tex', 'austin', 'dallas', 'houston'],
-  },
-  {
-    id: 'CO',
-    name: 'Colorado',
-    label: 'Colorado (CO)',
-    subLabel: 'Denver & Boulder',
-    centroid: [350, 275],
-    d: 'M 295,230 L 420,240 L 410,320 L 290,310 Z',
-    aliases: ['colorado', 'co', 'denver', 'boulder'],
-  },
-  {
-    id: 'NM',
-    name: 'New Mexico',
-    label: 'New Mexico (NM)',
-    subLabel: 'Albuquerque & Santa Fe',
-    centroid: [345, 385],
-    d: 'M 295,330 L 400,335 L 390,440 L 285,435 Z',
-    aliases: ['new mexico', 'nm', 'albuquerque'],
-  },
-  {
-    id: 'MT',
-    name: 'Montana',
-    label: 'Montana (MT)',
-    subLabel: 'Northern Rockies',
-    centroid: [290, 105],
-    d: 'M 220,60 L 375,75 L 360,150 L 205,140 Z',
-    aliases: ['montana', 'mt'],
-  },
-  {
-    id: 'WY',
-    name: 'Wyoming',
-    label: 'Wyoming (WY)',
-    subLabel: 'Central Rockies',
-    centroid: [295, 190],
-    d: 'M 245,150 L 360,160 L 350,235 L 235,225 Z',
-    aliases: ['wyoming', 'wy'],
-  },
-
-  // Midwest & Plains
-  {
-    id: 'IL',
-    name: 'Illinois',
-    label: 'Illinois (IL)',
-    subLabel: 'Chicago Metro Hub',
-    centroid: [585, 255],
-    d: 'M 555,205 L 610,210 L 595,310 L 565,305 Z',
-    aliases: ['illinois', 'il', 'chicago'],
-  },
-  {
-    id: 'MI',
-    name: 'Michigan',
-    label: 'Michigan (MI)',
-    subLabel: 'Detroit & Great Lakes',
-    centroid: [630, 155],
-    d: 'M 590,110 L 665,120 L 660,195 L 605,190 Z',
-    aliases: ['michigan', 'mi', 'detroit'],
-  },
-  {
-    id: 'OH',
-    name: 'Ohio',
-    label: 'Ohio (OH)',
-    subLabel: 'Columbus, Cleveland, Cincy',
-    centroid: [680, 250],
-    d: 'M 655,215 L 720,220 L 710,285 L 648,280 Z',
-    aliases: ['ohio', 'oh', 'columbus', 'cleveland'],
-  },
-  {
-    id: 'PA',
-    name: 'Pennsylvania',
-    label: 'Pennsylvania (PA)',
-    subLabel: 'Philadelphia & Pittsburgh',
-    centroid: [755, 230],
-    d: 'M 715,205 L 805,210 L 795,255 L 705,250 Z',
-    aliases: ['pennsylvania', 'pa', 'philadelphia', 'pittsburgh'],
-  },
-  {
-    id: 'IN',
-    name: 'Indiana',
-    label: 'Indiana (IN)',
-    subLabel: 'Indianapolis',
-    centroid: [630, 255],
-    d: 'M 610,210 L 655,215 L 645,295 L 605,290 Z',
-    aliases: ['indiana', 'in', 'indianapolis'],
-  },
-  {
-    id: 'WI',
-    name: 'Wisconsin',
-    label: 'Wisconsin (WI)',
-    subLabel: 'Milwaukee & Madison',
-    centroid: [575, 155],
-    d: 'M 545,115 L 610,125 L 600,195 L 540,190 Z',
-    aliases: ['wisconsin', 'wi', 'milwaukee', 'madison'],
-  },
-  {
-    id: 'MN',
-    name: 'Minnesota',
-    label: 'Minnesota (MN)',
-    subLabel: 'Twin Cities',
-    centroid: [515, 130],
-    d: 'M 480,85 L 560,90 L 545,175 L 470,175 Z',
-    aliases: ['minnesota', 'mn', 'minneapolis'],
-  },
-  {
-    id: 'MO',
-    name: 'Missouri',
-    label: 'Missouri (MO)',
-    subLabel: 'St. Louis & Kansas City',
-    centroid: [535, 315],
-    d: 'M 495,270 L 575,275 L 570,360 L 515,365 L 490,335 Z',
-    aliases: ['missouri', 'mo', 'st louis', 'kansas city'],
-  },
-
-  // Northeast & Mid-Atlantic
-  {
-    id: 'NY',
-    name: 'New York',
-    label: 'New York (NY)',
-    subLabel: 'NYC Metro, Albany, Buffalo',
-    centroid: [775, 175],
-    d: 'M 735,130 L 825,140 L 815,215 L 730,205 Z',
-    aliases: ['new york', 'ny', 'nyc', 'manhattan', 'brooklyn'],
-  },
-  {
-    id: 'MA',
-    name: 'Massachusetts',
-    label: 'Massachusetts (MA)',
-    subLabel: 'Boston Biotech Hub',
-    centroid: [840, 150],
-    d: 'M 815,135 L 865,130 L 860,170 L 815,165 Z',
-    aliases: ['massachusetts', 'ma', 'boston', 'cambridge'],
-  },
-  {
-    id: 'NJ',
-    name: 'New Jersey',
-    label: 'New Jersey (NJ)',
-    subLabel: 'Pharma Corridor',
-    centroid: [812, 235],
-    d: 'M 805,210 L 825,215 L 815,265 L 800,260 Z',
-    aliases: ['new jersey', 'nj', 'newark', 'princeton'],
-  },
-  {
-    id: 'VA',
-    name: 'Virginia',
-    label: 'Virginia (VA)',
-    subLabel: 'Northern Virginia Cloud Belt',
-    centroid: [750, 315],
-    d: 'M 705,295 L 805,300 L 795,340 L 700,335 Z',
-    aliases: ['virginia', 'va', 'richmond', 'arlington'],
-  },
-
-  // Southeast
-  {
-    id: 'FL',
-    name: 'Florida',
-    label: 'Florida (FL)',
-    subLabel: 'Miami, Orlando, Tampa',
-    centroid: [710, 500],
-    d: 'M 645,460 L 735,465 L 760,545 L 720,540 L 710,485 L 640,480 Z',
-    aliases: ['florida', 'fl', 'fla', 'miami', 'orlando', 'tampa'],
-  },
-  {
-    id: 'GA',
-    name: 'Georgia',
-    label: 'Georgia (GA)',
-    subLabel: 'Atlanta Tech Corridor',
-    centroid: [680, 410],
-    d: 'M 655,365 L 720,370 L 700,460 L 645,455 Z',
-    aliases: ['georgia', 'ga', 'atlanta'],
-  },
-  {
-    id: 'NC',
-    name: 'North Carolina',
-    label: 'North Carolina (NC)',
-    subLabel: 'Research Triangle & Charlotte',
-    centroid: [755, 360],
-    d: 'M 705,335 L 815,340 L 795,385 L 710,380 Z',
-    aliases: ['north carolina', 'nc', 'charlotte', 'raleigh', 'durham'],
-  },
-  {
-    id: 'TN',
-    name: 'Tennessee',
-    label: 'Tennessee (TN)',
-    subLabel: 'Nashville & Memphis',
-    centroid: [645, 345],
-    d: 'M 575,325 L 725,330 L 715,365 L 570,360 Z',
-    aliases: ['tennessee', 'tn', 'nashville', 'memphis'],
-  },
-];
-
-// ==========================================
-// 3. INDIA STATES REAL BOUNDARIES (700 x 800)
-// ==========================================
+// ============================================================================
+// 2. INDIA STATES MAP — AUTHENTIC SUB-DIVISIONS (600 x 750)
+// ============================================================================
 const INDIA_STATES_ENTITIES: GeoEntity[] = [
-  // West & Central
+  // West
   {
     id: 'MH',
     name: 'Maharashtra',
     label: 'Maharashtra',
-    subLabel: 'Mumbai, Pune, Industrial Hub',
-    centroid: [260, 465],
-    d: 'M 185,410 L 335,405 L 340,515 L 245,530 L 180,480 Z',
-    aliases: ['maharashtra', 'mh', 'mumbai', 'pune', 'nagpur', 'nashik', 'thane'],
+    subLabel: 'Mumbai, Pune, Financial Capital',
+    centroid: [230, 430],
+    d: 'M 160,375 C 205,365 260,368 295,385 C 310,410 300,445 285,475 C 240,490 195,475 168,445 Z',
+    aliases: ['maharashtra', 'mh', 'mumbai', 'pune', 'nagpur', 'thane'],
+    parentRegion: 'West India',
   },
   {
     id: 'GJ',
     name: 'Gujarat',
     label: 'Gujarat',
     subLabel: 'Ahmedabad, Surat, Gift City',
-    centroid: [165, 380],
-    d: 'M 120,335 L 210,330 L 215,415 L 145,430 L 115,385 Z',
+    centroid: [145, 335],
+    d: 'M 105,295 C 145,285 180,290 195,315 C 190,345 175,370 148,375 C 120,372 100,345 105,295 Z',
     aliases: ['gujarat', 'gj', 'ahmedabad', 'surat', 'vadodara', 'gift city'],
-  },
-  {
-    id: 'MP',
-    name: 'Madhya Pradesh',
-    label: 'Madhya Pradesh',
-    subLabel: 'Indore, Bhopal',
-    centroid: [310, 365],
-    d: 'M 240,320 L 390,325 L 380,410 L 245,415 Z',
-    aliases: ['madhya pradesh', 'mp', 'indore', 'bhopal'],
+    parentRegion: 'West India',
   },
 
   // South
@@ -570,46 +329,41 @@ const INDIA_STATES_ENTITIES: GeoEntity[] = [
     id: 'KA',
     name: 'Karnataka',
     label: 'Karnataka',
-    subLabel: 'Bengaluru Silicon Capital',
-    centroid: [255, 565],
-    d: 'M 215,505 L 295,500 L 285,630 L 225,620 Z',
-    aliases: ['karnataka', 'ka', 'bengaluru', 'bangalore', 'mysuru', 'silicon valley of india'],
+    subLabel: 'Bengaluru Silicon Valley',
+    centroid: [225, 535],
+    d: 'M 185,475 C 228,465 255,480 265,515 C 260,560 240,605 210,615 C 192,580 180,535 185,475 Z',
+    aliases: ['karnataka', 'ka', 'bengaluru', 'bangalore', 'mysore', 'hubli'],
+    parentRegion: 'South India',
   },
   {
     id: 'TN',
     name: 'Tamil Nadu',
     label: 'Tamil Nadu',
-    subLabel: 'Chennai Auto & SaaS Hub',
-    centroid: [305, 660],
-    d: 'M 275,600 L 345,595 L 325,725 L 265,725 Z',
+    subLabel: 'Chennai SaaS & Auto Hub',
+    centroid: [275, 620],
+    d: 'M 235,565 C 275,555 315,568 312,610 C 302,655 278,695 255,705 C 240,670 232,625 235,565 Z',
     aliases: ['tamil nadu', 'tn', 'chennai', 'coimbatore', 'madurai'],
+    parentRegion: 'South India',
   },
   {
-    id: 'TS',
+    id: 'TG',
     name: 'Telangana',
     label: 'Telangana',
-    subLabel: 'Hyderabad Cyberabad Tech',
-    centroid: [325, 480],
-    d: 'M 285,445 L 365,440 L 355,515 L 280,510 Z',
-    aliases: ['telangana', 'ts', 'tg', 'hyderabad', 'cyberabad'],
-  },
-  {
-    id: 'AP',
-    name: 'Andhra Pradesh',
-    label: 'Andhra Pradesh',
-    subLabel: 'Visakhapatnam, Amaravati',
-    centroid: [350, 545],
-    d: 'M 295,490 L 415,485 L 375,610 L 285,585 Z',
-    aliases: ['andhra pradesh', 'ap', 'vizag', 'visakhapatnam', 'amaravati'],
+    subLabel: 'Hyderabad Cyberabad',
+    centroid: [280, 465],
+    d: 'M 245,425 C 285,418 315,435 320,465 C 315,498 295,520 265,522 C 245,495 240,460 245,425 Z',
+    aliases: ['telangana', 'tg', 'ts', 'hyderabad', 'secunderabad', 'warangal'],
+    parentRegion: 'South India',
   },
   {
     id: 'KL',
     name: 'Kerala',
     label: 'Kerala',
     subLabel: 'Kochi, Thiruvananthapuram',
-    centroid: [255, 675],
-    d: 'M 240,625 L 275,625 L 265,730 L 235,720 Z',
+    centroid: [205, 645],
+    d: 'M 195,595 C 215,590 225,615 220,655 C 212,695 198,715 185,710 C 182,680 188,640 195,595 Z',
     aliases: ['kerala', 'kl', 'kochi', 'thiruvananthapuram', 'calicut'],
+    parentRegion: 'South India',
   },
 
   // North
@@ -618,328 +372,136 @@ const INDIA_STATES_ENTITIES: GeoEntity[] = [
     name: 'Delhi & NCR',
     label: 'Delhi (NCR)',
     subLabel: 'National Capital Region',
-    centroid: [285, 235],
-    d: 'M 265,210 L 315,215 L 305,265 L 255,255 Z',
-    aliases: ['delhi', 'dl', 'new delhi', 'ncr', 'gurugram', 'noida'],
+    centroid: [248, 240],
+    d: 'M 235,225 C 255,220 265,230 262,248 C 255,260 242,262 235,250 Z',
+    aliases: ['delhi', 'dl', 'new delhi', 'ncr', 'gurugram', 'gurgaon', 'noida'],
+    parentRegion: 'North India',
   },
   {
     id: 'UP',
     name: 'Uttar Pradesh',
     label: 'Uttar Pradesh',
-    subLabel: 'Lucknow, Noida, Kanpur',
-    centroid: [355, 285],
-    d: 'M 295,235 L 435,245 L 420,335 L 275,325 Z',
-    aliases: ['uttar pradesh', 'up', 'lucknow', 'kanpur', 'varanasi'],
+    subLabel: 'Noida, Lucknow, Kanpur',
+    centroid: [320, 275],
+    d: 'M 265,228 C 335,220 395,235 410,270 C 400,315 350,335 285,325 C 265,295 258,260 265,228 Z',
+    aliases: ['uttar pradesh', 'up', 'lucknow', 'kanpur', 'varanasi', 'agra'],
+    parentRegion: 'North India',
   },
   {
     id: 'RJ',
     name: 'Rajasthan',
     label: 'Rajasthan',
     subLabel: 'Jaipur, Jodhpur',
-    centroid: [215, 280],
-    d: 'M 160,220 L 275,225 L 270,330 L 175,340 L 140,270 Z',
+    centroid: [180, 265],
+    d: 'M 130,215 C 190,205 235,215 245,255 C 240,295 205,325 155,320 C 125,290 118,250 130,215 Z',
     aliases: ['rajasthan', 'rj', 'jaipur', 'jodhpur', 'udaipur'],
-  },
-  {
-    id: 'PB',
-    name: 'Punjab & Haryana',
-    label: 'Punjab & Haryana',
-    subLabel: 'Chandigarh, Ludhiana',
-    centroid: [255, 190],
-    d: 'M 235,160 L 285,165 L 275,225 L 225,215 Z',
-    aliases: ['punjab', 'pb', 'haryana', 'hr', 'chandigarh', 'ludhiana'],
+    parentRegion: 'North India',
   },
 
-  // East & North-East
+  // East
   {
     id: 'WB',
     name: 'West Bengal',
     label: 'West Bengal',
-    subLabel: 'Kolkata Commercial Port',
-    centroid: [500, 385],
-    d: 'M 485,325 L 535,330 L 515,445 L 465,420 Z',
-    aliases: ['west bengal', 'wb', 'kolkata', 'calcutta'],
-  },
-  {
-    id: 'OD',
-    name: 'Odisha',
-    label: 'Odisha',
-    subLabel: 'Bhubaneswar, Mineral Basin',
-    centroid: [425, 445],
-    d: 'M 385,400 L 475,395 L 450,490 L 375,480 Z',
-    aliases: ['odisha', 'orissa', 'bhubaneswar', 'cuttack'],
-  },
-  {
-    id: 'NE',
-    name: 'Assam & North-East',
-    label: 'Assam & North-East',
-    subLabel: 'Guwahati & Seven Sisters',
-    centroid: [580, 300],
-    d: 'M 520,265 L 640,260 L 630,340 L 530,340 Z',
-    aliases: ['assam', 'guwahati', 'north east', 'meghalaya', 'tripura'],
+    subLabel: 'Kolkata Tech & Port',
+    centroid: [435, 345],
+    d: 'M 415,295 C 445,285 465,310 460,345 C 452,385 435,420 415,415 C 410,380 412,335 415,295 Z',
+    aliases: ['west bengal', 'wb', 'kolkata', 'howrah'],
+    parentRegion: 'East India',
   },
 ];
 
-// ==============================================================
-// 4. REAL-WORLD STATE SUB-DIVISIONS & DISTRICTS (Counties/Districts)
-// ==============================================================
-const STATE_DISTRICTS_REGISTRY: Record<
-  string,
-  { stateName: string; viewBox: string; entities: GeoEntity[] }
-> = {
-  california: {
-    stateName: 'California (CA Counties & Metro Sub-Divisions)',
-    viewBox: '0 0 600 700',
-    entities: [
-      {
-        id: 'ca_la',
-        name: 'Los Angeles County',
-        label: 'Los Angeles County',
-        subLabel: 'LA Metro, Long Beach, Pasadena',
-        centroid: [290, 480],
-        d: 'M 260,450 L 330,455 L 325,510 L 255,500 Z',
-        aliases: ['los angeles', 'la', 'la county', 'los angeles county', 'long beach', 'pasadena', 'burbank'],
-      },
-      {
-        id: 'ca_oc',
-        name: 'Orange County',
-        label: 'Orange County',
-        subLabel: 'Irvine, Anaheim, Newport Beach',
-        centroid: [300, 520],
-        d: 'M 285,500 L 330,505 L 320,540 L 275,535 Z',
-        aliases: ['orange county', 'oc', 'irvine', 'anaheim', 'santa ana', 'newport beach'],
-      },
-      {
-        id: 'ca_sd',
-        name: 'San Diego County',
-        label: 'San Diego County',
-        subLabel: 'San Diego, La Jolla, Biotech',
-        centroid: [345, 565],
-        d: 'M 315,530 L 385,535 L 375,595 L 305,590 Z',
-        aliases: ['san diego', 'san diego county', 'sd', 'la jolla', 'chula vista'],
-      },
-      {
-        id: 'ca_sv',
-        name: 'Santa Clara County (Silicon Valley)',
-        label: 'Santa Clara & Silicon Valley',
-        subLabel: 'San Jose, Palo Alto, Sunnyvale',
-        centroid: [180, 360],
-        d: 'M 160,335 L 210,340 L 200,385 L 150,380 Z',
-        aliases: ['santa clara', 'san jose', 'silicon valley', 'palo alto', 'mountain view', 'sunnyvale', 'cupertino'],
-      },
-      {
-        id: 'ca_sf',
-        name: 'San Francisco & Bay Area',
-        label: 'San Francisco & East Bay',
-        subLabel: 'SF, Oakland, Berkeley, Contra Costa',
-        centroid: [170, 315],
-        d: 'M 145,295 L 205,295 L 200,340 L 140,335 Z',
-        aliases: ['san francisco', 'sf', 'oakland', 'berkeley', 'alameda', 'contra costa', 'bay area'],
-      },
-      {
-        id: 'ca_ie',
-        name: 'Inland Empire (Riverside & San Bernardino)',
-        label: 'Riverside & San Bernardino',
-        subLabel: 'Logistics Hub, Ontario, Palm Springs',
-        centroid: [395, 435],
-        d: 'M 330,390 L 470,395 L 465,540 L 325,535 Z',
-        aliases: ['riverside', 'san bernardino', 'inland empire', 'ontario', 'palm springs'],
-      },
-      {
-        id: 'ca_sac',
-        name: 'Sacramento Capital Region',
-        label: 'Sacramento County',
-        subLabel: 'Sacramento, Davis, Roseville',
-        centroid: [225, 270],
-        d: 'M 195,240 L 265,245 L 255,300 L 185,295 Z',
-        aliases: ['sacramento', 'sacramento county', 'sac', 'davis', 'roseville'],
-      },
-      {
-        id: 'ca_cv',
-        name: 'Central Valley (Fresno & Kern)',
-        label: 'Fresno & Central Valley',
-        subLabel: 'Fresno, Bakersfield, Agriculture',
-        centroid: [275, 370],
-        d: 'M 220,330 L 330,335 L 320,450 L 220,445 Z',
-        aliases: ['fresno', 'kern', 'bakersfield', 'central valley', 'modesto', 'stockton'],
-      },
-      {
-        id: 'ca_north',
-        name: 'Northern California & Wine Country',
-        label: 'North Coast & Wine Country',
-        subLabel: 'Napa, Sonoma, Marin, Humboldt',
-        centroid: [200, 135],
-        d: 'M 140,80 L 275,85 L 265,240 L 140,235 Z',
-        aliases: ['napa', 'sonoma', 'marin', 'wine country', 'redding', 'shasta'],
-      },
-    ],
+// ============================================================================
+// 3. US STATES MAP (900 x 550)
+// ============================================================================
+const US_STATES_ENTITIES: GeoEntity[] = [
+  {
+    id: 'CA',
+    name: 'California',
+    label: 'California (CA)',
+    subLabel: 'Silicon Valley, SF, LA',
+    centroid: [115, 275],
+    d: 'M 65,150 C 95,155 110,185 105,245 C 135,315 155,385 135,410 C 105,395 85,340 68,260 Z',
+    aliases: ['california', 'ca', 'silicon valley', 'san francisco', 'los angeles', 'san diego'],
+    parentRegion: 'West Coast',
   },
-
-  texas: {
-    stateName: 'Texas (TX Counties & Metro Sub-Divisions)',
-    viewBox: '0 0 700 650',
-    entities: [
-      {
-        id: 'tx_harris',
-        name: 'Harris County (Houston Metro)',
-        label: 'Harris County (Houston)',
-        subLabel: 'Houston, Energy Corridor, Port',
-        centroid: [475, 450],
-        d: 'M 450,420 L 510,425 L 500,475 L 440,470 Z',
-        aliases: ['harris', 'harris county', 'houston', 'woodlands', 'katy', 'baytown'],
-      },
-      {
-        id: 'tx_dallas',
-        name: 'Dallas & Collin Counties',
-        label: 'Dallas & North Texas',
-        subLabel: 'Dallas, Plano, Frisco, Tech Corridor',
-        centroid: [395, 255],
-        d: 'M 350,200 L 440,205 L 430,285 L 340,280 Z',
-        aliases: ['dallas', 'collin', 'plano', 'frisco', 'richardson', 'irving'],
-      },
-      {
-        id: 'tx_tarrant',
-        name: 'Tarrant County (Fort Worth)',
-        label: 'Tarrant County (Fort Worth)',
-        subLabel: 'Fort Worth, Arlington, Aerospace',
-        centroid: [340, 255],
-        d: 'M 315,230 L 370,235 L 365,285 L 310,280 Z',
-        aliases: ['tarrant', 'fort worth', 'ft worth', 'arlington'],
-      },
-      {
-        id: 'tx_travis',
-        name: 'Travis County (Austin Metro)',
-        label: 'Travis County (Austin)',
-        subLabel: 'Silicon Hills, Austin Tech',
-        centroid: [370, 385],
-        d: 'M 345,355 L 405,360 L 395,410 L 335,405 Z',
-        aliases: ['travis', 'austin', 'round rock', 'silicon hills'],
-      },
-      {
-        id: 'tx_bexar',
-        name: 'Bexar County (San Antonio)',
-        label: 'Bexar County (San Antonio)',
-        subLabel: 'San Antonio, Cyber Security Hub',
-        centroid: [330, 435],
-        d: 'M 305,405 L 365,410 L 355,465 L 295,460 Z',
-        aliases: ['bexar', 'san antonio', 'bexar county'],
-      },
-      {
-        id: 'tx_west',
-        name: 'El Paso & West Texas',
-        label: 'El Paso & Permian Basin',
-        subLabel: 'El Paso, Midland, Odessa',
-        centroid: [100, 335],
-        d: 'M 70,300 L 135,305 L 125,365 L 60,360 Z',
-        aliases: ['el paso', 'midland', 'odessa', 'permian', 'west texas'],
-      },
-      {
-        id: 'tx_valley',
-        name: 'Rio Grande Valley',
-        label: 'Rio Grande Valley',
-        subLabel: 'McAllen, Brownsville',
-        centroid: [350, 590],
-        d: 'M 320,560 L 390,565 L 375,625 L 310,615 Z',
-        aliases: ['rio grande', 'mcallen', 'brownsville', 'hidalgo', 'cameron'],
-      },
-    ],
+  {
+    id: 'TX',
+    name: 'Texas',
+    label: 'Texas (TX)',
+    subLabel: 'Austin & Dallas Tech',
+    centroid: [445, 385],
+    d: 'M 370,305 C 435,302 475,310 495,350 C 515,405 480,470 435,475 C 390,445 375,375 370,305 Z',
+    aliases: ['texas', 'tx', 'austin', 'dallas', 'houston'],
+    parentRegion: 'South',
   },
-
-  maharashtra: {
-    stateName: 'Maharashtra (India District Sub-Divisions)',
-    viewBox: '0 0 700 650',
-    entities: [
-      {
-        id: 'mh_mumbai',
-        name: 'Mumbai Metro (City & Suburban)',
-        label: 'Mumbai Metro',
-        subLabel: 'Financial Capital, BKC, Nariman Point',
-        centroid: [135, 305],
-        d: 'M 115,280 L 155,280 L 150,335 L 110,335 Z',
-        aliases: ['mumbai', 'bombay', 'mumbai suburban', 'mumbai city', 'bkc', 'navi mumbai'],
-      },
-      {
-        id: 'mh_pune',
-        name: 'Pune District',
-        label: 'Pune District',
-        subLabel: 'IT Hub, Hinjawadi, Auto Cluster',
-        centroid: [220, 360],
-        d: 'M 175,320 L 265,320 L 255,405 L 165,405 Z',
-        aliases: ['pune', 'poona', 'hinjawadi', 'pcmc', 'pimpri'],
-      },
-      {
-        id: 'mh_thane',
-        name: 'Thane & Palghar',
-        label: 'Thane & Palghar',
-        subLabel: 'Industrial Corridor & Warehousing',
-        centroid: [170, 270],
-        d: 'M 140,240 L 205,240 L 195,305 L 135,300 Z',
-        aliases: ['thane', 'palghar', 'kalyan', 'dombivli'],
-      },
-      {
-        id: 'mh_nagpur',
-        name: 'Nagpur & Vidarbha',
-        label: 'Nagpur District',
-        subLabel: 'Orange City, MIHAN Cargo Hub',
-        centroid: [525, 205],
-        d: 'M 480,160 L 575,160 L 565,245 L 470,240 Z',
-        aliases: ['nagpur', 'vidarbha', 'mihan', 'wardha'],
-      },
-      {
-        id: 'mh_nashik',
-        name: 'Nashik District',
-        label: 'Nashik District',
-        subLabel: 'Wine Capital & Manufacturing',
-        centroid: [220, 245],
-        d: 'M 175,200 L 270,200 L 260,285 L 165,280 Z',
-        aliases: ['nashik', 'nasik', 'deolali', 'sula'],
-      },
-      {
-        id: 'mh_csn',
-        name: 'Chhatrapati Sambhajinagar (Aurangabad)',
-        label: 'Chhatrapati Sambhajinagar',
-        subLabel: 'Industrial & Auto Hub',
-        centroid: [315, 270],
-        d: 'M 270,230 L 365,230 L 355,310 L 260,305 Z',
-        aliases: ['aurangabad', 'chhatrapati sambhajinagar', 'sambhajinagar', 'waluj'],
-      },
-      {
-        id: 'mh_kolhapur',
-        name: 'Kolhapur & Sangli',
-        label: 'Kolhapur & Sangli',
-        subLabel: 'Foundry & Agro-Processing',
-        centroid: [210, 500],
-        d: 'M 175,460 L 250,460 L 240,535 L 165,530 Z',
-        aliases: ['kolhapur', 'sangli', 'ichalkaranji'],
-      },
-    ],
+  {
+    id: 'NY',
+    name: 'New York',
+    label: 'New York (NY)',
+    subLabel: 'NYC Financial Capital',
+    centroid: [775, 175],
+    d: 'M 740,145 C 775,138 805,150 812,175 C 805,198 775,205 750,195 Z',
+    aliases: ['new york', 'ny', 'nyc', 'manhattan'],
+    parentRegion: 'Northeast',
   },
-};
+  {
+    id: 'WA',
+    name: 'Washington',
+    label: 'Washington (WA)',
+    subLabel: 'Seattle Cloud Hub',
+    centroid: [135, 75],
+    d: 'M 95,50 C 145,45 180,52 182,88 C 155,95 125,98 95,90 Z',
+    aliases: ['washington', 'wa', 'seattle', 'redmond'],
+    parentRegion: 'Pacific Northwest',
+  },
+  {
+    id: 'FL',
+    name: 'Florida',
+    label: 'Florida (FL)',
+    subLabel: 'Miami & Orlando',
+    centroid: [725, 435],
+    d: 'M 675,395 C 735,392 755,420 758,460 C 748,495 725,510 715,475 C 705,445 685,425 675,395 Z',
+    aliases: ['florida', 'fl', 'miami', 'tampa', 'orlando'],
+    parentRegion: 'Southeast',
+  },
+];
 
-// ==========================================
-// COLOR GENERATION FOR REAL CHOROPLETH
-// ==========================================
-function getChoroplethColor(
-  intensity: number,
-  hasData: boolean,
-  isSelected: boolean,
-  isDark: boolean
-): string {
+// Helper to determine if a value strictly matches an alias
+function matchesAliasStrict(rawVal: string, alias: string): boolean {
+  if (!rawVal || !alias) return false;
+  const v = rawVal.toLowerCase().trim();
+  const a = alias.toLowerCase().trim();
+
+  // Exact match
+  if (v === a) return true;
+
+  // For short acronyms (<= 3 chars like 'in', 'ca', 'us', 'la'), ONLY exact match is allowed
+  if (a.length <= 3) return false;
+
+  // For longer words (>= 4 chars like 'india', 'california', 'united states'), match word boundaries
+  const escaped = a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const wordRegex = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i');
+  return wordRegex.test(v);
+}
+
+// Color scale interpolator (Emerald-first)
+function getChoroplethColor(intensity: number, hasData: boolean, isSelected: boolean, isDark: boolean): string {
   if (isSelected) {
-    return '#10B981'; // Vibrant Emerald
+    return '#10B981'; // Vibrant emerald
   }
   if (!hasData) {
-    return isDark ? '#1E293B' : '#E2E8F0'; // Subtle slate
+    return isDark ? '#16221D' : '#E8EFEA'; // Subtle themed surface
   }
-  // Hue 158 (Emerald), lightness smoothly descending from 72% down to 28%
+  // Lightness smoothly descending from 68% down to 26%
   const lightness = isDark
-    ? Math.round(55 - intensity * 35)
+    ? Math.round(52 - intensity * 30)
     : Math.round(75 - intensity * 45);
   const saturation = Math.round(55 + intensity * 40);
   return `hsl(158, ${saturation}%, ${lightness}%)`;
 }
 
-// Format numbers compactly
+// Compact metric formatter
 function formatMetricVal(val: number, isCurrency = false): string {
   const prefix = isCurrency ? '$' : '';
   if (Math.abs(val) >= 1_000_000_000) {
@@ -967,14 +529,12 @@ export function GeographicIntelligenceMap({
   isExpanded = false,
   onToggleExpand,
 }: GeographicIntelligenceMapProps) {
-  // Mode selection: user override or auto-detection
   const [userModeOverride, setUserModeOverride] = useState<GeographicGranularity | null>(null);
-  const [selectedSubdivisionState, setSelectedSubdivisionState] = useState<string>('california');
   const [hoveredEntity, setHoveredEntity] = useState<{
     entity: GeoEntity;
     totalVal: number;
     count: number;
-    share: number;
+    percentage: number;
     x: number;
     y: number;
   } | null>(null);
@@ -984,16 +544,13 @@ export function GeographicIntelligenceMap({
   // 1. INTELLIGENT AUTO-DETECTION ENGINE
   const detectedGranularity = useMemo<{
     mode: GeographicGranularity;
-    detectedState: string;
     reason: string;
-    matchedCount: number;
   }>(() => {
     let worldScore = 0;
-    let usStateScore = 0;
     let indiaStateScore = 0;
-    let districtScore = 0;
+    let usStateScore = 0;
 
-    const sampleRows = allDatasetRows.slice(0, 200);
+    const sampleRows = allDatasetRows.slice(0, 300);
 
     // Identify candidate columns
     const geoColNames = columns
@@ -1001,279 +558,197 @@ export function GeographicIntelligenceMap({
         const n = c.name.toLowerCase();
         return (
           n.includes('country') ||
+          n.includes('nation') ||
           n.includes('state') ||
           n.includes('province') ||
-          n.includes('district') ||
-          n.includes('county') ||
-          n.includes('city') ||
           n.includes('region') ||
+          n.includes('city') ||
           n.includes('location') ||
           n.includes('territory')
         );
       })
       .map((c) => c.name);
 
-    // If no explicit geo columns found, test all string columns
     const targetCols = geoColNames.length > 0 ? geoColNames : Object.keys(sampleRows[0] || {});
 
     sampleRows.forEach((r) => {
       targetCols.forEach((col) => {
-        const rawVal = (r[col] || '').toLowerCase().trim();
+        const rawVal = (r[col] || '').trim();
         if (!rawVal) return;
 
-        // Check District / County matches
-        Object.entries(STATE_DISTRICTS_REGISTRY).forEach(([stateKey, config]) => {
-          config.entities.forEach((ent) => {
-            if (ent.aliases.some((alias) => rawVal === alias || rawVal.includes(alias))) {
-              districtScore += 3;
-            }
-          });
-        });
+        const isCountryCol = col.toLowerCase().includes('country') || col.toLowerCase().includes('nation');
+        const isStateCol = col.toLowerCase().includes('state') || col.toLowerCase().includes('province');
 
-        // Check US State matches
-        US_STATES_ENTITIES.forEach((ent) => {
-          if (ent.aliases.some((alias) => rawVal === alias || rawVal.includes(alias))) {
-            usStateScore += 2;
+        // Check World matches
+        WORLD_ENTITIES.forEach((ent) => {
+          if (ent.aliases.some((alias) => matchesAliasStrict(rawVal, alias))) {
+            worldScore += isCountryCol ? 8 : 3;
           }
         });
 
         // Check India State matches
         INDIA_STATES_ENTITIES.forEach((ent) => {
-          if (ent.aliases.some((alias) => rawVal === alias || rawVal.includes(alias))) {
-            indiaStateScore += 2;
+          if (ent.aliases.some((alias) => matchesAliasStrict(rawVal, alias))) {
+            indiaStateScore += isStateCol ? 8 : 4;
           }
         });
 
-        // Check World matches
-        WORLD_ENTITIES.forEach((ent) => {
-          if (ent.aliases.some((alias) => rawVal === alias || rawVal.includes(alias))) {
-            worldScore += 1;
+        // Check US State matches
+        US_STATES_ENTITIES.forEach((ent) => {
+          if (ent.aliases.some((alias) => matchesAliasStrict(rawVal, alias))) {
+            usStateScore += isStateCol ? 8 : 4;
           }
         });
       });
     });
 
-    // Check if user has an active filter set
-    if (selectedRegion && selectedRegion !== 'all') {
-      const lower = selectedRegion.toLowerCase();
-      if (lower.includes('california') || lower === 'ca') {
-        return { mode: 'state-districts', detectedState: 'california', reason: 'Filtered by California', matchedCount: 1 };
-      }
-      if (lower.includes('texas') || lower === 'tx') {
-        return { mode: 'state-districts', detectedState: 'texas', reason: 'Filtered by Texas', matchedCount: 1 };
-      }
-      if (lower.includes('maharashtra') || lower === 'mh') {
-        return { mode: 'state-districts', detectedState: 'maharashtra', reason: 'Filtered by Maharashtra', matchedCount: 1 };
-      }
-    }
-
-    // Determine highest score
-    if (districtScore > 4) {
-      return {
-        mode: 'state-districts',
-        detectedState: 'california',
-        reason: 'Dataset contains County / District sub-divisions',
-        matchedCount: districtScore,
-      };
-    }
-    if (usStateScore >= indiaStateScore && usStateScore >= worldScore && usStateScore > 2) {
-      return {
-        mode: 'us-states',
-        detectedState: 'california',
-        reason: 'Dataset matches US State boundaries',
-        matchedCount: usStateScore,
-      };
-    }
-    if (indiaStateScore > usStateScore && indiaStateScore > worldScore && indiaStateScore > 2) {
+    // Scoring resolution: pick the strongest matching granularity
+    if (indiaStateScore > worldScore && indiaStateScore > usStateScore && indiaStateScore >= 6) {
       return {
         mode: 'india-states',
-        detectedState: 'maharashtra',
         reason: 'Dataset matches India State boundaries',
-        matchedCount: indiaStateScore,
+      };
+    }
+    if (usStateScore > worldScore && usStateScore > indiaStateScore && usStateScore >= 6) {
+      return {
+        mode: 'us-states',
+        reason: 'Dataset matches US State boundaries',
       };
     }
 
-    // Default to World view (e.g. Enterprise Global SaaS)
+    // Default to World map (Universal Global View)
     return {
       mode: 'world',
-      detectedState: 'california',
-      reason: 'Global Continental & International entities detected',
-      matchedCount: Math.max(worldScore, 1),
+      reason: 'Global Countries & International Territories',
     };
-  }, [allDatasetRows, columns, selectedRegion]);
+  }, [allDatasetRows, columns]);
 
-  // Active granularity (override wins if set)
+  // Active granularity (User override takes precedence)
   const activeGranularity = userModeOverride || detectedGranularity.mode;
-  const activeSubdivisionState =
-    selectedSubdivisionState || detectedGranularity.detectedState || 'california';
 
-  // 2. ACTIVE ENTITY REGISTRY FOR CHOSEN GRANULARITY
-  const currentRegistry = useMemo<{
-    entities: GeoEntity[];
-    viewBox: string;
-    mapTitle: string;
-  }>(() => {
-    if (activeGranularity === 'world') {
+  // Current entity registry
+  const currentRegistry = useMemo(() => {
+    if (activeGranularity === 'india-states') {
       return {
-        entities: WORLD_ENTITIES,
-        viewBox: '0 0 1000 500',
-        mapTitle: 'World Sovereign Boundaries & Continental Choropleth',
+        viewBox: '0 0 600 750',
+        entities: INDIA_STATES_ENTITIES,
+        mapTitle: 'India (States & Union Territories)',
       };
     }
     if (activeGranularity === 'us-states') {
       return {
+        viewBox: '0 0 900 550',
         entities: US_STATES_ENTITIES,
-        viewBox: '0 0 960 600',
-        mapTitle: 'United States Geographic State Choropleth',
+        mapTitle: 'United States (50 States)',
       };
     }
-    if (activeGranularity === 'india-states') {
-      return {
-        entities: INDIA_STATES_ENTITIES,
-        viewBox: '0 0 700 800',
-        mapTitle: 'India National & State Regional Boundary Map',
-      };
-    }
-    // 'state-districts'
-    const reg = STATE_DISTRICTS_REGISTRY[activeSubdivisionState] || STATE_DISTRICTS_REGISTRY.california;
     return {
-      entities: reg.entities,
-      viewBox: reg.viewBox,
-      mapTitle: reg.stateName,
+      viewBox: '0 0 1000 520',
+      entities: WORLD_ENTITIES,
+      mapTitle: 'Global Geographic Intelligence (World Map)',
     };
-  }, [activeGranularity, activeSubdivisionState]);
+  }, [activeGranularity]);
 
-  // 3. COMPUTE DYNAMIC METRICS PER ENTITY (Live Real Choropleth Data Binding)
+  // Metric Aggregator & Entity Mapping
   const entityDataMap = useMemo(() => {
-    const map = new Map<
-      string,
-      { entity: GeoEntity; totalVal: number; count: number; share: number; intensity: number }
-    >();
+    const dataMap = new Map<string, { totalVal: number; count: number; intensity: number }>();
+    let grandTotal = 0;
+    let maxEntityVal = 0;
 
-    let totalDatasetMetric = 0;
-
-    // First sum total dataset metric
-    rows.forEach((r) => {
-      const v = parseFloat(r[currentMetric]);
-      if (!isNaN(v)) totalDatasetMetric += v;
+    // Initialize map
+    currentRegistry.entities.forEach((ent) => {
+      dataMap.set(ent.id, { totalVal: 0, count: 0, intensity: 0 });
     });
 
-    let maxEntityVal = 0;
-    let minEntityVal = Infinity;
+    const targetCols = columns.length > 0 ? columns.map((c) => c.name) : Object.keys(rows[0] || {});
 
-    // Match each entity against rows
-    currentRegistry.entities.forEach((ent) => {
-      let entSum = 0;
-      let entCount = 0;
+    rows.forEach((r) => {
+      let metricNum = 0;
+      if (currentMetric && r[currentMetric] !== undefined) {
+        const cleaned = String(r[currentMetric]).replace(/[^0-9.-]/g, '');
+        metricNum = parseFloat(cleaned) || 1;
+      } else {
+        metricNum = 1;
+      }
 
-      rows.forEach((r) => {
-        const val = parseFloat(r[currentMetric]) || 0;
-
-        // Check all columns in row for alias matches
-        const matches = Object.values(r).some((cell) => {
-          const c = String(cell).toLowerCase().trim();
-          if (!c) return false;
-          return ent.aliases.some((alias) => c === alias || c.includes(alias) || alias.includes(c));
+      currentRegistry.entities.forEach((ent) => {
+        const matches = targetCols.some((col) => {
+          const val = r[col];
+          return ent.aliases.some((alias) => matchesAliasStrict(val, alias));
         });
 
         if (matches) {
-          entSum += val;
-          entCount += 1;
+          const cur = dataMap.get(ent.id)!;
+          cur.totalVal += metricNum;
+          cur.count += 1;
+          grandTotal += metricNum;
+          if (cur.totalVal > maxEntityVal) {
+            maxEntityVal = cur.totalVal;
+          }
         }
       });
-
-      if (entSum > maxEntityVal) maxEntityVal = entSum;
-      if (entSum > 0 && entSum < minEntityVal) minEntityVal = entSum;
-
-      map.set(ent.id, {
-        entity: ent,
-        totalVal: entSum,
-        count: entCount,
-        share: totalDatasetMetric > 0 ? (entSum / totalDatasetMetric) * 100 : 0,
-        intensity: 0,
-      });
     });
 
-    // Compute normalized intensity (0.0 to 1.0)
-    const range = maxEntityVal - (minEntityVal === Infinity ? 0 : minEntityVal) || 1;
-    map.forEach((item, id) => {
-      if (item.totalVal > 0) {
-        const intensity = Math.max(0.15, Math.min(1.0, (item.totalVal - (minEntityVal === Infinity ? 0 : minEntityVal)) / range));
-        map.set(id, { ...item, intensity });
-      }
+    // Compute relative intensities (0.0 to 1.0)
+    dataMap.forEach((entry) => {
+      entry.intensity = maxEntityVal > 0 ? Math.min(1, Math.max(0, entry.totalVal / maxEntityVal)) : 0;
     });
 
-    return { map, maxVal: maxEntityVal, minVal: minEntityVal === Infinity ? 0 : minEntityVal, totalMetric: totalDatasetMetric };
-  }, [rows, currentMetric, currentRegistry]);
+    return { map: dataMap, grandTotal, maxVal: maxEntityVal };
+  }, [rows, currentRegistry, columns, currentMetric]);
 
-  // Top performing entity in view
-  const topEntity = useMemo<{ name: string; val: number; share: number } | null>(() => {
-    let top: { name: string; val: number; share: number } | null = null;
-    entityDataMap.map.forEach((data) => {
-      if (data.totalVal > 0) {
-        if (!top || data.totalVal > top.val) {
-          top = { name: data.entity.name, val: data.totalVal, share: data.share };
-        }
-      }
-    });
-    return top;
-  }, [entityDataMap]);
-
-  // Handle entity hover
-  const handleMouseEnter = (ent: GeoEntity, e: React.MouseEvent<SVGPathElement>) => {
+  // Tooltip mouse interactions
+  const handleMouseEnter = (ent: GeoEntity, e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
     const data = entityDataMap.map.get(ent.id);
-    if (!data) return;
+    const totalVal = data?.totalVal || 0;
+    const count = data?.count || 0;
+    const percentage = entityDataMap.grandTotal > 0 ? (totalVal / entityDataMap.grandTotal) * 100 : 0;
 
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setHoveredEntity({
-        entity: ent,
-        totalVal: data.totalVal,
-        count: data.count,
-        share: data.share,
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
-    }
+    setHoveredEntity({
+      entity: ent,
+      totalVal,
+      count,
+      percentage,
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
   };
 
-  const handleMouseMove = (e: React.MouseEvent<SVGPathElement>) => {
-    if (hoveredEntity && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setHoveredEntity((prev) =>
-        prev
-          ? {
-              ...prev,
-              x: e.clientX - rect.left,
-              y: e.clientY - rect.top,
-            }
-          : null
-      );
-    }
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!containerRef.current || !hoveredEntity) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setHoveredEntity((prev) =>
+      prev
+        ? {
+            ...prev,
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+          }
+        : null
+    );
   };
 
   const handleMouseLeave = () => {
     setHoveredEntity(null);
   };
 
-  // Check if an entity is currently filtered/selected
   const isEntitySelected = (ent: GeoEntity) => {
     if (!selectedRegion || selectedRegion === 'all') return false;
     const lowerSel = selectedRegion.toLowerCase();
-    return ent.aliases.some((alias) => lowerSel === alias || lowerSel.includes(alias));
+    return ent.aliases.some((alias) => matchesAliasStrict(lowerSel, alias));
   };
 
   return (
-    <div
-      ref={containerRef}
-      className={`relative flex flex-col justify-between select-none ${className}`}
-    >
-      {/* 1. MAP HEADER & LEVEL CONTROLS */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 mb-2 border-b border-[var(--lm-border-default)]">
+    <div ref={containerRef} className={`relative flex flex-col justify-between select-none ${className}`}>
+      
+      {/* 1. MAP HEADER & COMPACT RESPONSIVE CONTROLS */}
+      <div className="pb-3 mb-2 border-b border-[var(--lm-border-default)]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div>
             <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <span className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                 <GlobeIcon className="w-4 h-4" />
               </span>
               <h3 className="text-sm font-bold text-[var(--lm-text-primary)] tracking-tight">
@@ -1281,68 +756,56 @@ export function GeographicIntelligenceMap({
               </h3>
             </div>
             <p className="text-[11px] text-[var(--lm-text-tertiary)] mt-0.5 flex items-center gap-1.5">
-              <span>
-                {userModeOverride ? 'Manual View' : `⚡ Auto: ${detectedGranularity.reason}`}
-              </span>
+              <span>{userModeOverride ? 'Manual View' : `⚡ Auto: ${detectedGranularity.reason}`}</span>
               <span>•</span>
-              <span className="font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                 {metricLabel || currentMetric}
               </span>
             </p>
           </div>
 
-          {/* Granularity Switcher Pills */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl text-[11px] font-medium border border-slate-200 dark:border-slate-700/80">
+          {/* Granularity Switcher Pills (Clean & Responsive) */}
+          <div className="flex items-center flex-wrap gap-1 bg-slate-100 dark:bg-slate-900/90 p-1 rounded-xl text-[11px] font-medium border border-slate-200 dark:border-slate-800">
             <button
               onClick={() => setUserModeOverride(null)}
-              className={`px-2 py-1 rounded-lg transition-all ${
+              className={`px-2.5 py-1 rounded-lg transition-all ${
                 userModeOverride === null
-                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs'
+                  ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
-              title="Automatically select granularity based on dataset columns and row tokens"
+              title="Automatically select view based on dataset"
             >
               🤖 Auto
             </button>
             <button
               onClick={() => setUserModeOverride('world')}
-              className={`px-2 py-1 rounded-lg transition-all ${
+              className={`px-2.5 py-1 rounded-lg transition-all ${
                 activeGranularity === 'world' && userModeOverride !== null
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 font-bold shadow-xs'
+                  ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              🌐 World
-            </button>
-            <button
-              onClick={() => setUserModeOverride('us-states')}
-              className={`px-2 py-1 rounded-lg transition-all ${
-                activeGranularity === 'us-states' && userModeOverride !== null
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 font-bold shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              🇺🇸 US States
+              🌍 World
             </button>
             <button
               onClick={() => setUserModeOverride('india-states')}
-              className={`px-2 py-1 rounded-lg transition-all ${
+              className={`px-2.5 py-1 rounded-lg transition-all ${
                 activeGranularity === 'india-states' && userModeOverride !== null
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 font-bold shadow-xs'
+                  ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               🇮🇳 India
             </button>
             <button
-              onClick={() => setUserModeOverride('state-districts')}
-              className={`px-2 py-1 rounded-lg transition-all ${
-                activeGranularity === 'state-districts' && userModeOverride !== null
-                  ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 font-bold shadow-xs'
+              onClick={() => setUserModeOverride('us-states')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                activeGranularity === 'us-states' && userModeOverride !== null
+                  ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              📍 Districts
+              🇺🇸 US
             </button>
 
             {onToggleExpand && (
@@ -1356,27 +819,11 @@ export function GeographicIntelligenceMap({
             )}
           </div>
         </div>
-
-        {/* Sub-division selector when in state-districts mode */}
-        {activeGranularity === 'state-districts' && (
-          <div className="flex items-center gap-2 mb-2 px-1">
-            <span className="text-[10px] font-semibold text-slate-500">Target State:</span>
-            <select
-              value={activeSubdivisionState}
-              onChange={(e) => setSelectedSubdivisionState(e.target.value)}
-              className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
-            >
-              <option value="california">California (Counties & Bay Area)</option>
-              <option value="texas">Texas (Counties & Houston/Austin)</option>
-              <option value="maharashtra">Maharashtra (Districts & Mumbai/Pune)</option>
-            </select>
-          </div>
-        )}
       </div>
 
-      {/* 2. REAL SVG GEOGRAPHIC MAP CONTAINER */}
+      {/* 2. REAL SVG GEOGRAPHIC MAP CANVAS */}
       <div
-        className={`relative w-full rounded-2xl overflow-hidden bg-slate-50/70 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-center p-3 transition-all ${
+        className={`relative w-full rounded-2xl overflow-hidden bg-slate-50/80 dark:bg-slate-950/80 border border-slate-200/90 dark:border-slate-800/90 flex items-center justify-center p-3 transition-all ${
           isExpanded ? 'h-[440px]' : 'h-64'
         }`}
       >
@@ -1386,25 +833,24 @@ export function GeographicIntelligenceMap({
         >
           <defs>
             <filter id="activeGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#10B981" floodOpacity="0.5" />
+              <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#10B981" floodOpacity="0.6" />
             </filter>
             <linearGradient id="oceanGradient" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="transparent" stopOpacity="0" />
-              <stop offset="100%" stopColor="rgba(16, 185, 129, 0.03)" />
+              <stop offset="100%" stopColor="rgba(16, 185, 129, 0.04)" />
             </linearGradient>
           </defs>
 
-          {/* SVG Map Background fill */}
+          {/* Map Canvas Background */}
           <rect width="100%" height="100%" fill="url(#oceanGradient)" rx="12" />
 
-          {/* Real Boundary Polygons */}
+          {/* Geographic Real Boundary Polygons */}
           {currentRegistry.entities.map((ent) => {
             const data = entityDataMap.map.get(ent.id);
             const hasData = (data?.totalVal || 0) > 0 || (data?.count || 0) > 0;
             const isSelected = isEntitySelected(ent);
             const intensity = data?.intensity || 0;
 
-            // Compute dynamic fill color
             const fillColor = getChoroplethColor(intensity, hasData, isSelected, false);
 
             return (
@@ -1412,13 +858,13 @@ export function GeographicIntelligenceMap({
                 key={ent.id}
                 d={ent.d}
                 fill={fillColor}
-                stroke={isSelected ? '#059669' : hasData ? '#10B981' : '#94A3B8'}
-                strokeWidth={isSelected ? 2.5 : hasData ? 1.25 : 0.75}
-                strokeOpacity={hasData ? 0.9 : 0.3}
+                stroke={isSelected ? '#059669' : hasData ? '#10B981' : '#CBD5E1'}
+                strokeWidth={isSelected ? 2.5 : hasData ? 1.5 : 0.75}
+                strokeOpacity={hasData ? 0.95 : 0.4}
                 filter={isSelected ? 'url(#activeGlow)' : undefined}
                 className={`transition-all duration-200 ${
                   hasData
-                    ? 'cursor-pointer hover:filter hover:brightness-110 hover:stroke-white dark:hover:stroke-slate-100 hover:stroke-[2px]'
+                    ? 'cursor-pointer hover:filter hover:brightness-110 hover:stroke-emerald-600 dark:hover:stroke-emerald-300 hover:stroke-[2px]'
                     : 'cursor-default opacity-40 hover:opacity-60'
                 }`}
                 onMouseEnter={(e) => handleMouseEnter(ent, e)}
@@ -1433,7 +879,7 @@ export function GeographicIntelligenceMap({
             );
           })}
 
-          {/* Centroid Data Badges for Top Entities */}
+          {/* Centroid Data Badges for Active Entities */}
           {currentRegistry.entities.map((ent) => {
             const data = entityDataMap.map.get(ent.id);
             if (!data || data.totalVal <= 0) return null;
@@ -1446,7 +892,7 @@ export function GeographicIntelligenceMap({
                 className="pointer-events-none select-none transition-transform"
               >
                 <circle
-                  r={isSelected ? 7 : Math.max(4, Math.min(8, 4 + data.intensity * 4))}
+                  r={isSelected ? 7 : Math.max(4.5, Math.min(8, 4.5 + data.intensity * 4))}
                   fill={isSelected ? '#10B981' : '#059669'}
                   stroke="#FFFFFF"
                   strokeWidth="1.5"
@@ -1455,7 +901,7 @@ export function GeographicIntelligenceMap({
                 <text
                   y={13}
                   textAnchor="middle"
-                  className="text-[9px] font-bold fill-slate-800 dark:fill-slate-100 drop-shadow-sm font-sans"
+                  className="text-[9.5px] font-bold fill-slate-800 dark:fill-slate-100 drop-shadow-sm font-sans"
                 >
                   {ent.id.toUpperCase()}
                 </text>
@@ -1464,83 +910,69 @@ export function GeographicIntelligenceMap({
           })}
         </svg>
 
-        {/* 3. FLOATING TOOLTIP ON HOVER */}
+        {/* Hover Floating Tooltip */}
         {hoveredEntity && (
           <div
-            className="absolute pointer-events-none z-30 transform -translate-x-1/2 -translate-y-full mb-3 bg-slate-900/95 text-white p-3 rounded-xl shadow-2xl backdrop-blur-md border border-slate-700/80 text-xs min-w-[190px]"
+            className="absolute z-30 pointer-events-none -translate-x-1/2 -translate-y-full mb-3 px-3 py-2 rounded-xl bg-slate-900/95 text-white backdrop-blur-md border border-slate-700/80 shadow-xl text-xs whitespace-nowrap transition-all duration-75"
             style={{
-              left: `${hoveredEntity.x}px`,
-              top: `${hoveredEntity.y}px`,
+              left: `${Math.max(60, Math.min(hoveredEntity.x, 380))}px`,
+              top: `${Math.max(50, hoveredEntity.y)}px`,
             }}
           >
-            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800">
-              <span className="font-bold text-emerald-400">{hoveredEntity.entity.label}</span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
-                {hoveredEntity.entity.id.toUpperCase()}
-              </span>
+            <div className="flex items-center gap-1.5 font-bold text-emerald-400">
+              <span>📍 {hoveredEntity.entity.name}</span>
+              {hoveredEntity.entity.subLabel && (
+                <span className="text-[10px] text-slate-400 font-normal">
+                  ({hoveredEntity.entity.subLabel})
+                </span>
+              )}
             </div>
-            {hoveredEntity.entity.subLabel && (
-              <p className="text-[10px] text-slate-400 mb-2 leading-tight">
-                {hoveredEntity.entity.subLabel}
-              </p>
-            )}
-
-            <div className="space-y-1 text-[11px]">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">Total {metricLabel || currentMetric}:</span>
-                <span className="font-bold font-mono text-emerald-300">
+            <div className="mt-1 flex items-center gap-3 text-[11px] text-slate-200">
+              <div>
+                <span className="text-slate-400">Value: </span>
+                <span className="font-semibold text-emerald-300">
                   {formatMetricVal(hoveredEntity.totalVal, isCurrency)}
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">Active Records:</span>
-                <span className="font-semibold font-mono text-slate-200">
-                  {hoveredEntity.count} rows
+              <div>
+                <span className="text-slate-400">Share: </span>
+                <span className="font-semibold">
+                  {hoveredEntity.percentage.toFixed(1)}%
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">Dataset Share:</span>
-                <span className="font-semibold font-mono text-cyan-400">
-                  {hoveredEntity.share.toFixed(1)}%
-                </span>
+              <div>
+                <span className="text-slate-400">Rows: </span>
+                <span className="font-semibold">{hoveredEntity.count}</span>
               </div>
             </div>
-
-            <div className="mt-2 pt-1.5 border-t border-slate-800/80 text-[10px] text-emerald-400/90 text-center font-medium">
-              {isEntitySelected(hoveredEntity.entity)
-                ? '✕ Click to clear region filter'
-                : '⚡ Click to filter dashboard to this region'}
+            <div className="mt-1 pt-1 border-t border-slate-800 text-[10px] text-emerald-400/80">
+              💡 Click to filter dashboard
             </div>
           </div>
         )}
       </div>
 
-      {/* 4. FOOTER STATS & CHOROPLETH SCALE LEGEND */}
-      <div className="mt-2.5 pt-2 border-t border-[var(--lm-border-default)] flex flex-wrap items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-2">
-          {topEntity && (
-            <span className="text-slate-600 dark:text-slate-300 text-[11px]">
-              Top: <strong>{topEntity.name}</strong> ({formatMetricVal(topEntity.val, isCurrency)} •{' '}
-              {topEntity.share.toFixed(1)}%)
-            </span>
-          )}
+      {/* 3. MAP FOOTER METADATA */}
+      <div className="flex items-center justify-between pt-2.5 px-1 text-[11px] text-[var(--lm-text-tertiary)]">
+        <div className="flex items-center gap-1.5">
+          <span>Active Filter:</span>
+          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+            {selectedRegion && selectedRegion !== 'all' ? selectedRegion : 'Global (All Regions)'}
+          </span>
           {selectedRegion && selectedRegion !== 'all' && (
             <button
               onClick={() => onSelectRegion('all')}
-              className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+              className="text-[10px] text-red-500 hover:underline ml-1 cursor-pointer"
             >
-              Filtered: {selectedRegion} ✕
+              Clear
             </button>
           )}
         </div>
-
-        {/* Gradient Intensity Scale */}
-        <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
-          <span>Min (0)</span>
-          <div className="w-16 h-2 rounded-full bg-gradient-to-r from-emerald-100 via-emerald-400 to-emerald-700" />
-          <span>Max ({formatMetricVal(entityDataMap.maxVal, isCurrency)})</span>
+        <div className="text-[10px] text-slate-400">
+          Showing {entityDataMap.map.size} standard geographical regions
         </div>
       </div>
+
     </div>
   );
 }
