@@ -55,6 +55,11 @@ export function UserAuthProfileModal({
   const [org, setOrg] = useState('');
   const [selectedRole, setSelectedRole] = useState<'owner' | 'administrator' | 'builder' | 'reviewer' | 'viewer'>('builder');
 
+  // Registration OTP state
+  const [regStep, setRegStep] = useState<1 | 2>(1);
+  const [regOtp, setRegOtp] = useState('');
+  const [regPreviewOtp, setRegPreviewOtp] = useState<string | null>(null);
+
   // Change Password state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -510,53 +515,100 @@ export function UserAuthProfileModal({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    const emailCheck = validateEmailAuthenticity(email);
+    const cleanEmail = email.trim().toLowerCase();
+    const emailCheck = validateEmailAuthenticity(cleanEmail);
     if (!emailCheck.valid) {
       setFeedback({ type: 'error', message: emailCheck.message || 'Please enter a genuine, valid email address.' });
       return;
     }
 
-    if (password.length < 8) {
-      setFeedback({ type: 'error', message: 'Password must be at least 8 characters in length.' });
-      return;
-    }
-    const hasLetter = /[a-zA-Z]/.test(password);
-    const hasNumberOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
-    if (!hasLetter || !hasNumberOrSymbol) {
-      setFeedback({ type: 'error', message: 'Password must contain at least one letter and one number or special character.' });
-      return;
-    }
-
-    setLoading(true);
-    setFeedback(null);
-
-    const res = await LumetricAuthService.register({
-      email,
-      password,
-      name,
-      organization: org,
-      role: selectedRole
-    });
-    setLoading(false);
-
-    if (res.success && res.user) {
-      flushMemoryState();
-      setAuthUser(res.user);
-      setCurrentUser(res.user);
-      setRole(res.user.role);
-      setIsAuthenticated(true);
-      if (res.user.settings?.subscription) {
-        try {
-          localStorage.setItem('lumetric_active_subscription', JSON.stringify(res.user.settings.subscription));
-        } catch {}
+    if (regStep === 1) {
+      if (!name.trim()) {
+        setFeedback({ type: 'error', message: 'Full name is required.' });
+        return;
       }
-      setFeedback({ type: 'success', message: 'Account registered and persisted to database!' });
-      setTimeout(() => {
-        setMode('profile');
-        setFeedback(null);
-      }, 1000);
+
+      if (password.length < 8) {
+        setFeedback({ type: 'error', message: 'Password must be at least 8 characters in length.' });
+        return;
+      }
+      const hasLetter = /[a-zA-Z]/.test(password);
+      const hasNumberOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
+      if (!hasLetter || !hasNumberOrSymbol) {
+        setFeedback({ type: 'error', message: 'Password must contain at least one letter and one number or special character.' });
+        return;
+      }
+
+      setLoading(true);
+      setFeedback(null);
+
+      const res = await LumetricAuthService.sendOtp({
+        email: cleanEmail,
+        purpose: 'signup',
+        payload: {
+          name: name.trim(),
+          password,
+          role: selectedRole,
+          organization: org.trim()
+        }
+      });
+      setLoading(false);
+
+      if (res.success) {
+        setRegStep(2);
+        setRegOtp('');
+        setRegPreviewOtp(res.verificationPreview || null);
+        setFeedback({
+          type: 'success',
+          message: `Verification code sent to ${cleanEmail}. Enter the 6-digit code to complete registration.`
+        });
+      } else {
+        setFeedback({ type: 'error', message: res.error || 'Failed to dispatch verification code.' });
+      }
     } else {
-      setFeedback({ type: 'error', message: res.error || 'Registration failed.' });
+      // Step 2: Verify OTP
+      if (!regOtp || regOtp.trim().length !== 6) {
+        setFeedback({ type: 'error', message: 'Please enter the 6-digit verification code.' });
+        return;
+      }
+
+      setLoading(true);
+      setFeedback(null);
+
+      const res = await LumetricAuthService.verifyOtp({
+        email: cleanEmail,
+        otp: regOtp.trim(),
+        purpose: 'signup',
+        payload: {
+          name: name.trim(),
+          password,
+          role: selectedRole,
+          organization: org.trim()
+        }
+      });
+      setLoading(false);
+
+      if (res.success && res.user) {
+        flushMemoryState();
+        setAuthUser(res.user);
+        setCurrentUser(res.user);
+        setRole(res.user.role);
+        setIsAuthenticated(true);
+        if (res.user.settings?.subscription) {
+          try {
+            localStorage.setItem('lumetric_active_subscription', JSON.stringify(res.user.settings.subscription));
+          } catch {}
+        }
+        setFeedback({ type: 'success', message: 'Email verified! Account registered and persisted to database.' });
+        setTimeout(() => {
+          setMode('profile');
+          setRegStep(1);
+          setRegOtp('');
+          setFeedback(null);
+        }, 1000);
+      } else {
+        setFeedback({ type: 'error', message: res.error || 'Invalid or expired verification code.' });
+      }
     }
   };
 
@@ -1759,82 +1811,147 @@ export function UserAuthProfileModal({
             </div>
           )}
 
-          {/* VIEW 6: REGISTER VIEW */}
+          {/* VIEW 6: REGISTER VIEW (WITH 6-DIGIT OTP VERIFICATION) */}
           {mode === 'register' && (
             <form onSubmit={handleRegister} className="space-y-3">
-              <Input
-                label="Full Name"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Rajveer Singh"
-              />
-              <div>
-                <Input
-                  label="Work Email Address"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (feedback) setFeedback(null);
-                  }}
-                  placeholder="name@company.com"
-                  hint={email.length === 0 ? "Must be a genuine domain (e.g. name@company.com). Numeric/disposable domains rejected." : undefined}
-                  error={email.length > 0 && emailValidation && !emailValidation.valid ? emailValidation.message : undefined}
-                />
-                {emailValidation && emailValidation.valid && (
-                  <div className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                    <span>✓</span>
-                    <span>Domain <span className="font-mono">{emailValidation.domain}</span> verified authentic</span>
+              {regStep === 1 ? (
+                <>
+                  <Input
+                    label="Full Name"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Rajveer Singh"
+                  />
+                  <div>
+                    <Input
+                      label="Work Email Address"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (feedback) setFeedback(null);
+                      }}
+                      placeholder="name@company.com"
+                      hint={email.length === 0 ? "Must be a genuine domain (e.g. name@company.com). Numeric/disposable domains rejected." : undefined}
+                      error={email.length > 0 && emailValidation && !emailValidation.valid ? emailValidation.message : undefined}
+                    />
+                    {emailValidation && emailValidation.valid && (
+                      <div className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                        <span>✓</span>
+                        <span>Domain <span className="font-mono">{emailValidation.domain}</span> verified authentic</span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <Input
-                label="Password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (feedback) setFeedback(null);
-                }}
-                placeholder="At least 8 characters"
-                hint={password.length === 0 ? "Must contain >= 8 chars with a letter and a number or symbol" : undefined}
-                error={
-                  password.length > 0 &&
-                  (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password))
-                    ? "Password must be >= 8 chars and include a letter & number/symbol"
-                    : undefined
-                }
-              />
-              <Input
-                label="Organization"
-                value={org}
-                onChange={(e) => setOrg(e.target.value)}
-                placeholder="Lumetric Labs"
-              />
+                  <Input
+                    label="Password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (feedback) setFeedback(null);
+                    }}
+                    placeholder="At least 8 characters"
+                    hint={password.length === 0 ? "Must contain >= 8 chars with a letter and a number or symbol" : undefined}
+                    error={
+                      password.length > 0 &&
+                      (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password))
+                        ? "Password must be >= 8 chars and include a letter & number/symbol"
+                        : undefined
+                    }
+                  />
+                  <Input
+                    label="Organization"
+                    value={org}
+                    onChange={(e) => setOrg(e.target.value)}
+                    placeholder="Lumetric Labs"
+                  />
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-[var(--lm-text-primary)]">
-                  Select Initial Role
-                </label>
-                <select
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value as any)}
-                  className="w-full px-3 py-2 text-xs bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] rounded-xl text-[var(--lm-text-primary)]"
-                >
-                  <option value="owner">Owner (Full Governance & Spending)</option>
-                  <option value="administrator">Administrator</option>
-                  <option value="builder">Builder (Model & Pipeline Author)</option>
-                  <option value="reviewer">Reviewer (Auditor)</option>
-                  <option value="viewer">Viewer (Read-Only)</option>
-                </select>
-              </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-[var(--lm-text-primary)]">
+                      Select Initial Role
+                    </label>
+                    <select
+                      value={selectedRole}
+                      onChange={(e) => setSelectedRole(e.target.value as any)}
+                      className="w-full px-3 py-2 text-xs bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] rounded-xl text-[var(--lm-text-primary)]"
+                    >
+                      <option value="owner">Owner (Full Governance & Spending)</option>
+                      <option value="administrator">Administrator</option>
+                      <option value="builder">Builder (Model & Pipeline Author)</option>
+                      <option value="reviewer">Reviewer (Auditor)</option>
+                      <option value="viewer">Viewer (Read-Only)</option>
+                    </select>
+                  </div>
 
-              <Button type="submit" size="md" className="w-full mt-2" loading={loading}>
-                Create Account & Save to Database
-              </Button>
+                  <Button type="submit" size="md" className="w-full mt-2" loading={loading}>
+                    Send 6-Digit Verification Code →
+                  </Button>
+                </>
+              ) : (
+                /* Step 2: Enter 6-digit OTP */
+                <div className="space-y-3 p-3 bg-[var(--lm-bg-secondary)] rounded-2xl border border-[var(--lm-border-default)] animate-in fade-in">
+                  <div className="text-center">
+                    <span className="text-xs font-bold text-[var(--lm-text-primary)] block">
+                      Verify Your Email Address
+                    </span>
+                    <p className="text-[11px] text-[var(--lm-text-secondary)] mt-0.5">
+                      Code dispatched to <span className="font-mono text-emerald-600 font-semibold">{email}</span>
+                    </p>
+                  </div>
+
+                  {regPreviewOtp && (
+                    <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs">
+                      <span className="text-emerald-700 dark:text-emerald-300 font-mono text-[11px]">
+                        Preview: <strong>{regPreviewOtp}</strong>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setRegOtp(regPreviewOtp)}
+                        className="px-2 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-bold"
+                      >
+                        Auto-fill
+                      </button>
+                    </div>
+                  )}
+
+                  <Input
+                    label="6-Digit Verification Code"
+                    value={regOtp}
+                    onChange={(e) => setRegOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    className="text-center font-mono tracking-widest text-base font-bold"
+                    maxLength={6}
+                    required
+                  />
+
+                  <Button type="submit" size="md" className="w-full" loading={loading} disabled={regOtp.length !== 6}>
+                    Verify Code & Complete Registration
+                  </Button>
+
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setRegStep(1)}
+                      className="text-[var(--lm-text-tertiary)] hover:text-[var(--lm-text-primary)]"
+                    >
+                      ← Edit details
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        LumetricAuthService.sendOtp({ email, purpose: 'signup', payload: { name, password, role: selectedRole, organization: org } });
+                        setFeedback({ type: 'success', message: 'A new 6-digit verification code has been dispatched.' });
+                      }}
+                      className="text-emerald-600 hover:underline font-medium"
+                    >
+                      Resend Code
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="pt-3 border-t border-[var(--lm-border-default)] flex items-center justify-between text-xs text-[var(--lm-text-secondary)]">
                 <span>Already registered?</span>

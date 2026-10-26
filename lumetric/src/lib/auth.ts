@@ -30,7 +30,32 @@ export interface AuthResponse {
   token?: string;
   user?: AuthUser;
   error?: string;
+  code?: string;
   retryAfterSeconds?: number;
+  requiresOtp?: boolean;
+  requiresMfa?: boolean;
+  verificationPreview?: string;
+}
+
+export interface OtpResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  code?: string;
+  deliveryChannel?: string;
+  recipient?: string;
+  purpose?: string;
+  expiresInSeconds?: number;
+  cooldownSeconds?: number;
+  verificationPreview?: string;
+  requiresOtp?: boolean;
+  token?: string;
+  user?: AuthUser;
+  emailPreview?: {
+    subject: string;
+    html: string;
+    text: string;
+  };
 }
 
 export interface EmailValidationResult {
@@ -369,19 +394,115 @@ export class LumetricAuthService {
     }
   }
 
+  public static async sendOtp(payload: {
+    email: string;
+    purpose?: 'signup' | 'login' | 'reset-password';
+    payload?: any;
+  }): Promise<OtpResponse> {
+    const cleanEmail = (payload.email || '').trim().toLowerCase();
+    const emailCheck = validateEmailAuthenticity(cleanEmail);
+    if (!emailCheck.valid) {
+      return { success: false, error: emailCheck.message };
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cleanEmail,
+          purpose: payload.purpose || 'signup',
+          payload: payload.payload
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      let data: OtpResponse;
+      try {
+        data = await res.json();
+      } catch {
+        data = { success: res.ok, error: `Server status ${res.status}` };
+      }
+      return data;
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.name === 'AbortError'
+          ? 'Dispatch connection timed out. Please check your network connection.'
+          : err.message || 'Cannot reach verification server.'
+      };
+    }
+  }
+
+  public static async verifyOtp(payload: {
+    email: string;
+    otp: string;
+    purpose?: 'signup' | 'login' | 'reset-password';
+    newPassword?: string;
+    payload?: any;
+  }): Promise<OtpResponse> {
+    const cleanEmail = (payload.email || '').trim().toLowerCase();
+    const cleanOtp = (payload.otp || '').trim();
+    if (!cleanEmail || !cleanOtp) {
+      return { success: false, error: 'Email and 6-digit verification code are required.' };
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cleanEmail,
+          otp: cleanOtp,
+          purpose: payload.purpose || 'signup',
+          newPassword: payload.newPassword,
+          payload: payload.payload
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      let data: OtpResponse;
+      try {
+        data = await res.json();
+      } catch {
+        data = { success: res.ok, error: `Server status ${res.status}` };
+      }
+
+      if (data.success && data.token && data.user) {
+        this.setSession(data.token, data.user);
+      }
+      return data;
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.name === 'AbortError'
+          ? 'Verification timed out. Please try again.'
+          : err.message || 'Cannot reach verification server.'
+      };
+    }
+  }
+
   public static async register(payload: {
     email: string;
     password: string;
     name: string;
     organization?: string;
     role?: string;
+    otp?: string;
   }): Promise<AuthResponse> {
     const cleanPayload = {
       ...payload,
       email: (payload.email || '').trim().toLowerCase(),
       name: (payload.name || '').trim(),
       organization: (payload.organization || 'Enterprise Data Lab').trim(),
-      role: payload.role || 'builder'
+      role: payload.role || 'builder',
+      otp: payload.otp ? payload.otp.trim() : undefined
     };
 
     const emailCheck = validateEmailAuthenticity(cleanPayload.email);
@@ -472,6 +593,7 @@ export class LumetricAuthService {
     name?: string;
     avatarUrl?: string;
     googleId?: string;
+    otp?: string;
   }): Promise<AuthResponse> {
     const cleanEmail = (payload.email || '').trim().toLowerCase();
     const emailCheck = validateEmailAuthenticity(cleanEmail);
