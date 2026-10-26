@@ -1333,13 +1333,7 @@ app.post('/api/auth/send-otp', rateLimiter({ windowMs: 15 * 60 * 1000, max: 30, 
       recipient: normalizedEmail,
       purpose: targetPurpose,
       expiresInSeconds: 600,
-      cooldownSeconds: 30,
-      verificationPreview: otp, // Enables zero-downtime developer / sandbox verification
-      emailPreview: {
-        subject: emailRes.subject,
-        html: emailRes.html,
-        text: emailRes.text
-      }
+      cooldownSeconds: 30
     });
   } catch (err) {
     console.error('Send OTP error:', err);
@@ -1874,8 +1868,7 @@ app.post('/api/auth/google', rateLimiter({ windowMs: 5 * 60 * 1000, max: 30 }), 
         success: false,
         requiresOtp: true,
         message: `For your security, a 6-digit verification code was sent to ${normalizedEmail}.`,
-        recipient: normalizedEmail,
-        verificationPreview: generatedOtp
+        recipient: normalizedEmail
       });
     }
 

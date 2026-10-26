@@ -1902,21 +1902,6 @@ export function UserAuthProfileModal({
                     </p>
                   </div>
 
-                  {regPreviewOtp && (
-                    <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs">
-                      <span className="text-emerald-700 dark:text-emerald-300 font-mono text-[11px]">
-                        Preview: <strong>{regPreviewOtp}</strong>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setRegOtp(regPreviewOtp)}
-                        className="px-2 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-bold"
-                      >
-                        Auto-fill
-                      </button>
-                    </div>
-                  )}
-
                   <Input
                     label="6-Digit Verification Code"
                     value={regOtp}

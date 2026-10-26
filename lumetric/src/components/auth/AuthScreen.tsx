@@ -828,23 +828,6 @@ export function AuthScreen() {
                 </div>
               </div>
 
-              {/* Development / Sandbox Instant Preview Helper */}
-              {verificationPreview && (
-                <div className="mb-4 p-2.5 rounded-xl bg-[#059669]/10 border border-[#059669]/30 flex items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-1.5 text-[#34D399]">
-                    <span>⚡ Code:</span>
-                    <span className="font-mono font-bold tracking-widest text-[#FAF8F5]">{verificationPreview}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={autoFillPreviewCode}
-                    className="px-2.5 py-1 bg-[#059669] hover:bg-[#047857] text-[#FAF8F5] rounded-lg text-[10px] font-bold cursor-pointer transition-all"
-                  >
-                    Auto-fill Code
-                  </button>
-                </div>
-              )}
-
               {/* 6-Digit Monospace Input Grid */}
               <form onSubmit={handleVerifyOtpSubmit} className="space-y-4">
                 <div className="flex items-center justify-center gap-2 sm:gap-2.5 my-3">
