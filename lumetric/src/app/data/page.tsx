@@ -17,6 +17,7 @@ import {
   DatasetRequirements,
   QualityCheckResult,
 } from '@/types';
+import { parseCSVStrict, healDatasetRows } from '@/lib/csvParser';
 
 
 
@@ -119,27 +120,15 @@ export default function DataWorkspacePage() {
     setPublishedNotice(null);
 
     try {
-      const lines = content
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter((l) => l.length > 0);
-
-      if (lines.length < 2) {
+      const rawGrid = parseCSVStrict(content);
+      if (rawGrid.length < 2) {
         throw new Error('File must contain at least a header row and one valid data record.');
       }
 
-      // Auto-detect delimiter: check comma vs semicolon vs tab on first line
-      const firstLine = lines[0];
-      const commaCount = (firstLine.match(/,/g) || []).length;
-      const semiCount = (firstLine.match(/;/g) || []).length;
-      const tabCount = (firstLine.match(/\t/g) || []).length;
-      const delimiter = semiCount > commaCount && semiCount > tabCount ? ';' : tabCount > commaCount ? '\t' : ',';
-
-      const rawHeaders = parseCSVLine(lines[0], delimiter);
+      const rawHeaders = rawGrid[0];
       const headers = rawHeaders.map((h, i) => sanitizeHeaderKey(h, i));
 
-      const rows = lines.slice(1).map((line) => {
-        const values = parseCSVLine(line, delimiter);
+      let rows = rawGrid.slice(1).map((values) => {
         const obj: Record<string, string> = Object.create(null);
         headers.forEach((h, i) => {
           if (h !== '__proto__' && h !== 'constructor' && h !== 'prototype') {
@@ -148,6 +137,7 @@ export default function DataWorkspacePage() {
         });
         return { ...obj };
       });
+      rows = healDatasetRows(rows);
 
       setRawContent(content);
       setFileName(name);

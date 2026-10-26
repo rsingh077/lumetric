@@ -21,6 +21,7 @@ import {
 
 import { DatasetProfile, DocumentFileProfile } from '@/types';
 import { AIStudioSection } from '@/components/ai/AIStudioSection';
+import { parseCSVStrict, healDatasetRows } from '@/lib/csvParser';
 
 // Sub-page imports for routing between application tabs
 import ProjectsPage from './projects/page';
@@ -111,20 +112,20 @@ function HomeView() {
           text = await file.text();
         }
 
-        const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-        if (lines.length < 2) {
+        const rawGrid = parseCSVStrict(text);
+        if (rawGrid.length < 2) {
           throw new Error('File must contain at least a header row and one valid data record.');
         }
 
-        const headers = parseCSVLine(lines[0]);
-        const rows = lines.slice(1).map((line) => {
-          const values = parseCSVLine(line);
+        const headers = rawGrid[0].map((h) => h.replace(/^["']|["']$/g, '').trim());
+        let rows = rawGrid.slice(1).map((values) => {
           const obj: Record<string, string> = {};
           headers.forEach((h, i) => {
             obj[h] = values[i] ?? '';
           });
           return obj;
         });
+        rows = healDatasetRows(rows);
 
         const columns = headers.map((header) => {
           const sample = rows.slice(0, 100).map((r) => r[header] || '');

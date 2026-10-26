@@ -19,6 +19,7 @@ import {
   calculateGroupAggregates,
 } from '@/lib/analytics';
 import { ColumnProfile, DatasetProfile, ColumnSemanticRole, DatasetRequirements, QualityCheckResult } from '@/types';
+import { parseCSVStrict, healDatasetRows } from '@/lib/csvParser';
 
 // Helper: Pseudo-SHA256 for deterministic hashing in browser
 function computeHash(str: string): string {
@@ -218,18 +219,18 @@ export default function AnalysisStudioPage() {
   const handleDirectIntake = (content: string, name: string, size: number) => {
     setIsIntaking(true);
     try {
-      const lines = content.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
-      if (lines.length < 2) throw new Error('File must contain a header and data rows.');
+      const rawGrid = parseCSVStrict(content);
+      if (rawGrid.length < 2) throw new Error('File must contain a header and data rows.');
 
-      const headers = lines[0].split(',').map((h) => h.replace(/^"|"$/g, '').trim());
-      const rows = lines.slice(1).map((line) => {
-        const parts = line.split(',').map((p) => p.replace(/^"|"$/g, '').trim());
+      const headers = rawGrid[0].map((h) => h.replace(/^["']|["']$/g, '').trim());
+      let rows = rawGrid.slice(1).map((parts) => {
         const obj: Record<string, string> = {};
         headers.forEach((h, i) => {
           obj[h] = parts[i] ?? '';
         });
         return obj;
       });
+      rows = healDatasetRows(rows);
 
       const hash = computeHash(content);
       const profiles: ColumnProfile[] = headers.map((colName) => {
