@@ -3,6 +3,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { GlobeIcon, MaximizeIcon } from '@/components/icons';
 import { REAL_WORLD_COUNTRIES, WorldCountryEntity } from './worldCountriesData';
+import { OFFICIAL_INDIA_STATES, IndiaStateEntity } from './indiaStatesData';
+import { OFFICIAL_US_STATES, USStateEntity } from './usStatesData';
 import { parseNumeric } from '@/lib/csvParser';
 
 export type GeographicGranularity = 'world' | 'us-states' | 'india-states';
@@ -49,170 +51,14 @@ const WORLD_ENTITIES: GeoEntity[] = REAL_WORLD_COUNTRIES.map((c: WorldCountryEnt
 }));
 
 // ============================================================================
-// 2. INDIA STATES MAP — AUTHENTIC SUB-DIVISIONS (600 x 750)
+// 2. OFFICIAL SURVEY OF INDIA 37 STATES & UNION TERRITORIES (650 x 750)
 // ============================================================================
-const INDIA_STATES_ENTITIES: GeoEntity[] = [
-  // West
-  {
-    id: 'MH',
-    name: 'Maharashtra',
-    label: 'Maharashtra',
-    subLabel: 'Mumbai, Pune, Financial Capital',
-    centroid: [230, 430],
-    d: 'M 160,375 C 205,365 260,368 295,385 C 310,410 300,445 285,475 C 240,490 195,475 168,445 Z',
-    aliases: ['maharashtra', 'mh', 'mumbai', 'pune', 'nagpur', 'thane'],
-    parentRegion: 'West India',
-  },
-  {
-    id: 'GJ',
-    name: 'Gujarat',
-    label: 'Gujarat',
-    subLabel: 'Ahmedabad, Surat, Gift City',
-    centroid: [145, 335],
-    d: 'M 105,295 C 145,285 180,290 195,315 C 190,345 175,370 148,375 C 120,372 100,345 105,295 Z',
-    aliases: ['gujarat', 'gj', 'ahmedabad', 'surat', 'vadodara', 'gift city'],
-    parentRegion: 'West India',
-  },
-  // South
-  {
-    id: 'KA',
-    name: 'Karnataka',
-    label: 'Karnataka',
-    subLabel: 'Bengaluru Silicon Valley',
-    centroid: [225, 535],
-    d: 'M 185,475 C 228,465 255,480 265,515 C 260,560 240,605 210,615 C 192,580 180,535 185,475 Z',
-    aliases: ['karnataka', 'ka', 'bengaluru', 'bangalore', 'mysore', 'hubli'],
-    parentRegion: 'South India',
-  },
-  {
-    id: 'TN',
-    name: 'Tamil Nadu',
-    label: 'Tamil Nadu',
-    subLabel: 'Chennai SaaS & Auto Hub',
-    centroid: [275, 620],
-    d: 'M 235,565 C 275,555 315,568 312,610 C 302,655 278,695 255,705 C 240,670 232,625 235,565 Z',
-    aliases: ['tamil nadu', 'tn', 'chennai', 'coimbatore', 'madurai'],
-    parentRegion: 'South India',
-  },
-  {
-    id: 'TG',
-    name: 'Telangana',
-    label: 'Telangana',
-    subLabel: 'Hyderabad Cyberabad',
-    centroid: [280, 465],
-    d: 'M 245,425 C 285,418 315,435 320,465 C 315,498 295,520 265,522 C 245,495 240,460 245,425 Z',
-    aliases: ['telangana', 'tg', 'ts', 'hyderabad', 'secunderabad', 'warangal'],
-    parentRegion: 'South India',
-  },
-  {
-    id: 'KL',
-    name: 'Kerala',
-    label: 'Kerala',
-    subLabel: 'Kochi, Thiruvananthapuram',
-    centroid: [205, 645],
-    d: 'M 195,595 C 215,590 225,615 220,655 C 212,695 198,715 185,710 C 182,680 188,640 195,595 Z',
-    aliases: ['kerala', 'kl', 'kochi', 'thiruvananthapuram', 'calicut'],
-    parentRegion: 'South India',
-  },
-  // North
-  {
-    id: 'DL',
-    name: 'Delhi & NCR',
-    label: 'Delhi (NCR)',
-    subLabel: 'National Capital Region',
-    centroid: [248, 240],
-    d: 'M 235,225 C 255,220 265,230 262,248 C 255,260 242,262 235,250 Z',
-    aliases: ['delhi', 'dl', 'new delhi', 'ncr', 'gurugram', 'gurgaon', 'noida'],
-    parentRegion: 'North India',
-  },
-  {
-    id: 'UP',
-    name: 'Uttar Pradesh',
-    label: 'Uttar Pradesh',
-    subLabel: 'Noida, Lucknow, Kanpur',
-    centroid: [320, 275],
-    d: 'M 265,228 C 335,220 395,235 410,270 C 400,315 350,335 285,325 C 265,295 258,260 265,228 Z',
-    aliases: ['uttar pradesh', 'up', 'lucknow', 'kanpur', 'varanasi', 'agra'],
-    parentRegion: 'North India',
-  },
-  {
-    id: 'RJ',
-    name: 'Rajasthan',
-    label: 'Rajasthan',
-    subLabel: 'Jaipur, Jodhpur',
-    centroid: [180, 265],
-    d: 'M 130,215 C 190,205 235,215 245,255 C 240,295 205,325 155,320 C 125,290 118,250 130,215 Z',
-    aliases: ['rajasthan', 'rj', 'jaipur', 'jodhpur', 'udaipur'],
-    parentRegion: 'North India',
-  },
-  // East
-  {
-    id: 'WB',
-    name: 'West Bengal',
-    label: 'West Bengal',
-    subLabel: 'Kolkata Tech & Port',
-    centroid: [435, 345],
-    d: 'M 415,295 C 445,285 465,310 460,345 C 452,385 435,420 415,415 C 410,380 412,335 415,295 Z',
-    aliases: ['west bengal', 'wb', 'kolkata', 'howrah'],
-    parentRegion: 'East India',
-  },
-];
+const INDIA_ENTITIES: GeoEntity[] = OFFICIAL_INDIA_STATES;
 
 // ============================================================================
-// 3. US STATES MAP (900 x 550)
+// 3. OFFICIAL UNITED STATES 50 STATES + DC (900 x 550)
 // ============================================================================
-const US_STATES_ENTITIES: GeoEntity[] = [
-  {
-    id: 'CA',
-    name: 'California',
-    label: 'California (CA)',
-    subLabel: 'Silicon Valley, SF, LA',
-    centroid: [115, 275],
-    d: 'M 65,150 C 95,155 110,185 105,245 C 135,315 155,385 135,410 C 105,395 85,340 68,260 Z',
-    aliases: ['california', 'ca', 'silicon valley', 'san francisco', 'los angeles', 'san diego'],
-    parentRegion: 'West Coast',
-  },
-  {
-    id: 'TX',
-    name: 'Texas',
-    label: 'Texas (TX)',
-    subLabel: 'Austin & Dallas Tech',
-    centroid: [445, 385],
-    d: 'M 370,305 C 435,302 475,310 495,350 C 515,405 480,470 435,475 C 390,445 375,375 370,305 Z',
-    aliases: ['texas', 'tx', 'austin', 'dallas', 'houston'],
-    parentRegion: 'South',
-  },
-  {
-    id: 'NY',
-    name: 'New York',
-    label: 'New York (NY)',
-    subLabel: 'NYC Financial Capital',
-    centroid: [775, 175],
-    d: 'M 740,145 C 775,138 805,150 812,175 C 805,198 775,205 750,195 Z',
-    aliases: ['new york', 'ny', 'nyc', 'manhattan'],
-    parentRegion: 'Northeast',
-  },
-  {
-    id: 'WA',
-    name: 'Washington',
-    label: 'Washington (WA)',
-    subLabel: 'Seattle Cloud Hub',
-    centroid: [135, 75],
-    d: 'M 95,50 C 145,45 180,52 182,88 C 155,95 125,98 95,90 Z',
-    aliases: ['washington', 'wa', 'seattle', 'redmond'],
-    parentRegion: 'Pacific Northwest',
-  },
-  {
-    id: 'FL',
-    name: 'Florida',
-    label: 'Florida (FL)',
-    subLabel: 'Miami & Orlando',
-    centroid: [725, 435],
-    d: 'M 675,395 C 735,392 755,420 758,460 C 748,495 725,510 715,475 C 705,445 685,425 675,395 Z',
-    aliases: ['florida', 'fl', 'miami', 'tampa', 'orlando'],
-    parentRegion: 'Southeast',
-  },
-];
+const US_ENTITIES: GeoEntity[] = OFFICIAL_US_STATES;
 
 // Helper to determine if a value strictly matches an alias
 function matchesAliasStrict(rawVal: string, alias: string): boolean {
@@ -223,10 +69,10 @@ function matchesAliasStrict(rawVal: string, alias: string): boolean {
   // Exact match
   if (v === a) return true;
 
-  // For short acronyms (<= 3 chars like 'in', 'ca', 'us', 'la'), ONLY exact match is allowed
+  // For short acronyms (<= 3 chars like 'in', 'ca', 'us', 'la', 'up', 'mp'), ONLY exact match is allowed
   if (a.length <= 3) return false;
 
-  // For longer words (>= 4 chars like 'india', 'california', 'united states'), match word boundaries
+  // For longer words (>= 4 chars like 'india', 'california', 'united states', 'maharashtra'), match word boundaries
   const escaped = a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const wordRegex = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i');
   return wordRegex.test(v);
@@ -261,6 +107,7 @@ export function GeographicIntelligenceMap({
   onToggleExpand,
 }: GeographicIntelligenceMapProps) {
   const [userModeOverride, setUserModeOverride] = useState<GeographicGranularity | null>(null);
+  const [inspectedEntityId, setInspectedEntityId] = useState<string | null>(null);
   const [hoveredEntity, setHoveredEntity] = useState<{
     entity: GeoEntity;
     totalVal: number;
@@ -279,32 +126,6 @@ export function GeographicIntelligenceMap({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-
-  // Animated Radar Scan Beam
-  useEffect(() => {
-    if (!radarActive) return;
-    let animFrame: number;
-    let curX = 0;
-    const speed = isExpanded ? 3.2 : 2.0;
-
-    const tick = () => {
-      curX += speed;
-      if (curX > 1050) curX = -50;
-      setRadarX(curX);
-      animFrame = requestAnimationFrame(tick);
-    };
-
-    animFrame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animFrame);
-  }, [radarActive, isExpanded]);
-
-  // Reset Zoom on Collapse
-  useEffect(() => {
-    if (!isExpanded) {
-      setZoomLevel(1);
-      setPanOffset({ x: 0, y: 0 });
-    }
-  }, [isExpanded]);
 
   // 1. INTELLIGENT AUTO-DETECTION ENGINE
   const detectedGranularity = useMemo<{
@@ -352,14 +173,14 @@ export function GeographicIntelligenceMap({
         });
 
         // Check India State matches
-        INDIA_STATES_ENTITIES.forEach((ent) => {
+        INDIA_ENTITIES.forEach((ent) => {
           if (ent.aliases.some((alias) => matchesAliasStrict(rawVal, alias))) {
             indiaStateScore += isStateCol ? 10 : 4;
           }
         });
 
         // Check US State matches
-        US_STATES_ENTITIES.forEach((ent) => {
+        US_ENTITIES.forEach((ent) => {
           if (ent.aliases.some((alias) => matchesAliasStrict(rawVal, alias))) {
             usStateScore += isStateCol ? 10 : 4;
           }
@@ -395,11 +216,11 @@ export function GeographicIntelligenceMap({
   const currentRegistry = useMemo(() => {
     if (activeGranularity === 'india-states') {
       return {
-        viewBox: '0 0 600 750',
-        width: 600,
+        viewBox: '0 0 650 750',
+        width: 650,
         height: 750,
-        entities: INDIA_STATES_ENTITIES,
-        mapTitle: 'India (States & Union Territories)',
+        entities: INDIA_ENTITIES,
+        mapTitle: 'Survey of India (37 States & Union Territories)',
       };
     }
     if (activeGranularity === 'us-states') {
@@ -407,8 +228,8 @@ export function GeographicIntelligenceMap({
         viewBox: '0 0 900 550',
         width: 900,
         height: 550,
-        entities: US_STATES_ENTITIES,
-        mapTitle: 'United States (50 States)',
+        entities: US_ENTITIES,
+        mapTitle: 'United States (50 States & DC)',
       };
     }
     return {
@@ -416,9 +237,36 @@ export function GeographicIntelligenceMap({
       width: 1000,
       height: 520,
       entities: WORLD_ENTITIES,
-      mapTitle: 'Real Geographic World Intelligence (176 Countries)',
+      mapTitle: 'Real Geographic World Intelligence (176 Sovereign Countries)',
     };
   }, [activeGranularity]);
+
+  // Animated Radar Scan Beam
+  useEffect(() => {
+    if (!radarActive) return;
+    let animFrame: number;
+    let curX = 0;
+    const speed = isExpanded ? 3.2 : 2.0;
+    const maxX = currentRegistry.width + 60;
+
+    const tick = () => {
+      curX += speed;
+      if (curX > maxX) curX = -50;
+      setRadarX(curX);
+      animFrame = requestAnimationFrame(tick);
+    };
+
+    animFrame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animFrame);
+  }, [radarActive, isExpanded, currentRegistry.width]);
+
+  // Reset Zoom on Collapse or Granularity Switch
+  useEffect(() => {
+    if (!isExpanded) {
+      setZoomLevel(1);
+      setPanOffset({ x: 0, y: 0 });
+    }
+  }, [isExpanded, activeGranularity]);
 
   // Metric Aggregator & Entity Mapping
   const entityDataMap = useMemo(() => {
@@ -466,7 +314,7 @@ export function GeographicIntelligenceMap({
     return { map: dataMap, grandTotal, maxVal: maxEntityVal };
   }, [rows, currentRegistry, columns, currentMetric]);
 
-  // List of active highlighted countries with data
+  // List of active highlighted countries/states with data
   const activeHighlightedEntities = useMemo(() => {
     return currentRegistry.entities
       .filter((ent) => {
@@ -485,6 +333,99 @@ export function GeographicIntelligenceMap({
       })
       .sort((a, b) => b.totalVal - a.totalVal);
   }, [currentRegistry, entityDataMap]);
+
+  // Sorted entities alphabetically for dropdown list
+  const alphabeticalEntities = useMemo(() => {
+    return [...currentRegistry.entities].sort((a, b) => a.name.localeCompare(b.name));
+  }, [currentRegistry]);
+
+  // Sync inspected entity when selectedRegion changes externally
+  useEffect(() => {
+    if (!selectedRegion || selectedRegion === 'all') {
+      setInspectedEntityId(null);
+      return;
+    }
+    const matched = currentRegistry.entities.find((ent) =>
+      ent.aliases.some((alias) => matchesAliasStrict(selectedRegion, alias))
+    );
+    if (matched) {
+      setInspectedEntityId(matched.id);
+    }
+  }, [selectedRegion, currentRegistry]);
+
+  const isEntitySelected = (ent: GeoEntity) => {
+    if (inspectedEntityId && inspectedEntityId === ent.id) return true;
+    if (!selectedRegion || selectedRegion === 'all') return false;
+    const lowerSel = selectedRegion.toLowerCase();
+    return ent.aliases.some((alias) => matchesAliasStrict(lowerSel, alias));
+  };
+
+  // Focus zoom onto a specific entity (e.g. India, Texas, Maharashtra)
+  const focusEntity = (ent: GeoEntity) => {
+    const cx = ent.centroid?.[0] ?? currentRegistry.width / 2;
+    const cy = ent.centroid?.[1] ?? currentRegistry.height / 2;
+    const targetScale = activeGranularity === 'world' ? 2.5 : 1.9;
+    const offsetX = -(cx * targetScale - currentRegistry.width / 2);
+    const offsetY = -(cy * targetScale - currentRegistry.height / 2);
+    setZoomLevel(targetScale);
+    setPanOffset({ x: offsetX, y: offsetY });
+  };
+
+  const resetZoom = () => {
+    setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  // Handle entity click on map
+  const handleEntityClick = (ent: GeoEntity) => {
+    const isSelected = isEntitySelected(ent);
+    if (isSelected && selectedRegion === ent.name) {
+      onSelectRegion('all');
+      setInspectedEntityId(null);
+      resetZoom();
+    } else {
+      onSelectRegion(ent.name);
+      setInspectedEntityId(ent.id);
+      focusEntity(ent);
+    }
+  };
+
+  // Handle dropdown selection
+  const handleDropdownSelect = (entityId: string) => {
+    if (!entityId || entityId === 'all') {
+      onSelectRegion('all');
+      setInspectedEntityId(null);
+      resetZoom();
+      return;
+    }
+    const entity = currentRegistry.entities.find((e) => e.id === entityId);
+    if (entity) {
+      onSelectRegion(entity.name);
+      setInspectedEntityId(entity.id);
+      focusEntity(entity);
+    }
+  };
+
+  // Currently inspected entity data dossier
+  const inspectedData = useMemo(() => {
+    if (!inspectedEntityId) return null;
+    const entity = currentRegistry.entities.find((e) => e.id === inspectedEntityId);
+    if (!entity) return null;
+    const data = entityDataMap.map.get(entity.id);
+    const totalVal = data?.totalVal || 0;
+    const count = data?.count || 0;
+    const percentage = entityDataMap.grandTotal > 0 ? (totalVal / entityDataMap.grandTotal) * 100 : 0;
+    const avgVal = count > 0 ? totalVal / count : 0;
+
+    return {
+      entity,
+      totalVal,
+      count,
+      percentage,
+      avgVal,
+      hasData: count > 0 || totalVal > 0,
+    };
+  }, [inspectedEntityId, currentRegistry, entityDataMap]);
 
   // Tooltip & Mouse Interactions
   const handleMouseEnter = (ent: GeoEntity, e: React.MouseEvent) => {
@@ -539,34 +480,13 @@ export function GeographicIntelligenceMap({
     setMouseCoords(null);
   };
 
-  const isEntitySelected = (ent: GeoEntity) => {
-    if (!selectedRegion || selectedRegion === 'all') return false;
-    const lowerSel = selectedRegion.toLowerCase();
-    return ent.aliases.some((alias) => matchesAliasStrict(lowerSel, alias));
-  };
-
-  // Focus zoom onto a specific entity (e.g. India)
-  const focusEntity = (ent: GeoEntity) => {
-    const [cx, cy] = ent.centroid;
-    const targetScale = 2.0;
-    const offsetX = -(cx * targetScale - currentRegistry.width / 2);
-    const offsetY = -(cy * targetScale - currentRegistry.height / 2);
-    setZoomLevel(targetScale);
-    setPanOffset({ x: offsetX, y: offsetY });
-  };
-
-  const resetZoom = () => {
-    setZoomLevel(1);
-    setPanOffset({ x: 0, y: 0 });
-  };
-
   return (
     <div
       ref={containerRef}
       className={`relative flex flex-col justify-between select-none ${className}`}
     >
       {/* 1. MAP HEADER & COMPACT RESPONSIVE CONTROLS */}
-      <div className="pb-3 mb-2 border-b border-[var(--lm-border-default)]">
+      <div className="pb-3 mb-2.5 border-b border-[var(--lm-border-default)]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div>
             <div className="flex items-center gap-2">
@@ -651,12 +571,82 @@ export function GeographicIntelligenceMap({
             )}
           </div>
         </div>
+
+        {/* 1.1 TERRITORY DROPDOWN INSPECTOR & FILTER CONTROLS BAR */}
+        <div className="mt-2.5 pt-2 border-t border-[var(--lm-border-default)]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-1 max-w-lg">
+            <span className="text-[11px] font-semibold text-[var(--lm-text-secondary)] whitespace-nowrap flex items-center gap-1">
+              <span>📍</span>
+              <span>Inspect Territory:</span>
+            </span>
+
+            {/* Dropdown Country / State Selector */}
+            <select
+              value={inspectedEntityId || ''}
+              onChange={(e) => handleDropdownSelect(e.target.value)}
+              className="w-full text-xs font-medium py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800/90 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-700 shadow-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
+            >
+              <option value="all">
+                🌐 Select Territory ({activeGranularity === 'world' ? '176 Countries' : activeGranularity === 'india-states' ? '37 States & UTs' : '51 US States'})
+              </option>
+
+              {activeHighlightedEntities.length > 0 && (
+                <optgroup label={`📊 Active Data Markets (${activeHighlightedEntities.length})`}>
+                  {activeHighlightedEntities.map((item) => (
+                    <option key={`active-${item.entity.id}`} value={item.entity.id}>
+                      ⭐ {item.entity.name} — {formatMetricVal(item.totalVal, isCurrency)} ({item.count.toLocaleString()} records)
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+
+              <optgroup label="🗺️ All Sovereign Territories (A-Z)">
+                {alphabeticalEntities.map((ent) => {
+                  const data = entityDataMap.map.get(ent.id);
+                  const hasRows = (data?.count || 0) > 0;
+                  return (
+                    <option key={`all-${ent.id}`} value={ent.id}>
+                      {ent.name} {ent.code ? `(${ent.code})` : ''} {hasRows ? '• Active' : ''}
+                    </option>
+                  );
+                })}
+              </optgroup>
+            </select>
+          </div>
+
+          {/* Quick Active Filter State */}
+          <div className="flex items-center gap-1.5 self-end sm:self-center">
+            {selectedRegion && selectedRegion !== 'all' ? (
+              <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg text-[11px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span className="text-emerald-700 dark:text-emerald-300 font-semibold truncate max-w-[140px]">
+                  {selectedRegion}
+                </span>
+                <button
+                  onClick={() => {
+                    onSelectRegion('all');
+                    setInspectedEntityId(null);
+                    resetZoom();
+                  }}
+                  className="text-emerald-800 dark:text-emerald-200 hover:text-red-500 font-bold ml-1 text-xs"
+                  title="Clear Filter"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <span className="text-[10px] text-[var(--lm-text-tertiary)] italic">
+                Showing all global regions
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* 2. REAL SVG GEOGRAPHIC MAP CANVAS WITH ANIMATED RADAR & TELEMETRY */}
       <div
         className={`relative w-full rounded-2xl overflow-hidden border border-slate-700/60 shadow-inner flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-          isExpanded ? 'h-[500px] bg-[#0E1E2E]' : 'h-72 bg-[#122A42]'
+          isExpanded ? 'h-[520px] bg-[#0E1E2E]' : 'h-80 bg-[#122A42]'
         }`}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -677,7 +667,7 @@ export function GeographicIntelligenceMap({
 
             <button
               onClick={() => setRadarActive(!radarActive)}
-              className="px-2.5 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-[10px] font-medium text-slate-300 border border-slate-700/80 transition-colors"
+              className="px-2.5 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-[10px] font-medium text-slate-300 border border-slate-700/80 transition-colors cursor-pointer"
             >
               {radarActive ? '⏸ Pause Sweep' : '▶ Resume Sweep'}
             </button>
@@ -685,7 +675,7 @@ export function GeographicIntelligenceMap({
             {activeHighlightedEntities.length > 0 && (
               <button
                 onClick={() => focusEntity(activeHighlightedEntities[0].entity)}
-                className="px-2.5 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-[10px] font-bold text-white shadow-sm transition-all"
+                className="px-2.5 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-[10px] font-bold text-white shadow-sm transition-all cursor-pointer"
               >
                 🎯 Focus {activeHighlightedEntities[0].entity.name}
               </button>
@@ -698,7 +688,7 @@ export function GeographicIntelligenceMap({
           <div className="absolute top-3 right-3 z-20 flex items-center gap-1 p-1 rounded-xl bg-slate-900/85 backdrop-blur-md border border-slate-700/80 text-white text-xs shadow-lg">
             <button
               onClick={() => setZoomLevel((z) => Math.max(1, z - 0.4))}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white font-bold transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white font-bold transition-colors cursor-pointer"
               title="Zoom Out"
             >
               −
@@ -707,15 +697,15 @@ export function GeographicIntelligenceMap({
               {Math.round(zoomLevel * 100)}%
             </span>
             <button
-              onClick={() => setZoomLevel((z) => Math.min(3, z + 0.4))}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white font-bold transition-colors"
+              onClick={() => setZoomLevel((z) => Math.min(3.5, z + 0.4))}
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white font-bold transition-colors cursor-pointer"
               title="Zoom In"
             >
               +
             </button>
             <button
               onClick={resetZoom}
-              className="px-2 py-1 rounded-lg hover:bg-slate-800 text-[10px] text-slate-400 hover:text-white transition-colors"
+              className="px-2 py-1 rounded-lg hover:bg-slate-800 text-[10px] text-slate-400 hover:text-white transition-colors cursor-pointer"
               title="Reset View"
             >
               ⟲
@@ -739,11 +729,8 @@ export function GeographicIntelligenceMap({
               {activeHighlightedEntities.slice(0, 3).map((item) => (
                 <button
                   key={item.entity.id}
-                  onClick={() => {
-                    const isSel = isEntitySelected(item.entity);
-                    onSelectRegion(isSel ? 'all' : item.entity.name);
-                  }}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-medium backdrop-blur-md border transition-all ${
+                  onClick={() => handleEntityClick(item.entity)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-medium backdrop-blur-md border transition-all cursor-pointer ${
                     isEntitySelected(item.entity)
                       ? 'bg-emerald-500 text-white border-emerald-400 shadow-md'
                       : 'bg-slate-900/80 hover:bg-slate-800 text-slate-200 border-slate-700/80'
@@ -801,14 +788,12 @@ export function GeographicIntelligenceMap({
           {/* Ocean Base Layer */}
           <rect width="100%" height="100%" fill="url(#nauticalOcean)" rx="14" />
 
-          {/* Graticule Latitude & Longitude Coordinate Grid (Authentic Cartography) */}
+          {/* Graticule Latitude & Longitude Coordinate Grid (Cartography) */}
           {activeGranularity === 'world' && (
             <g className="opacity-20 pointer-events-none" stroke="#64748B" strokeWidth="0.5" strokeDasharray="3,3">
-              {/* Latitude lines */}
               <line x1="0" y1="130" x2="1000" y2="130" />
               <line x1="0" y1="260" x2="1000" y2="260" />
               <line x1="0" y1="390" x2="1000" y2="390" />
-              {/* Longitude lines */}
               <line x1="200" y1="0" x2="200" y2="520" />
               <line x1="400" y1="0" x2="400" y2="520" />
               <line x1="600" y1="0" x2="600" y2="520" />
@@ -816,14 +801,13 @@ export function GeographicIntelligenceMap({
             </g>
           )}
 
-          {/* 176 Sovereign Countries Vector Polygons */}
+          {/* Sovereign Vector Territories (Countries or States) */}
           {currentRegistry.entities.map((ent) => {
             const data = entityDataMap.map.get(ent.id);
             const hasData = (data?.totalVal || 0) > 0 || (data?.count || 0) > 0;
             const isSelected = isEntitySelected(ent);
 
-            // Styling strictly matching user's uploaded reference image:
-            // Crisp White landmasses on deep navy ocean, with active countries glowing in Emerald
+            // Crisp White landmasses on deep navy ocean, active glowing Emerald
             let fillColor = '#FFFFFF';
             let strokeColor = '#122A42';
             let strokeWidth = 0.5;
@@ -846,27 +830,24 @@ export function GeographicIntelligenceMap({
                 stroke={strokeColor}
                 strokeWidth={strokeWidth}
                 filter={hasData || isSelected ? 'url(#countryActiveGlow)' : undefined}
-                className={`transition-all duration-200 ${
-                  hasData
-                    ? 'cursor-pointer hover:filter hover:brightness-125 hover:stroke-white hover:stroke-[2px]'
-                    : 'cursor-default opacity-90 hover:opacity-100 hover:fill-slate-100'
+                className={`transition-all duration-200 cursor-pointer ${
+                  hasData || isSelected
+                    ? 'hover:filter hover:brightness-125 hover:stroke-white hover:stroke-[2px]'
+                    : 'opacity-90 hover:opacity-100 hover:fill-slate-100 hover:stroke-slate-300'
                 }`}
                 onMouseEnter={(e) => handleMouseEnter(ent, e)}
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
-                onClick={() => {
-                  if (hasData || isSelected) {
-                    onSelectRegion(isSelected ? 'all' : ent.name);
-                  }
-                }}
+                onClick={() => handleEntityClick(ent)}
               />
             );
           })}
 
-          {/* Active Highlighted Countries — Pulsing Sonar Rings & Badges */}
-          {activeHighlightedEntities.map(({ entity: ent, totalVal, count }) => {
+          {/* Active Highlighted Countries/States — Pulsing Sonar Rings & Badges */}
+          {activeHighlightedEntities.map(({ entity: ent }) => {
             const isSelected = isEntitySelected(ent);
-            const [cx, cy] = ent.centroid;
+            const cx = ent.centroid?.[0] ?? 0;
+            const cy = ent.centroid?.[1] ?? 0;
 
             return (
               <g
@@ -903,7 +884,7 @@ export function GeographicIntelligenceMap({
                   className="drop-shadow-md"
                 />
 
-                {/* Country Code Label */}
+                {/* Country/State Code Label */}
                 <text
                   y={13}
                   textAnchor="middle"
@@ -915,10 +896,9 @@ export function GeographicIntelligenceMap({
             );
           })}
 
-          {/* ANIMATED RADAR SWEEP BEAM (Traversing Vertically across Map) */}
+          {/* ANIMATED RADAR SWEEP BEAM */}
           {radarActive && (
             <g className="pointer-events-none">
-              {/* Sweeping Beam Gradient Ribbon */}
               <rect
                 x={radarX - 60}
                 y="0"
@@ -926,7 +906,6 @@ export function GeographicIntelligenceMap({
                 height={currentRegistry.height}
                 fill="url(#radarSweepGradient)"
               />
-              {/* Front Laser Line */}
               <line
                 x1={radarX}
                 y1="0"
@@ -981,13 +960,105 @@ export function GeographicIntelligenceMap({
 
             <div className="mt-1.5 pt-1 border-t border-slate-800 text-[10px] text-emerald-400/80 flex items-center gap-1">
               <span>💡</span>
-              <span>{hoveredEntity.totalVal > 0 ? 'Click country to filter dashboard' : 'No records for this territory in active filters'}</span>
+              <span>Click to inspect given data and filter dashboard</span>
             </div>
           </div>
         )}
       </div>
 
-      {/* 3. MAP FOOTER METADATA */}
+      {/* 3. INDIVIDUAL TERRITORY GIVEN DATA INSPECTOR DOSSIER CARD */}
+      {inspectedData && (
+        <div className="mt-3 p-3.5 rounded-2xl bg-slate-900/95 dark:bg-slate-900 text-white border border-emerald-500/35 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            {/* Territory Identity */}
+            <div className="flex items-center gap-3 min-w-[200px]">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-sm font-black text-emerald-400 font-mono">
+                {inspectedData.entity.code || inspectedData.entity.id.slice(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-white tracking-tight">
+                    {inspectedData.entity.name}
+                  </h4>
+                  {inspectedData.hasData ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Active Market
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                      Zero Dataset Rows
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  {inspectedData.entity.subLabel || inspectedData.entity.parentRegion || 'Territorial Division'}
+                </p>
+              </div>
+            </div>
+
+            {/* Metrics Breakdown */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700/60 flex-1">
+              <div>
+                <span className="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">
+                  Total {metricLabel || currentMetric}
+                </span>
+                <span className="text-sm font-black text-emerald-400 font-mono">
+                  {formatMetricVal(inspectedData.totalVal, isCurrency)}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">
+                  Market Share
+                </span>
+                <span className="text-sm font-bold text-slate-200 font-mono">
+                  {inspectedData.percentage.toFixed(1)}%
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">
+                  Records / Rows
+                </span>
+                <span className="text-sm font-bold text-slate-200 font-mono">
+                  {inspectedData.count.toLocaleString()}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">
+                  Avg / Record
+                </span>
+                <span className="text-sm font-bold text-slate-200 font-mono">
+                  {formatMetricVal(inspectedData.avgVal, isCurrency)}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 self-end lg:self-center">
+              <button
+                onClick={() => focusEntity(inspectedData.entity)}
+                className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
+                title="Center & Zoom to Territory"
+              >
+                🎯 Focus
+              </button>
+              <button
+                onClick={() => {
+                  onSelectRegion('all');
+                  setInspectedEntityId(null);
+                  resetZoom();
+                }}
+                className="px-2.5 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-xs font-semibold border border-rose-500/30 transition-colors cursor-pointer"
+                title="Clear Filter"
+              >
+                ✕ Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. MAP FOOTER METADATA */}
       <div className="flex items-center justify-between pt-2.5 px-1 text-[11px] text-[var(--lm-text-tertiary)]">
         <div className="flex items-center gap-1.5">
           <span>Active Filter:</span>
@@ -996,7 +1067,11 @@ export function GeographicIntelligenceMap({
           </span>
           {selectedRegion && selectedRegion !== 'all' && (
             <button
-              onClick={() => onSelectRegion('all')}
+              onClick={() => {
+                onSelectRegion('all');
+                setInspectedEntityId(null);
+                resetZoom();
+              }}
               className="text-[10px] text-red-500 hover:underline ml-1 cursor-pointer font-medium"
             >
               Clear Filter
@@ -1006,7 +1081,9 @@ export function GeographicIntelligenceMap({
         <div className="text-[10px] text-slate-400">
           {activeGranularity === 'world'
             ? '176 sovereign countries • Natural Mercator Projection'
-            : `Showing ${currentRegistry.entities.length} regional territories`}
+            : activeGranularity === 'india-states'
+            ? 'Survey of India • 37 States & UTs'
+            : '50 States & DC • Albers USA Projection'}
         </div>
       </div>
     </div>
