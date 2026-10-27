@@ -5,10 +5,22 @@ import { useApp } from '@/contexts/AppContext';
 import { LumetricAuthService, validateEmailAuthenticity, OtpResponse } from '@/lib/auth';
 import { UserRole } from '@/types';
 
-type AuthMode = 'signin' | 'signup' | 'otp-verify' | 'forgot-password';
-type SignInMethod = 'password' | 'otp';
+export type AuthMode = 'signin' | 'signup' | 'otp-verify' | 'forgot-password';
+export type SignInMethod = 'password' | 'otp';
 
-export function AuthScreen() {
+export interface AuthScreenProps {
+  initialMode?: AuthMode;
+  initialEmail?: string;
+  onClose?: () => void;
+  isModal?: boolean;
+}
+
+export function AuthScreen({
+  initialMode = 'signin',
+  initialEmail = '',
+  onClose,
+  isModal = false,
+}: AuthScreenProps = {}) {
   const {
     setCurrentUser,
     setIsAuthenticated,
@@ -18,11 +30,33 @@ export function AuthScreen() {
     reconnectServer,
   } = useApp();
 
-  const [mode, setMode] = useState<AuthMode>('signin');
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [signInMethod, setSignInMethod] = useState<SignInMethod>('password');
 
   // Form Fields
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
+
+  useEffect(() => {
+    if (initialMode) setMode(initialMode);
+  }, [initialMode]);
+
+  useEffect(() => {
+    if (initialEmail) {
+      setEmail(initialEmail);
+      setResetEmail(initialEmail);
+    }
+  }, [initialEmail]);
+
+  useEffect(() => {
+    if (!isModal || !onClose) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isModal, onClose]);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
@@ -365,41 +399,42 @@ export function AuthScreen() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#0A110E] text-[#FAF8F5] flex flex-col justify-between p-3.5 sm:p-6 md:p-8 relative overflow-y-auto">
-      {/* Background ambient radial glows (Emerald + Vermilion) */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[550px] h-[340px] bg-[#059669]/18 blur-[140px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-10 left-10 w-[300px] h-[300px] bg-[#E34234]/14 blur-[130px] rounded-full pointer-events-none" />
+  const authCard = (
+    <div className={`relative w-full max-w-md mx-auto ${isModal ? 'my-auto' : 'my-auto py-2'} z-10 animate-in fade-in zoom-in-95 duration-200`}>
+      {/* Modal Close Button */}
+      {isModal && onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute -top-3 -right-3 z-30 w-8 h-8 rounded-full bg-[#1A2820] border border-[#E5D9C8]/25 text-[#CFD8D2] hover:text-white hover:border-[#10B981] flex items-center justify-center text-xs font-bold shadow-xl transition-all cursor-pointer"
+          title="Close (Esc)"
+          aria-label="Close"
+        >
+          ✕
+        </button>
+      )}
 
-      {/* Top Header Bar */}
-      <header className="w-full max-w-md mx-auto flex items-center justify-between z-10 py-2 mb-2">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#059669] via-[#10B981] to-[#E34234] p-[1.5px] shadow-lg shadow-emerald-950/60">
-            <div className="w-full h-full bg-[#0D1612] rounded-[14px] flex items-center justify-center">
-              <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#FAF8F5]" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5" stroke="#10B981" />
-                <circle cx="12" cy="12" r="3" fill="#E34234" />
-              </svg>
+      <div className="bg-[#111C17]/95 backdrop-blur-2xl border border-[#E5D9C8]/20 rounded-3xl p-5 sm:p-7 shadow-2xl shadow-black/95">
+        {/* Modal Header Brand Bar */}
+        {isModal && (
+          <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5D9C8]/15">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#059669] via-[#10B981] to-[#E34234] p-[1.5px] shadow-sm">
+                <div className="w-full h-full bg-[#0D1612] rounded-[10px] flex items-center justify-center">
+                  <span className="text-[#10B981] font-bold text-xs">✦</span>
+                </div>
+              </div>
+              <div>
+                <span className="font-extrabold text-sm tracking-tight text-[#FAF8F5] block leading-tight">LUMETRIC</span>
+                <span className="text-[9px] text-[#10B981] font-mono tracking-wider uppercase font-semibold">Decision Studio</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#0A110E] border border-[#E5D9C8]/10 text-[10px] font-mono text-[#84968C]">
+              <span className={`w-1.5 h-1.5 rounded-full ${serverStatus === 'connected' ? 'bg-[#10B981]' : 'bg-[#D97706] animate-pulse'}`} />
+              <span>{serverStatus === 'connected' ? (serverLatency ? `${serverLatency}ms` : 'Cloud Active') : 'Live Cloud'}</span>
             </div>
           </div>
-          <div>
-            <span className="font-extrabold text-base tracking-tight text-[#FAF8F5] block leading-tight">LUMETRIC</span>
-            <span className="text-[10px] text-[#10B981] font-mono tracking-wider uppercase font-semibold">Data &amp; Decision Studio</span>
-          </div>
-        </div>
-
-        {/* Server & Security Status */}
-        <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${serverStatus === 'connected' ? 'bg-[#10B981]' : 'bg-[#D97706] animate-pulse'}`} />
-          <span className="text-[11px] text-[#84968C] font-mono">
-            {serverStatus === 'connected' ? (serverLatency ? `${serverLatency}ms` : 'Cloud Active') : 'Connecting...'}
-          </span>
-        </div>
-      </header>
-
-      {/* Main Authentication Card */}
-      <main className="w-full max-w-md mx-auto my-auto py-2 z-10">
-        <div className="bg-[#111C17]/95 backdrop-blur-2xl border border-[#E5D9C8]/20 rounded-3xl p-5 sm:p-7 shadow-2xl shadow-black/95">
+        )}
 
           {/* Mode Switcher (Sign In vs Create Account) - Hidden during OTP Verification */}
           {mode !== 'otp-verify' && (
@@ -1062,6 +1097,57 @@ export function AuthScreen() {
             <span className="font-mono text-[#84968C] text-[10px]">Private Vault Architecture</span>
           </div>
         </div>
+      </div>
+  );
+
+  if (isModal) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="fixed inset-0 cursor-pointer" onClick={onClose} />
+        {authCard}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0A110E] text-[#FAF8F5] flex flex-col justify-between p-3.5 sm:p-6 md:p-8 relative overflow-y-auto">
+      {/* Background ambient radial glows (Emerald + Vermilion) */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[550px] h-[340px] bg-[#059669]/18 blur-[140px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-10 left-10 w-[300px] h-[300px] bg-[#E34234]/14 blur-[130px] rounded-full pointer-events-none" />
+
+      {/* Top Header Bar */}
+      <header className="w-full max-w-md mx-auto flex items-center justify-between z-10 py-2 mb-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#059669] via-[#10B981] to-[#E34234] p-[1.5px] shadow-lg shadow-emerald-950/60">
+            <div className="w-full h-full bg-[#0D1612] rounded-[14px] flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#FAF8F5]" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5" stroke="#10B981" />
+                <circle cx="12" cy="12" r="3" fill="#E34234" />
+              </svg>
+            </div>
+          </div>
+          <div>
+            <span className="font-extrabold text-base tracking-tight text-[#FAF8F5] block leading-tight">LUMETRIC</span>
+            <span className="text-[10px] text-[#10B981] font-mono tracking-wider uppercase font-semibold">Data &amp; Decision Studio</span>
+          </div>
+        </div>
+
+        {/* Server & Security Status */}
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${serverStatus === 'connected' ? 'bg-[#10B981]' : 'bg-[#D97706] animate-pulse'}`} />
+          <span className="text-[11px] text-[#84968C] font-mono">
+            {serverStatus === 'connected' ? (serverLatency ? `${serverLatency}ms` : 'Cloud Active') : 'Connecting...'}
+          </span>
+        </div>
+      </header>
+
+      {/* Main Authentication Card */}
+      <main className="w-full max-w-md mx-auto my-auto py-2 z-10">
+        {authCard}
       </main>
 
       {/* Footer */}

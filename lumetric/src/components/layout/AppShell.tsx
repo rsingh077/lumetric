@@ -6,7 +6,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { MobileBottomNav } from './MobileBottomNav';
 import { SplashScreen } from '@/components/auth/SplashScreen';
-import { AuthScreen } from '@/components/auth/AuthScreen';
+import { LandingPage } from '@/components/landing/LandingPage';
 import { initMobileApp } from '@/utils/mobile';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -34,9 +34,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // 2. Authentication Screen (Google / Gmail Login or Sign Up)
+  // 2. Showcase Landing Page & 1-Click Auth Modal for unauthenticated sessions
   if (!isAuthenticated) {
-    return <AuthScreen />;
+    return <LandingPage />;
   }
 
   // 3. Fully Authenticated Main Application
