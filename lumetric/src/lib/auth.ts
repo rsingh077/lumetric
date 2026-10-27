@@ -34,6 +34,7 @@ export interface AuthResponse {
   retryAfterSeconds?: number;
   requiresOtp?: boolean;
   requiresMfa?: boolean;
+  challengeToken?: string;
   verificationPreview?: string;
 }
 
@@ -45,6 +46,7 @@ export interface OtpResponse {
   deliveryChannel?: string;
   recipient?: string;
   purpose?: string;
+  challengeToken?: string;
   expiresInSeconds?: number;
   cooldownSeconds?: number;
   verificationPreview?: string;
@@ -441,6 +443,7 @@ export class LumetricAuthService {
     email: string;
     otp: string;
     purpose?: 'signup' | 'login' | 'reset-password';
+    challengeToken?: string;
     newPassword?: string;
     payload?: any;
   }): Promise<OtpResponse> {
@@ -460,6 +463,7 @@ export class LumetricAuthService {
           email: cleanEmail,
           otp: cleanOtp,
           purpose: payload.purpose || 'signup',
+          challengeToken: payload.challengeToken,
           newPassword: payload.newPassword,
           payload: payload.payload
         }),

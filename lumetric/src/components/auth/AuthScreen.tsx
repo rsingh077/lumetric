@@ -181,9 +181,18 @@ export function AuthScreen() {
     } else if (res.requiresMfa) {
       setRequiresMfa(true);
       setErrorMessage('Two-Factor Authentication is enabled for your account. Please enter your 6-digit authenticator code.');
-    } else if (res.error?.includes('OTP_REQUIRED') || (res as any).code === 'OTP_REQUIRED') {
-      // Account exists without password or requires OTP verification
-      await handleSendOtpForPurpose(cleanEmail, 'login', 'Account requires email verification to establish session.');
+    } else if (res.requiresOtp || res.error?.includes('OTP_REQUIRED') || (res as any).code === 'OTP_REQUIRED') {
+      // Mandatory OTP challenge for all logins (new & old users)
+      setOtpPurpose('login');
+      setOtpDigits(['', '', '', '', '', '']);
+      setMode('otp-verify');
+      setSuccessMessage(res.message || 'Password verified! Enter the 6-digit code sent to your email.');
+      setResendCooldown(30);
+      if (res.challengeToken) {
+        try {
+          sessionStorage.setItem('lumetric_login_challenge', res.challengeToken);
+        } catch {}
+      }
     } else if (res.error?.includes('USER_NOT_FOUND') || (res as any).code === 'USER_NOT_FOUND') {
       setErrorMessage('No account registered with this email address. Please switch to "Create Account" to get started.');
     } else {
@@ -305,10 +314,18 @@ export function AuthScreen() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    let challengeToken: string | undefined = undefined;
+    if (otpPurpose === 'login') {
+      try {
+        challengeToken = sessionStorage.getItem('lumetric_login_challenge') || undefined;
+      } catch {}
+    }
+
     const res: OtpResponse = await LumetricAuthService.verifyOtp({
       email: cleanEmail,
       otp: currentOtpString,
       purpose: otpPurpose,
+      challengeToken,
       newPassword: otpPurpose === 'reset-password' ? resetNewPassword : undefined,
       payload: otpPurpose === 'signup'
         ? { name: fullName.trim(), password, role, organization: organization.trim() }
@@ -318,6 +335,7 @@ export function AuthScreen() {
     setIsLoading(false);
 
     if (res.success && res.user) {
+      try { sessionStorage.removeItem('lumetric_login_challenge'); } catch {}
       setSuccessMessage(res.message || 'Verification successful! Launching Lumetric Studio...');
       flushMemoryState();
       setCurrentUser(res.user);

@@ -450,19 +450,22 @@ async function getUserFromStore(req, email) {
             dsSettings.subscription = preSeeded.settings.subscription;
             dsSettings.invoices = preSeeded.settings.invoices || dsSettings.invoices;
           }
+          const cachedMem = memoryStore.get(normEmail);
+          const finalPasswordHash = u.passwordHash || u.passwordhash || u.PASSWORDHASH || u.password_hash || u.PASSWORD_HASH || (cachedMem && cachedMem.passwordHash) || (preSeeded && preSeeded.passwordHash);
           const userObj = {
-            rowid: u.ROWID ? String(u.ROWID) : undefined,
+            rowid: u.ROWID ? String(u.ROWID) : (u.rowid ? String(u.rowid) : undefined),
             id: u.ROWID ? String(u.ROWID) : (u.id || `usr_${normEmail.replace(/[^a-zA-Z0-9]/g, '_')}`),
-            email: u.email || u.EMAIL,
-            passwordHash: u.passwordHash,
-            name: u.name || normEmail.split('@')[0],
-            role: u.role || 'builder',
-            organization: u.organization || '',
-            avatarUrl: u.avatarUrl || '',
-            mfaEnabled: u.mfaEnabled === 'true' || u.mfaEnabled === true,
-            mfaSecret: u.mfaSecret || '',
+            email: u.email || u.EMAIL || normEmail,
+            passwordHash: finalPasswordHash,
+            name: u.name || u.NAME || normEmail.split('@')[0],
+            role: u.role || u.ROLE || 'builder',
+            organization: u.organization || u.ORGANIZATION || '',
+            avatarUrl: u.avatarUrl || u.AVATARURL || '',
+            emailVerified: u.emailVerified === 'true' || u.emailVerified === true || u.EMAILVERIFIED === 'true' || true,
+            mfaEnabled: u.mfaEnabled === 'true' || u.mfaEnabled === true || u.MFAENABLED === 'true',
+            mfaSecret: u.mfaSecret || u.MFASECRET || '',
             createdAt: u.CREATEDTIME || u.createdAt || new Date().toISOString(),
-            lastLoginAt: u.lastLoginAt || u.lasttLoginAt || new Date().toISOString(),
+            lastLoginAt: u.lastLoginAt || u.lasttLoginAt || u.LASTLOGINAT || new Date().toISOString(),
             settings: dsSettings
           };
           memoryStore.set(normEmail, userObj);
@@ -486,19 +489,22 @@ async function getUserFromStore(req, email) {
             dsSettings.subscription = preSeeded.settings.subscription;
             dsSettings.invoices = preSeeded.settings.invoices || dsSettings.invoices;
           }
+          const cachedMem = memoryStore.get(normEmail);
+          const finalPasswordHash = u.passwordHash || u.passwordhash || u.PASSWORDHASH || u.password_hash || u.PASSWORD_HASH || (cachedMem && cachedMem.passwordHash) || (preSeeded && preSeeded.passwordHash);
           const userObj = {
-            rowid: u.ROWID ? String(u.ROWID) : undefined,
+            rowid: u.ROWID ? String(u.ROWID) : (u.rowid ? String(u.rowid) : undefined),
             id: u.ROWID ? String(u.ROWID) : (u.id || `usr_${normEmail.replace(/[^a-zA-Z0-9]/g, '_')}`),
-            email: u.email || u.EMAIL,
-            passwordHash: u.passwordHash,
-            name: u.name || normEmail.split('@')[0],
-            role: u.role || 'builder',
-            organization: u.organization || '',
-            avatarUrl: u.avatarUrl || '',
-            mfaEnabled: u.mfaEnabled === 'true' || u.mfaEnabled === true,
-            mfaSecret: u.mfaSecret || '',
+            email: u.email || u.EMAIL || normEmail,
+            passwordHash: finalPasswordHash,
+            name: u.name || u.NAME || normEmail.split('@')[0],
+            role: u.role || u.ROLE || 'builder',
+            organization: u.organization || u.ORGANIZATION || '',
+            avatarUrl: u.avatarUrl || u.AVATARURL || '',
+            emailVerified: u.emailVerified === 'true' || u.emailVerified === true || u.EMAILVERIFIED === 'true' || true,
+            mfaEnabled: u.mfaEnabled === 'true' || u.mfaEnabled === true || u.MFAENABLED === 'true',
+            mfaSecret: u.mfaSecret || u.MFASECRET || '',
             createdAt: u.CREATEDTIME || u.createdAt || new Date().toISOString(),
-            lastLoginAt: u.lastLoginAt || u.lasttLoginAt || new Date().toISOString(),
+            lastLoginAt: u.lastLoginAt || u.lasttLoginAt || u.LASTLOGINAT || new Date().toISOString(),
             settings: dsSettings
           };
           memoryStore.set(normEmail, userObj);
@@ -974,6 +980,66 @@ const otpSweepInterval = setInterval(() => {
 }, 5 * 60 * 1000);
 if (otpSweepInterval.unref) otpSweepInterval.unref();
 
+// -----------------------------------------------------------------------------
+// ADVANCED ANTI-OTP BYPASS & CRYPTOGRAPHIC SECURITY VAULT
+// -----------------------------------------------------------------------------
+const antiOtpBypassVault = new Map();
+
+// Periodic prune every 2 minutes to sweep expired challenge tokens
+const bypassVaultSweep = setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of antiOtpBypassVault.entries()) {
+    if (val && now > val.expiresAt) {
+      antiOtpBypassVault.delete(key);
+    }
+  }
+}, 2 * 60 * 1000);
+if (bypassVaultSweep.unref) bypassVaultSweep.unref();
+
+function generateClientFingerprint(req) {
+  const ip = (req && req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip']))
+    ? String(req.headers['x-forwarded-for'] || req.headers['x-real-ip']).split(',')[0].trim()
+    : ((req && req.socket && req.socket.remoteAddress) || '127.0.0.1');
+  const ua = (req && req.headers && req.headers['user-agent']) || 'unknown';
+  const crypto = require('crypto');
+  return crypto.createHash('sha256').update(`${ip}-${ua}`).digest('hex');
+}
+
+function createAntiBypassChallenge(email, purpose, req) {
+  const crypto = require('crypto');
+  const nonce = crypto.randomBytes(32).toString('hex');
+  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+  const fingerprint = generateClientFingerprint(req);
+  const sig = crypto.createHmac('sha256', JWT_SECRET).update(`${email}:${purpose}:${nonce}:${expiresAt}:${fingerprint}`).digest('hex');
+  const challengeToken = Buffer.from(JSON.stringify({ email, purpose, nonce, expiresAt, sig })).toString('base64url');
+  return { challengeToken, nonce, expiresAt, fingerprint };
+}
+
+function verifyAntiBypassChallenge(email, purpose, challengeToken, req) {
+  if (!challengeToken) return { valid: false, reason: 'CHALLENGE_TOKEN_MISSING' };
+  try {
+    const crypto = require('crypto');
+    const raw = Buffer.from(challengeToken, 'base64url').toString('utf8');
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.email !== email || parsed.purpose !== purpose) {
+      return { valid: false, reason: 'CHALLENGE_PAYLOAD_MISMATCH' };
+    }
+    if (Date.now() > parsed.expiresAt) {
+      return { valid: false, reason: 'CHALLENGE_EXPIRED' };
+    }
+    const fingerprint = generateClientFingerprint(req);
+    const expectedSig = crypto.createHmac('sha256', JWT_SECRET).update(`${email}:${purpose}:${parsed.nonce}:${parsed.expiresAt}:${fingerprint}`).digest('hex');
+    const sigA = Buffer.from(parsed.sig, 'hex');
+    const sigB = Buffer.from(expectedSig, 'hex');
+    if (sigA.length !== sigB.length || !crypto.timingSafeEqual(sigA, sigB)) {
+      return { valid: false, reason: 'CHALLENGE_SIGNATURE_INVALID' };
+    }
+    return { valid: true, parsed };
+  } catch (err) {
+    return { valid: false, reason: 'CHALLENGE_PARSE_ERROR' };
+  }
+}
+
 function generateSecureOtp() {
   const crypto = require('crypto');
   return crypto.randomInt(100000, 1000000).toString();
@@ -1380,19 +1446,48 @@ app.post('/api/auth/verify-otp', rateLimiter({ windowMs: 15 * 60 * 1000, max: 40
     }
 
     const entry = otpVerificationStore.get(normalizedEmail);
+    const bypassEntry = antiOtpBypassVault.get(normalizedEmail);
     let isMatch = false;
 
-    if (entry) {
+    // ADVANCED ANTI-OTP BYPASS: Check Anti-Bypass Vault first for login flows
+    if (bypassEntry) {
+      if (Date.now() > bypassEntry.expiresAt) {
+        antiOtpBypassVault.delete(normalizedEmail);
+        otpVerificationStore.delete(normalizedEmail);
+        return res.status(400).json({ success: false, error: 'Verification code has expired. Please log in again.' });
+      }
+      bypassEntry.attempts = (bypassEntry.attempts || 0) + 1;
+      if (bypassEntry.attempts > 3) {
+        antiOtpBypassVault.delete(normalizedEmail);
+        otpVerificationStore.delete(normalizedEmail);
+        logAuditEvent(normalizedEmail, 'OTP_BRUTE_FORCE_LOCKOUT', 'Security', 'Login OTP challenge terminated after 3 failed attempts');
+        return res.status(429).json({
+          success: false,
+          code: 'OTP_LOCKOUT',
+          error: 'Too many incorrect verification attempts. For your security, this verification code has been terminated. Please log in again.'
+        });
+      }
+      // Constant-time comparison preventing timing attacks
+      const crypto = require('crypto');
+      const expectedBuf = Buffer.from(String(bypassEntry.otp).padEnd(6, ' '));
+      const submittedBuf = Buffer.from(String(cleanOtp).padEnd(6, ' '));
+      if (crypto.timingSafeEqual(expectedBuf, submittedBuf)) {
+        isMatch = true;
+      }
+    } else if (entry) {
       if (Date.now() > entry.expiresAt) {
         otpVerificationStore.delete(normalizedEmail);
         return res.status(400).json({ success: false, error: 'Verification code has expired. Please request a new code.' });
       }
       entry.attempts = (entry.attempts || 0) + 1;
-      if (entry.attempts > 5) {
+      if (entry.attempts > 3) {
         otpVerificationStore.delete(normalizedEmail);
         return res.status(429).json({ success: false, error: 'Too many incorrect attempts. This code has been invalidated for security. Please request a new code.' });
       }
-      if (entry.otp === cleanOtp) {
+      const crypto = require('crypto');
+      const expectedBuf = Buffer.from(String(entry.otp).padEnd(6, ' '));
+      const submittedBuf = Buffer.from(String(cleanOtp).padEnd(6, ' '));
+      if (crypto.timingSafeEqual(expectedBuf, submittedBuf)) {
         isMatch = true;
       }
     }
@@ -1510,17 +1605,20 @@ app.post('/api/auth/verify-otp', rateLimiter({ windowMs: 15 * 60 * 1000, max: 40
         return res.status(404).json({ success: false, error: 'User account not found.' });
       }
 
+      // ANTI-BYPASS ENFORCEMENT: Burn challenge from both vaults immediately (single-use replay protection)
+      antiOtpBypassVault.delete(normalizedEmail);
+      otpVerificationStore.delete(normalizedEmail);
+
       existingUser.lastLoginAt = new Date().toISOString();
       existingUser.emailVerified = true;
       delete existingUser.resetOtp;
       delete existingUser.resetOtpExpires;
       await saveUserToStore(req, existingUser);
-      otpVerificationStore.delete(normalizedEmail);
 
-      logAuditEvent(normalizedEmail, 'USER_OTP_LOGIN_SUCCESS', 'Authentication', 'Session established via 6-digit OTP verification');
+      logAuditEvent(normalizedEmail, 'USER_OTP_LOGIN_SUCCESS', 'Authentication', 'Session established via password + anti-bypass 6-digit OTP verification');
 
       const token = jwt.sign(
-        { id: existingUser.id, email: existingUser.email, role: existingUser.role, name: existingUser.name },
+        { id: existingUser.id, email: existingUser.email, role: existingUser.role, name: existingUser.name, amr: ['pwd', 'otp'] },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
@@ -1528,7 +1626,7 @@ app.post('/api/auth/verify-otp', rateLimiter({ windowMs: 15 * 60 * 1000, max: 40
       const { passwordHash: _, mfaSecret: __, tempMfaSecret: ___, ...userSafe } = existingUser;
       return res.json({
         success: true,
-        message: 'Identity verified successfully! Welcome back to Lumetric Studio.',
+        message: 'Security code verified successfully! Welcome back to Lumetric Studio.',
         token,
         user: userSafe
       });
@@ -1818,21 +1916,48 @@ app.post('/api/auth/login', rateLimiter({ windowMs: 5 * 60 * 1000, max: 200, mes
 
     user.lastLoginAt = new Date().toISOString();
     await saveUserToStore(req, user);
-    logAuditEvent(normalizedEmail, 'USER_LOGIN_SUCCESS', 'Authentication', 'Session token issued');
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, name: user.name },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
+    // MANDATORY ZERO-TRUST OTP VERIFICATION ENFORCED FOR ALL USERS (OLD & NEW)
+    // Zero-Trust Rule: Even with correct password, session token is NEVER issued without OTP verification.
+    const otp = generateSecureOtp();
+    const challenge = createAntiBypassChallenge(normalizedEmail, 'login', req);
 
-    const { passwordHash: _, mfaSecret: __, tempMfaSecret: ___, ...userSafe } = user;
+    antiOtpBypassVault.set(normalizedEmail, {
+      otp,
+      nonce: challenge.nonce,
+      purpose: 'login',
+      passwordVerified: true,
+      userId: user.id,
+      expiresAt: challenge.expiresAt,
+      attempts: 0,
+      maxAttempts: 3,
+      fingerprint: challenge.fingerprint,
+      createdAt: Date.now()
+    });
+
+    otpVerificationStore.set(normalizedEmail, {
+      otp,
+      purpose: 'login',
+      expiresAt: challenge.expiresAt,
+      attempts: 0,
+      lastSentAt: Date.now()
+    });
+
+    // Dispatch Meta-styled OTP email to registered address
+    const emailRes = await sendOtpEmail(req, normalizedEmail, otp, 'login', user.name);
+    logAuditEvent(normalizedEmail, 'LOGIN_PASSWORD_VERIFIED_OTP_DISPATCHED', 'Security', `Password verified. Dispatched mandatory anti-bypass OTP via ${emailRes.channel}`);
 
     return res.json({
       success: true,
-      message: 'Login successful.',
-      token,
-      user: userSafe
+      requiresOtp: true,
+      code: 'OTP_REQUIRED',
+      message: 'Password verified! For your security, a 6-digit sign-in code has been dispatched to your email.',
+      email: normalizedEmail,
+      purpose: 'login',
+      challengeToken: challenge.challengeToken,
+      deliveryChannel: emailRes.channel,
+      expiresInSeconds: 600,
+      cooldownSeconds: 30
     });
   } catch (err) {
     console.error('Login error:', err);

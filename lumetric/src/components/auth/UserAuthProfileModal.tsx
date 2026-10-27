@@ -490,6 +490,14 @@ export function UserAuthProfileModal({
       return;
     }
 
+    if (res.requiresOtp || res.code === 'OTP_REQUIRED') {
+      setFeedback({ type: 'success', message: res.message || 'Password verified! For security, a 6-digit sign-in code has been sent to your email.' });
+      if (res.challengeToken) {
+        try { sessionStorage.setItem('lumetric_login_challenge', res.challengeToken); } catch {}
+      }
+      return;
+    }
+
     if (res.success && res.user) {
       flushMemoryState();
       setAuthUser(res.user);
