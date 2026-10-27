@@ -66,6 +66,17 @@ export interface EmailValidationResult {
   domain?: string;
 }
 
+export interface EmailCheckResult {
+  success: boolean;
+  exists?: boolean;
+  userType?: 'old_user' | 'new_user';
+  isOldUser?: boolean;
+  isNewUser?: boolean;
+  name?: string | null;
+  error?: string;
+  message?: string;
+}
+
 // Blocklists for suspicious, disposable, and placeholder email domains
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
   'mailinator.com', 'tempmail.com', 'temp-mail.org', '10minutemail.com',
@@ -396,16 +407,23 @@ export class LumetricAuthService {
     }
   }
 
-  public static async checkEmail(email: string): Promise<{ success: boolean; exists?: boolean; error?: string; message?: string }> {
+  private static emailCheckCache = new Map<string, { res: EmailCheckResult; expiresAt: number }>();
+
+  public static async checkEmail(email: string): Promise<EmailCheckResult> {
     const cleanEmail = (email || '').trim().toLowerCase();
     const emailCheck = validateEmailAuthenticity(cleanEmail);
     if (!emailCheck.valid) {
       return { success: false, error: emailCheck.message };
     }
 
+    const cached = this.emailCheckCache.get(cleanEmail);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.res;
+    }
+
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
       const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/check-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -413,7 +431,10 @@ export class LumetricAuthService {
         signal: controller.signal
       });
       clearTimeout(timeoutId);
-      const data = await res.json();
+      const data: EmailCheckResult = await res.json();
+      if (data && data.success) {
+        this.emailCheckCache.set(cleanEmail, { res: data, expiresAt: Date.now() + 60000 });
+      }
       return data;
     } catch (err: any) {
       return {

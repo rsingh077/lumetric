@@ -83,49 +83,80 @@ export function AuthScreen({
   const [resetConfirmPassword, setResetConfirmPassword] = useState('');
   const [showResetPassword, setShowResetPassword] = useState(false);
 
-  // Status feedback
+  // Status feedback & Real-Time Presence Detection
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'old_user' | 'new_user'>('idle');
+  const [detectedUserName, setDetectedUserName] = useState<string | null>(null);
   const [isUserExistsError, setIsUserExistsError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Check if an email address is already registered
-  const checkEmailAvailability = async (emailToCheck: string) => {
-    if (mode !== 'signup') return;
-    const clean = emailToCheck.trim().toLowerCase();
-    if (!clean || !clean.includes('@') || !clean.includes('.')) return;
-    const check = validateEmailAuthenticity(clean);
-    if (!check.valid) return;
+  // Real-time as-you-type email check (distinguishing Old User vs New User)
+  useEffect(() => {
+    const clean = email.trim().toLowerCase();
 
-    setIsCheckingEmail(true);
-    try {
-      const res = await LumetricAuthService.checkEmail(clean);
-      if (res && res.success && res.exists) {
-        setIsUserExistsError(true);
-        setErrorMessage('An account with this email address already exists. Please sign in instead.');
-      } else if (res && res.success && !res.exists) {
-        setIsUserExistsError(false);
-        if (errorMessage?.includes('already exists')) {
-          setErrorMessage(null);
-        }
-      }
-    } catch {
-      // Graceful fallback
-    } finally {
-      setIsCheckingEmail(false);
+    // Reset status if incomplete email
+    if (!clean || !clean.includes('@') || clean.length < 5) {
+      setEmailStatus('idle');
+      setIsUserExistsError(false);
+      setDetectedUserName(null);
+      return;
     }
-  };
+
+    const atParts = clean.split('@');
+    if (atParts.length !== 2 || !atParts[1].includes('.') || atParts[1].split('.')[1].length < 2) {
+      setEmailStatus('idle');
+      return;
+    }
+
+    const checkSyntax = validateEmailAuthenticity(clean);
+    if (!checkSyntax.valid) {
+      setEmailStatus('idle');
+      return;
+    }
+
+    // Debounce for 250ms for snappy real-time feedback
+    setEmailStatus('checking');
+    setIsCheckingEmail(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await LumetricAuthService.checkEmail(clean);
+        if (res && res.success) {
+          if (res.exists) {
+            setEmailStatus('old_user');
+            setDetectedUserName(res.name || null);
+            if (mode === 'signup') {
+              setIsUserExistsError(true);
+              setErrorMessage('Registered account found (Old User). Please sign in instead.');
+            } else {
+              setIsUserExistsError(false);
+            }
+          } else {
+            setEmailStatus('new_user');
+            setDetectedUserName(null);
+            setIsUserExistsError(false);
+            if (mode === 'signup' && errorMessage?.includes('already exists')) {
+              setErrorMessage(null);
+            }
+          }
+        } else {
+          setEmailStatus('idle');
+        }
+      } catch {
+        setEmailStatus('idle');
+      } finally {
+        setIsCheckingEmail(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [email, mode]);
 
   useEffect(() => {
     LumetricAuthService.pruneLocalStorageQuota();
   }, []);
-
-  useEffect(() => {
-    if (initialEmail && initialMode === 'signup') {
-      checkEmailAvailability(initialEmail);
-    }
-  }, [initialEmail, initialMode]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -516,7 +547,6 @@ export function AuthScreen({
                   setIsUserExistsError(false);
                   setErrorMessage(null);
                   setSuccessMessage(null);
-                  if (email) checkEmailAvailability(email);
                 }}
                 className={`py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   mode === 'signup'
@@ -626,11 +656,24 @@ export function AuthScreen({
                       <label className="block text-xs font-medium text-[#CFD8D2]">
                         Work Email Address <span className="text-[#E34234]">*</span>
                       </label>
-                      {emailValidation && emailValidation.valid && (
+                      {emailStatus === 'checking' ? (
+                        <span className="text-[10px] font-mono text-[#84968C] animate-pulse flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full border border-emerald-400 border-t-transparent animate-spin" />
+                          Checking account...
+                        </span>
+                      ) : emailStatus === 'old_user' ? (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1 animate-in fade-in">
+                          <span>●</span> Old User (Verified)
+                        </span>
+                      ) : emailStatus === 'new_user' ? (
+                        <span className="px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[10px] font-mono font-bold flex items-center gap-1 animate-in fade-in">
+                          <span>○</span> New User (Unregistered)
+                        </span>
+                      ) : emailValidation && emailValidation.valid ? (
                         <span className="text-[10px] font-mono text-[#10B981] font-semibold">
                           ✓ Verified Domain
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     <input
                       type="email"
@@ -642,8 +685,34 @@ export function AuthScreen({
                         if (errorMessage) setErrorMessage(null);
                       }}
                       style={{ fontSize: '16px' }}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#0D1612] border border-[#E5D9C8]/20 text-[#FAF8F5] placeholder-[#76887E] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all"
+                      className={`w-full px-3.5 py-2.5 rounded-xl bg-[#0D1612] border text-[#FAF8F5] placeholder-[#76887E] focus:outline-none transition-all ${
+                        emailStatus === 'old_user'
+                          ? 'border-[#059669]/70 focus:ring-2 focus:ring-[#059669]'
+                          : emailStatus === 'new_user'
+                          ? 'border-sky-500/60 focus:ring-2 focus:ring-sky-500'
+                          : 'border-[#E5D9C8]/20 focus:ring-2 focus:ring-[#059669]'
+                      }`}
                     />
+                    {emailStatus === 'new_user' && (
+                      <div className="mt-1.5 p-2 rounded-xl bg-sky-500/12 border border-sky-500/30 text-sky-200 text-xs flex items-center justify-between animate-in fade-in">
+                        <span className="text-[11px] leading-tight">No account found for this email yet.</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMode('signup');
+                            setErrorMessage(null);
+                          }}
+                          className="text-[11px] font-bold text-white bg-sky-600 hover:bg-sky-500 px-2.5 py-0.5 rounded-md cursor-pointer transition-colors shrink-0"
+                        >
+                          Create Account →
+                        </button>
+                      </div>
+                    )}
+                    {emailStatus === 'old_user' && (
+                      <p className="mt-1 text-[11px] text-emerald-400 font-medium">
+                        ✓ Welcome back{detectedUserName ? `, ${detectedUserName}` : ''}! Enter your password below.
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -734,9 +803,25 @@ export function AuthScreen({
                 /* One-Time Code Sign In Form */
                 <form onSubmit={handleInitiateOtpLogin} className="space-y-3.5">
                   <div>
-                    <label className="block text-xs font-medium text-[#CFD8D2] mb-1">
-                      Registered Work Email Address <span className="text-[#E34234]">*</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-medium text-[#CFD8D2]">
+                        Registered Work Email Address <span className="text-[#E34234]">*</span>
+                      </label>
+                      {emailStatus === 'checking' ? (
+                        <span className="text-[10px] font-mono text-[#84968C] animate-pulse flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full border border-emerald-400 border-t-transparent animate-spin" />
+                          Checking...
+                        </span>
+                      ) : emailStatus === 'old_user' ? (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1 animate-in fade-in">
+                          <span>●</span> Old User (Verified)
+                        </span>
+                      ) : emailStatus === 'new_user' ? (
+                        <span className="px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[10px] font-mono font-bold flex items-center gap-1 animate-in fade-in">
+                          <span>○</span> New User (Unregistered)
+                        </span>
+                      ) : null}
+                    </div>
                     <input
                       type="email"
                       required
@@ -747,11 +832,38 @@ export function AuthScreen({
                         if (errorMessage) setErrorMessage(null);
                       }}
                       style={{ fontSize: '16px' }}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#0D1612] border border-[#E5D9C8]/20 text-[#FAF8F5] placeholder-[#76887E] focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all"
+                      className={`w-full px-3.5 py-2.5 rounded-xl bg-[#0D1612] border text-[#FAF8F5] placeholder-[#76887E] focus:outline-none transition-all ${
+                        emailStatus === 'old_user'
+                          ? 'border-[#059669]/70 focus:ring-2 focus:ring-[#059669]'
+                          : emailStatus === 'new_user'
+                          ? 'border-sky-500/60 focus:ring-2 focus:ring-sky-500'
+                          : 'border-[#E5D9C8]/20 focus:ring-2 focus:ring-[#059669]'
+                      }`}
                     />
-                    <p className="mt-1.5 text-[11px] text-[#84968C] leading-snug">
-                      We will dispatch a 6-digit verification code to this address. No password required.
-                    </p>
+                    {emailStatus === 'new_user' && (
+                      <div className="mt-1.5 p-2 rounded-xl bg-sky-500/12 border border-sky-500/30 text-sky-200 text-xs flex items-center justify-between animate-in fade-in">
+                        <span className="text-[11px] leading-tight">No account found for this email yet.</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMode('signup');
+                            setErrorMessage(null);
+                          }}
+                          className="text-[11px] font-bold text-white bg-sky-600 hover:bg-sky-500 px-2.5 py-0.5 rounded-md cursor-pointer transition-colors shrink-0"
+                        >
+                          Create Account →
+                        </button>
+                      </div>
+                    )}
+                    {emailStatus === 'old_user' ? (
+                      <p className="mt-1.5 text-[11px] text-emerald-400 font-medium">
+                        ✓ Registered email verified{detectedUserName ? ` for ${detectedUserName}` : ''}. We will dispatch a 6-digit code.
+                      </p>
+                    ) : (
+                      <p className="mt-1.5 text-[11px] text-[#84968C] leading-snug">
+                        We will dispatch a 6-digit verification code to this address. No password required.
+                      </p>
+                    )}
                   </div>
 
                   <button
@@ -808,13 +920,18 @@ export function AuthScreen({
                     <label className="block text-xs font-medium text-[#CFD8D2]">
                       Work Email Address <span className="text-[#E34234]">*</span>
                     </label>
-                    {isCheckingEmail ? (
-                      <span className="text-[10px] font-mono text-[#84968C] animate-pulse">
-                        Checking availability...
+                    {emailStatus === 'checking' ? (
+                      <span className="text-[10px] font-mono text-[#84968C] animate-pulse flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full border border-emerald-400 border-t-transparent animate-spin" />
+                        Checking account...
                       </span>
-                    ) : isUserExistsError ? (
-                      <span className="text-[10px] font-mono text-amber-400 font-semibold flex items-center gap-1">
-                        <span>🔒</span> Already Registered
+                    ) : emailStatus === 'old_user' || isUserExistsError ? (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500/25 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold flex items-center gap-1 animate-pulse">
+                        <span>🔒</span> Old User (Already Registered)
+                      </span>
+                    ) : emailStatus === 'new_user' ? (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1 animate-in fade-in">
+                        <span>✓</span> New User (Available)
                       </span>
                     ) : emailValidation && emailValidation.valid ? (
                       <span className="text-[10px] font-mono text-[#10B981] font-semibold">
@@ -829,24 +946,44 @@ export function AuthScreen({
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
-                      if (isUserExistsError) setIsUserExistsError(false);
                       if (errorMessage) setErrorMessage(null);
                     }}
-                    onBlur={() => checkEmailAvailability(email)}
                     style={{ fontSize: '16px' }}
                     className={`w-full px-3.5 py-2.5 rounded-xl bg-[#0D1612] border text-[#FAF8F5] placeholder-[#76887E] focus:outline-none transition-all ${
-                      isUserExistsError
+                      emailStatus === 'old_user' || isUserExistsError
                         ? 'border-amber-500/80 focus:ring-2 focus:ring-amber-500'
+                        : emailStatus === 'new_user'
+                        ? 'border-[#059669]/70 focus:ring-2 focus:ring-[#059669]'
                         : emailValidation && !emailValidation.valid
                         ? 'border-[#E34234]/70 focus:ring-2 focus:ring-[#E34234]'
-                        : emailValidation && emailValidation.valid
-                        ? 'border-[#059669]/70 focus:ring-2 focus:ring-[#059669]'
                         : 'border-[#E5D9C8]/20 focus:ring-2 focus:ring-[#059669]'
                     }`}
                   />
-                  {isUserExistsError ? (
-                    <p className="mt-1 text-[11px] text-amber-300">
-                      An account is already linked to this email. You cannot register again.
+                  {emailStatus === 'old_user' || isUserExistsError ? (
+                    <div className="mt-2 p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs flex flex-col gap-2 animate-in fade-in">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-amber-400 font-bold">⚠️ Old User Account Detected:</span>
+                        <span className="text-white font-medium">An account already exists for this email!</span>
+                      </div>
+                      <p className="text-slate-300 text-[11px] leading-snug">
+                        Once an account is created, you cannot use this email to create another account. Please sign in instead.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode('signin');
+                          setIsUserExistsError(false);
+                          setErrorMessage(null);
+                          setSuccessMessage(`Welcome back${detectedUserName ? ', ' + detectedUserName : ''}! Sign in with your registered email.`);
+                        }}
+                        className="w-full py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all active:scale-[0.99]"
+                      >
+                        <span>Switch to Sign In (Old User) →</span>
+                      </button>
+                    </div>
+                  ) : emailStatus === 'new_user' ? (
+                    <p className="mt-1 text-[11px] text-emerald-400 font-medium">
+                      ✓ New user email verified. Set your password and details below to create your account.
                     </p>
                   ) : emailValidation && !emailValidation.valid ? (
                     <p className="mt-1 text-[11px] text-[#FF8577]">
@@ -942,18 +1079,18 @@ export function AuthScreen({
                   </label>
                 </div>
 
-                {isUserExistsError ? (
+                {isUserExistsError || emailStatus === 'old_user' ? (
                   <button
                     type="button"
                     onClick={() => {
                       setMode('signin');
                       setIsUserExistsError(false);
                       setErrorMessage(null);
-                      setSuccessMessage(`Welcome back! Sign in to access your account for ${email}.`);
+                      setSuccessMessage(`Welcome back${detectedUserName ? ', ' + detectedUserName : ''}! Sign in to access your account for ${email}.`);
                     }}
                     className="w-full mt-2 h-11 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-[#FAF8F5] font-bold text-xs sm:text-sm shadow-lg shadow-amber-950/60 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
-                    <span>Email Already Registered — Sign In Instead →</span>
+                    <span>⚠️ Old User: Click to Sign In Instead →</span>
                   </button>
                 ) : (
                   <button
@@ -964,7 +1101,7 @@ export function AuthScreen({
                     {isLoading || isCheckingEmail ? (
                       <>
                         <span className="w-4 h-4 border-2 border-[#FAF8F5]/30 border-t-[#FAF8F5] rounded-full animate-spin" />
-                        <span>{isCheckingEmail ? 'Checking email availability...' : 'Dispatching verification code...'}</span>
+                        <span>{isCheckingEmail ? 'Checking user status...' : 'Dispatching verification code...'}</span>
                       </>
                     ) : (
                       <span>Send 6-Digit Verification Code →</span>

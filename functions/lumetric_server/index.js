@@ -1344,8 +1344,8 @@ async function sendOtpEmail(req, recipientEmail, otpCode, purpose, userName) {
   };
 }
 
-// 1b. Authentication: Real-Time Account & Email Registration Status Check
-app.post('/api/auth/check-email', rateLimiter({ windowMs: 5 * 60 * 1000, max: 150 }), async (req, res) => {
+// 1b. Authentication: Real-Time Account & Email Registration Status Check (New vs Old User)
+app.post('/api/auth/check-email', rateLimiter({ windowMs: 5 * 60 * 1000, max: 400 }), async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
@@ -1359,14 +1359,19 @@ app.post('/api/auth/check-email', rateLimiter({ windowMs: 5 * 60 * 1000, max: 15
 
     const existingUser = await getUserFromStore(req, normalizedEmail);
     const exists = Boolean(existingUser);
+    const userType = exists ? 'old_user' : 'new_user';
 
     return res.json({
       success: true,
       exists,
+      userType,
+      isOldUser: exists,
+      isNewUser: !exists,
+      name: existingUser && existingUser.name ? existingUser.name : null,
       email: normalizedEmail,
       message: exists
-        ? 'An account with this email address already exists. Please sign in instead.'
-        : 'Email address is available for registration.'
+        ? 'Registered account found (Old User). Please sign in instead.'
+        : 'Email address is available for registration (New User).'
     });
   } catch (err) {
     return res.status(500).json({

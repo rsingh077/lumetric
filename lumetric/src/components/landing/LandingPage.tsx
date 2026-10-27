@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { AuthScreen } from '@/components/auth/AuthScreen';
+import { LumetricAuthService } from '@/lib/auth';
 import {
   GlobeIcon,
   FileSpreadsheetIcon,
@@ -22,6 +23,30 @@ export function LandingPage() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signup');
   const [heroEmail, setHeroEmail] = useState('');
+  const [heroEmailStatus, setHeroEmailStatus] = useState<'idle' | 'checking' | 'old_user' | 'new_user'>('idle');
+
+  // Real-time debounced check on hero email
+  useEffect(() => {
+    const clean = heroEmail.trim().toLowerCase();
+    if (!clean || !clean.includes('@') || !clean.includes('.') || clean.length < 5) {
+      setHeroEmailStatus('idle');
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setHeroEmailStatus('checking');
+      try {
+        const res = await LumetricAuthService.checkEmail(clean);
+        if (res && res.success) {
+          setHeroEmailStatus(res.exists ? 'old_user' : 'new_user');
+        } else {
+          setHeroEmailStatus('idle');
+        }
+      } catch {
+        setHeroEmailStatus('idle');
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [heroEmail]);
 
   // Interactive Demo Simulator State
   const [activeDemoTab, setActiveDemoTab] = useState<'geo' | 'excel' | 'models' | 'sql'>('geo');
@@ -47,9 +72,20 @@ export function LandingPage() {
     setAuthModalOpen(true);
   };
 
-  const handleHeroEmailSubmit = (e: React.FormEvent) => {
+  const handleHeroEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    openAuth('signup', heroEmail);
+    const clean = heroEmail.trim();
+    if (!clean) {
+      openAuth('signup');
+      return;
+    }
+    // Real-time smart router: Old user -> Sign In, New user -> Sign Up
+    const check = await LumetricAuthService.checkEmail(clean);
+    if (check && check.success && check.exists) {
+      openAuth('signin', clean);
+    } else {
+      openAuth('signup', clean);
+    }
   };
 
   return (
@@ -141,7 +177,7 @@ export function LandingPage() {
           From 500,000-row Excel spreadsheets to authentic Survey of India cartography and in-browser machine learning models — automated in seconds with zero server latency.
         </p>
 
-        {/* Fast-Track Email Input Action Box */}
+        {/* Fast-Track Email Input Action Box with Real-Time Detection */}
         <div className="mt-10 max-w-md mx-auto">
           <form onSubmit={handleHeroEmailSubmit} className="flex flex-col sm:flex-row gap-2.5 p-1.5 rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-2xl backdrop-blur-md">
             <input
@@ -154,12 +190,37 @@ export function LandingPage() {
             />
             <button
               type="submit"
-              className="px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-1.5"
+              className={`px-5 py-3 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-1.5 text-white ${
+                heroEmailStatus === 'old_user'
+                  ? 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 shadow-amber-950/60'
+                  : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500'
+              }`}
             >
-              <span>Launch Studio</span>
+              <span>{heroEmailStatus === 'old_user' ? 'Sign In as Old User' : 'Launch Studio'}</span>
               <span>→</span>
             </button>
           </form>
+
+          {/* Real-Time Detection Pill */}
+          {heroEmailStatus !== 'idle' && (
+            <div className="flex items-center justify-center gap-2 mt-2.5 animate-in fade-in">
+              {heroEmailStatus === 'checking' ? (
+                <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                  Checking account status...
+                </span>
+              ) : heroEmailStatus === 'old_user' ? (
+                <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-mono font-bold flex items-center gap-1.5 shadow-sm">
+                  <span>🔒</span> Old User Account Found • Click to Sign In
+                </span>
+              ) : (
+                <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-mono font-bold flex items-center gap-1.5 shadow-sm">
+                  <span>✓</span> New User Email Available • Click to Register
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center justify-center gap-4 mt-3 text-[11px] text-slate-400">
             <span className="flex items-center gap-1">
               <span className="text-emerald-400">✓</span> Instant Meta-Style OTP
