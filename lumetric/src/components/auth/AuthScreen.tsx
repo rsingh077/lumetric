@@ -124,6 +124,24 @@ export function AuthScreen() {
     inputRefs.current[5]?.focus();
   };
 
+  const handlePasteFromClipboard = async () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        const digits = text.replace(/\D/g, '').slice(0, 6);
+        if (digits.length > 0) {
+          const newOtp = ['', '', '', '', '', ''];
+          digits.split('').forEach((d, i) => { newOtp[i] = d; });
+          setOtpDigits(newOtp);
+          const focusIndex = Math.min(digits.length, 5);
+          inputRefs.current[focusIndex]?.focus();
+        }
+      }
+    } catch (_) {
+      inputRefs.current[0]?.focus();
+    }
+  };
+
   // 1. Password Sign In Handler
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -853,6 +871,21 @@ export function AuthScreen() {
                       />
                     </React.Fragment>
                   ))}
+                </div>
+
+                {/* Meta-style Quick Paste Pill */}
+                <div className="flex justify-center -mt-1 mb-2">
+                  <button
+                    type="button"
+                    onClick={handlePasteFromClipboard}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-[#161B22] hover:bg-[#21262D] text-[#8B949E] hover:text-[#E6EDF3] border border-[#30363D] transition-colors cursor-pointer shadow-xs"
+                    title="Paste 6-digit code from clipboard"
+                  >
+                    <svg className="w-3.5 h-3.5 text-[#10B981]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    <span>Paste code from clipboard</span>
+                  </button>
                 </div>
 
                 {/* Additional New Password input if resetting password */}

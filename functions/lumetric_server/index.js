@@ -980,27 +980,20 @@ function generateSecureOtp() {
 }
 
 async function sendOtpEmail(req, recipientEmail, otpCode, purpose, userName) {
-  let title = 'Account Verification Code';
-  let purposeDesc = 'verify your email and complete your Lumetric Studio account setup';
-  let badgeLabel = 'Email Verification Code';
-  let headerIcon = '✨';
-  let alertMsg = 'If you did not create a Lumetric Studio account, please ignore this email. No account will be activated without this verification code.';
+  let subject = `Use code ${otpCode} to log in`;
+  let actionPhrase = 'log in to your Lumetric account';
+  let codeLabel = 'Login code';
 
-  if (purpose === 'login') {
-    title = 'Secure Sign-In Code';
-    purposeDesc = 'sign in to your Lumetric account with zero-trust identity verification';
-    badgeLabel = 'Single-Use Sign-In Code';
-    headerIcon = '🔐';
-    alertMsg = 'If you did not attempt to sign in, someone may know your password. Secure your account immediately below.';
+  if (purpose === 'signup') {
+    subject = `Use code ${otpCode} to confirm your email`;
+    actionPhrase = 'confirm your email address and activate your Lumetric account';
+    codeLabel = 'Confirmation code';
   } else if (purpose === 'reset-password') {
-    title = 'Password Reset Code';
-    purposeDesc = 'reset and update the password for your Lumetric Studio account';
-    badgeLabel = 'Password Recovery Code';
-    headerIcon = '🛡️';
-    alertMsg = 'A password reset was requested for your account. If you did not make this request, secure your account immediately to prevent unauthorized access.';
+    subject = `Use code ${otpCode} to reset your password`;
+    actionPhrase = 'reset the password for your Lumetric account';
+    codeLabel = 'Password reset code';
   }
 
-  const subject = `Lumetric Studio — ${otpCode} is your ${title}`;
   const displayName = userName || recipientEmail.split('@')[0];
 
   // Client telemetry context
@@ -1010,11 +1003,11 @@ async function sendOtpEmail(req, recipientEmail, otpCode, purpose, userName) {
 
   const userAgent = (req && req.headers && req.headers['user-agent']) || 'Web Browser';
   let deviceDesc = 'Web Browser on Desktop';
-  if (/android/i.test(userAgent)) deviceDesc = 'Lumetric Mobile App (Android)';
-  else if (/iphone|ipad|ipod/i.test(userAgent)) deviceDesc = 'Safari on iOS';
-  else if (/windows/i.test(userAgent)) deviceDesc = 'Chrome on Windows';
-  else if (/macintosh|mac os/i.test(userAgent)) deviceDesc = 'Safari on macOS';
-  else if (/linux/i.test(userAgent)) deviceDesc = 'Browser on Linux';
+  if (/android/i.test(userAgent)) deviceDesc = 'Lumetric Android App';
+  else if (/iphone|ipad|ipod/i.test(userAgent)) deviceDesc = 'Apple Safari on iOS';
+  else if (/windows/i.test(userAgent)) deviceDesc = 'Windows PC';
+  else if (/macintosh|mac os/i.test(userAgent)) deviceDesc = 'macOS';
+  else if (/linux/i.test(userAgent)) deviceDesc = 'Linux Browser';
 
   let timestampStr = '';
   try {
@@ -1026,92 +1019,123 @@ async function sendOtpEmail(req, recipientEmail, otpCode, purpose, userName) {
 
   const secureLink = `https://project-rainfall-60092395179.development.catalystserverless.in/app/index.html?action=security-alert&email=${encodeURIComponent(recipientEmail)}`;
 
+  // Meta-Styled High-Contrast Obsidian Dark Template with Gmail Smart Parsing Schema
   const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
+  <meta name="color-scheme" content="dark light">
+  <meta name="supported-color-schemes" content="dark light">
+  <title>${subject}</title>
+  <!-- Schema.org JSON-LD to trigger Gmail Smart OTP Action Pill -->
+  <script type="application/ld+json">
+  {
+    "@context": "http://schema.org",
+    "@type": "EmailMessage",
+    "description": "${subject}"
+  }
+  </script>
 </head>
-<body style="margin: 0; padding: 0; background-color: #0A110E; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #FAF8F5;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0A110E; padding: 40px 15px;">
+<body style="margin: 0; padding: 0; background-color: #000000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #FFFFFF; -webkit-font-smoothing: antialiased;">
+  <!-- Hidden Preheader for Inbox Preview and Android Notification Extraction -->
+  <div style="display: none; max-height: 0px; overflow: hidden; font-size: 1px; line-height: 1px; color: #000000; opacity: 0; mso-hide: all;">
+    Use code ${otpCode} to ${actionPhrase}. This code expires in 10 minutes.
+  </div>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #000000; padding: 32px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" style="max-width: 520px; background-color: #111C17; border: 1px solid rgba(229, 217, 200, 0.15); border-radius: 20px; overflow: hidden; box-shadow: 0 14px 40px -8px rgba(0, 0, 0, 0.7);">
-          <!-- Header -->
+        <table role="presentation" width="100%" style="max-width: 480px; text-align: left; background-color: #000000;">
+          
+          <!-- Brand Header (Matching Meta Logo Layout) -->
           <tr>
-            <td style="background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 26px 24px; text-align: center;">
-              <div style="display: inline-block; background-color: rgba(255,255,255,0.18); border-radius: 10px; padding: 5px 12px; margin-bottom: 8px;">
-                <span style="font-size: 11px; font-weight: 700; color: #E6FFFA; letter-spacing: 0.16em; text-transform: uppercase;">
-                  ${headerIcon} Zero-Trust Security Protocol
-                </span>
-              </div>
-              <h1 style="margin: 0; font-size: 24px; font-weight: 900; color: #FFFFFF; letter-spacing: 0.06em;">LUMETRIC</h1>
-              <p style="margin: 4px 0 0; font-size: 11px; font-weight: 600; color: #A7F3D0; letter-spacing: 0.15em; text-transform: uppercase;">AI Data & Decision Studio</p>
+            <td style="padding: 12px 0 16px 0;">
+              <table role="presentation" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="vertical-align: middle; padding-right: 10px;">
+                    <!-- Lumetric Geometric Emerald Prism Icon -->
+                    <div style="width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg, #10B981 0%, #06B6D4 100%); display: inline-block; text-align: center; line-height: 32px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);">
+                      <span style="font-size: 18px; color: #FFFFFF; font-weight: 900; vertical-align: middle;">✦</span>
+                    </div>
+                  </td>
+                  <td style="vertical-align: middle;">
+                    <span style="font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: #FFFFFF;">Lumetric</span>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
-          <!-- Body Content -->
+
+          <!-- Subtle Divider Line -->
           <tr>
-            <td style="padding: 30px 26px 24px;">
-              <h2 style="margin: 0 0 10px; font-size: 20px; font-weight: 800; color: #FAF8F5;">${title}</h2>
-              <p style="margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: #CFD8D2;">
-                Hello <strong>${displayName}</strong>,<br>
-                Please use the following single-use verification code to ${purposeDesc} (<span style="color: #10B981; font-weight: 600;">${recipientEmail}</span>).
+            <td style="border-top: 1px solid #232932; padding-top: 24px;"></td>
+          </tr>
+
+          <!-- Salutation & Body Text -->
+          <tr>
+            <td style="padding: 0 0 16px 0;">
+              <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #E6EDF3;">
+                Hi,
               </p>
-              
-              <!-- OTP Box -->
-              <div style="background-color: #080E0B; border: 2px dashed #059669; border-radius: 14px; padding: 22px 16px; text-align: center; margin: 20px 0;">
-                <span style="font-size: 11px; font-weight: 700; color: #34D399; letter-spacing: 0.14em; text-transform: uppercase; display: block; margin-bottom: 6px;">
-                  ${badgeLabel}
-                </span>
-                <div style="font-family: 'JetBrains Mono', Courier, monospace; font-size: 40px; font-weight: 900; color: #FAF8F5; letter-spacing: 0.28em; margin: 8px 0; text-shadow: 0 0 16px rgba(16, 185, 129, 0.4);">
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 0 24px 0;">
+              <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #E6EDF3;">
+                You can ${actionPhrase} by entering the following code.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Login Code Label & Rounded Charcoal Card -->
+          <tr>
+            <td style="padding: 0 0 20px 0;">
+              <div style="font-size: 13px; font-weight: 500; color: #8B949E; margin-bottom: 8px;">
+                ${codeLabel}
+              </div>
+              <div style="background-color: #161B22; border: 1px solid #30363D; border-radius: 8px; padding: 18px 24px; text-align: left;">
+                <span style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'SF Pro Display', Helvetica, Arial, sans-serif; font-size: 34px; font-weight: 700; letter-spacing: 0.14em; color: #FFFFFF; display: inline-block;">
                   ${otpCode}
-                </div>
-                <span style="font-size: 11.5px; color: #84968C; font-weight: 500;">
-                  ⏰ Valid for 10 minutes • Single use only
                 </span>
               </div>
+            </td>
+          </tr>
 
-              <!-- Request Telemetry Box (Device, Location, Time) -->
-              <div style="background-color: rgba(5, 150, 105, 0.08); border: 1px solid rgba(5, 150, 105, 0.25); border-radius: 12px; padding: 14px 16px; margin: 18px 0;">
-                <p style="margin: 0 0 8px; font-size: 11px; font-weight: 700; color: #34D399; text-transform: uppercase; letter-spacing: 0.1em;">
-                  📍 Request Authentication Context
-                </p>
-                <div style="font-size: 12px; color: #CFD8D2; line-height: 1.6;">
-                  <div><strong>Device:</strong> ${deviceDesc}</div>
-                  <div><strong>IP Address:</strong> <span style="font-family: monospace; color: #A7F3D0;">${clientIp}</span></div>
-                  <div><strong>Timestamp:</strong> ${timestampStr}</div>
-                </div>
-              </div>
+          <!-- Expiration Notice -->
+          <tr>
+            <td style="padding: 0 0 24px 0;">
+              <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #8B949E;">
+                This code is valid for 10 minutes. If you did not request this code, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
 
-              <!-- Anti-Hijack Warning Box -->
-              <div style="background-color: rgba(227, 66, 52, 0.08); border-left: 3px solid #E34234; border-radius: 6px; padding: 12px 14px; margin: 20px 0;">
-                <p style="margin: 0 0 4px; font-size: 12px; line-height: 1.5; color: #FF8577; font-weight: 700;">
-                  ⚠️ Anti-Hijack Notice
-                </p>
-                <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #FF8577;">
-                  ${alertMsg}
-                </p>
-                <div style="margin-top: 10px;">
-                  <a href="${secureLink}" style="display: inline-block; background-color: #E34234; color: #FFFFFF; font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 6px; text-decoration: none;">
-                    🛑 Not You? Secure Account Immediately
+          <!-- Security Context / Telemetry (Subtle & Clean) -->
+          <tr>
+            <td style="border-top: 1px solid #21262D; padding-top: 18px; padding-bottom: 24px;">
+              <div style="font-size: 12px; color: #6E7681; line-height: 1.6;">
+                <div>Requested from: <strong style="color: #8B949E;">${deviceDesc}</strong> • IP: <span style="font-family: monospace; color: #8B949E;">${clientIp}</span></div>
+                <div style="margin-top: 3px;">Timestamp: ${timestampStr}</div>
+                <div style="margin-top: 8px;">
+                  <a href="${secureLink}" style="color: #58A6FF; text-decoration: none; font-weight: 500;">
+                    Didn't request this code? Secure your account &rarr;
                   </a>
                 </div>
               </div>
             </td>
           </tr>
-          <!-- Footer -->
+
+          <!-- Minimal Footer -->
           <tr>
-            <td style="background-color: #09100C; border-top: 1px solid rgba(229, 217, 200, 0.1); padding: 18px 24px; text-align: center;">
-              <p style="margin: 0 0 6px; font-size: 11px; color: #84968C; line-height: 1.4;">
-                🔒 <strong>Automated System Message:</strong> Please do not reply directly to this email. Replies to this address are routed to an unmonitored mailbox.
-              </p>
-              <p style="margin: 0; font-size: 10px; color: #627269; line-height: 1.5;">
-                © 2026 Lumetric Studio • Zero-Trust Account Verification<br>
-                Dispatched securely via <strong>security@techexon.app</strong>
-              </p>
+            <td style="border-top: 1px solid #161B22; padding-top: 16px;">
+              <div style="font-size: 11px; color: #484F58; line-height: 1.6;">
+                <div>Lumetric Inc. • Zero-Trust AI Data & Decision Studio</div>
+                <div style="margin-top: 2px;">Sent securely from security@techexon.app • Please do not reply</div>
+              </div>
             </td>
           </tr>
+
         </table>
       </td>
     </tr>
@@ -1119,7 +1143,7 @@ async function sendOtpEmail(req, recipientEmail, otpCode, purpose, userName) {
 </body>
 </html>`;
 
-  const textContent = `LUMETRIC STUDIO — ${title.toUpperCase()}\n\nHello ${displayName},\n\nYour 6-digit verification code is:\n\n${otpCode}\n\nThis code expires in 10 minutes.\n\n[Authentication Context]\nDevice: ${deviceDesc}\nIP Address: ${clientIp}\nTimestamp: ${timestampStr}\n\nAnti-Hijack Notice: ${alertMsg}\n\n----------------------------------------\nPLEASE DO NOT REPLY TO THIS EMAIL\nThis is an automated security transmission sent from an unmonitored address. Replies will not be read or answered.`;
+  const textContent = `LUMETRIC — ${codeLabel.toUpperCase()}\n\nHi,\n\nYou can ${actionPhrase} by entering the following code:\n\n${otpCode}\n\nThis code is valid for 10 minutes. If you did not request this code, you can safely ignore this email.\n\n[Security Context]\nRequested from: ${deviceDesc}\nIP Address: ${clientIp}\nTimestamp: ${timestampStr}\n\nDidn't request this? Secure your account: ${secureLink}\n\n----------------------------------------\nLumetric Inc. • security@techexon.app\nThis is an automated transmission. Please do not reply.`;
 
   let deliveryResult = { dispatched: false, channel: 'none', details: '' };
 
@@ -1128,7 +1152,7 @@ async function sendOtpEmail(req, recipientEmail, otpCode, purpose, userName) {
   const smtpUser = process.env.SMTP_USER || 'security@techexon.app';
   const smtpPass = process.env.SMTP_PASS || 'Lassilodu@122';
   const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
-  const smtpFromName = process.env.SMTP_FROM_NAME || 'Lumetric Security';
+  const smtpFromName = process.env.SMTP_FROM_NAME || 'Lumetric';
 
   if (smtpHost && smtpUser && smtpPass) {
     try {
