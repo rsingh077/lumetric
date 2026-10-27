@@ -396,6 +396,33 @@ export class LumetricAuthService {
     }
   }
 
+  public static async checkEmail(email: string): Promise<{ success: boolean; exists?: boolean; error?: string; message?: string }> {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const emailCheck = validateEmailAuthenticity(cleanEmail);
+    if (!emailCheck.valid) {
+      return { success: false, error: emailCheck.message };
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const res = await fetch(`${CATALYST_SERVER_URL}/api/auth/check-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      const data = await res.json();
+      return data;
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.name === 'AbortError' ? 'Email check timed out' : err.message
+      };
+    }
+  }
+
   public static async sendOtp(payload: {
     email: string;
     purpose?: 'signup' | 'login' | 'reset-password';

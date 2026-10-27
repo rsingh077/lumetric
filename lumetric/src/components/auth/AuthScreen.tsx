@@ -85,12 +85,47 @@ export function AuthScreen({
 
   // Status feedback
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [isUserExistsError, setIsUserExistsError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Check if an email address is already registered
+  const checkEmailAvailability = async (emailToCheck: string) => {
+    if (mode !== 'signup') return;
+    const clean = emailToCheck.trim().toLowerCase();
+    if (!clean || !clean.includes('@') || !clean.includes('.')) return;
+    const check = validateEmailAuthenticity(clean);
+    if (!check.valid) return;
+
+    setIsCheckingEmail(true);
+    try {
+      const res = await LumetricAuthService.checkEmail(clean);
+      if (res && res.success && res.exists) {
+        setIsUserExistsError(true);
+        setErrorMessage('An account with this email address already exists. Please sign in instead.');
+      } else if (res && res.success && !res.exists) {
+        setIsUserExistsError(false);
+        if (errorMessage?.includes('already exists')) {
+          setErrorMessage(null);
+        }
+      }
+    } catch {
+      // Graceful fallback
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
 
   useEffect(() => {
     LumetricAuthService.pruneLocalStorageQuota();
   }, []);
+
+  useEffect(() => {
+    if (initialEmail && initialMode === 'signup') {
+      checkEmailAvailability(initialEmail);
+    }
+  }, [initialEmail, initialMode]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -273,11 +308,14 @@ export function AuthScreen({
       setTimeout(() => inputRefs.current[0]?.focus(), 150);
       return true;
     } else {
-      if ((res as any).code === 'USER_EXISTS') {
+      if ((res as any).code === 'USER_EXISTS' || res.error?.includes('already exists')) {
+        setIsUserExistsError(true);
         setErrorMessage('An account with this email address already exists. Please sign in or use a different email.');
       } else if ((res as any).code === 'USER_NOT_FOUND') {
+        setIsUserExistsError(false);
         setErrorMessage('No account found with this email. Please click "Create Account" to register.');
       } else {
+        setIsUserExistsError(false);
         setErrorMessage(res.error || 'Failed to dispatch verification code. Please try again.');
       }
       return false;
@@ -295,6 +333,16 @@ export function AuthScreen({
     const emailCheck = validateEmailAuthenticity(email);
     if (!emailCheck.valid) {
       setErrorMessage(emailCheck.message || 'Please enter a genuine, valid work email address.');
+      return;
+    }
+
+    // Pre-emptively check if account already exists before dispatching OTP
+    setIsCheckingEmail(true);
+    const availCheck = await LumetricAuthService.checkEmail(email);
+    setIsCheckingEmail(false);
+    if (availCheck && availCheck.success && availCheck.exists) {
+      setIsUserExistsError(true);
+      setErrorMessage('An account with this email address already exists. Please sign in instead.');
       return;
     }
 
@@ -380,7 +428,13 @@ export function AuthScreen({
         } catch {}
       }
     } else {
-      setErrorMessage(res.error || 'Invalid or expired verification code. Please check your code or request a fresh one.');
+      if ((res as any).code === 'USER_EXISTS' || res.error?.includes('already exists')) {
+        setIsUserExistsError(true);
+        setErrorMessage('An account with this email address already exists. Please sign in instead.');
+        setMode('signin');
+      } else {
+        setErrorMessage(res.error || 'Invalid or expired verification code. Please check your code or request a fresh one.');
+      }
     }
   };
 
@@ -443,6 +497,7 @@ export function AuthScreen({
                 type="button"
                 onClick={() => {
                   setMode('signin');
+                  setIsUserExistsError(false);
                   setErrorMessage(null);
                   setSuccessMessage(null);
                 }}
@@ -458,8 +513,10 @@ export function AuthScreen({
                 type="button"
                 onClick={() => {
                   setMode('signup');
+                  setIsUserExistsError(false);
                   setErrorMessage(null);
                   setSuccessMessage(null);
+                  if (email) checkEmailAvailability(email);
                 }}
                 className={`py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   mode === 'signup'
@@ -473,12 +530,39 @@ export function AuthScreen({
           )}
 
           {/* Alerts */}
-          {errorMessage && (
+          {isUserExistsError ? (
+            <div className="mb-4 p-3.5 rounded-2xl bg-amber-500/12 border border-amber-500/35 text-amber-200 text-xs flex flex-col gap-2.5 animate-in fade-in">
+              <div className="flex items-start gap-2.5">
+                <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-sm shrink-0">
+                  🔒
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold text-amber-300 text-xs">Email Already Registered</div>
+                  <div className="text-slate-300 mt-0.5 leading-relaxed text-[11px]">
+                    An account is already linked to <strong className="text-white font-mono">{email}</strong>. Once an account is created, you cannot register another account with this email address.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signin');
+                  setIsUserExistsError(false);
+                  setErrorMessage(null);
+                  setSuccessMessage(`Welcome back! Please sign in with ${email}.`);
+                }}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#059669] to-[#047857] hover:from-[#047857] hover:to-[#022C22] text-[#FAF8F5] font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/50 cursor-pointer transition-all active:scale-[0.99]"
+              >
+                <span>Sign In With This Email</span>
+                <span>→</span>
+              </button>
+            </div>
+          ) : errorMessage ? (
             <div className="mb-4 p-3 rounded-xl bg-[#E34234]/15 border border-[#E34234]/35 text-[#FF8577] text-xs flex items-start gap-2 animate-in fade-in">
               <span className="text-[#FF5442] font-bold shrink-0">⚠️</span>
               <span className="flex-1 leading-snug">{errorMessage}</span>
             </div>
-          )}
+          ) : null}
 
           {successMessage && (
             <div className="mb-4 p-3 rounded-xl bg-[#059669]/15 border border-[#059669]/35 text-[#34D399] text-xs flex items-start gap-2 animate-in fade-in">
@@ -724,11 +808,19 @@ export function AuthScreen({
                     <label className="block text-xs font-medium text-[#CFD8D2]">
                       Work Email Address <span className="text-[#E34234]">*</span>
                     </label>
-                    {emailValidation && emailValidation.valid && (
+                    {isCheckingEmail ? (
+                      <span className="text-[10px] font-mono text-[#84968C] animate-pulse">
+                        Checking availability...
+                      </span>
+                    ) : isUserExistsError ? (
+                      <span className="text-[10px] font-mono text-amber-400 font-semibold flex items-center gap-1">
+                        <span>🔒</span> Already Registered
+                      </span>
+                    ) : emailValidation && emailValidation.valid ? (
                       <span className="text-[10px] font-mono text-[#10B981] font-semibold">
                         ✓ Verified Domain
                       </span>
-                    )}
+                    ) : null}
                   </div>
                   <input
                     type="email"
@@ -737,22 +829,30 @@ export function AuthScreen({
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
+                      if (isUserExistsError) setIsUserExistsError(false);
                       if (errorMessage) setErrorMessage(null);
                     }}
+                    onBlur={() => checkEmailAvailability(email)}
                     style={{ fontSize: '16px' }}
                     className={`w-full px-3.5 py-2.5 rounded-xl bg-[#0D1612] border text-[#FAF8F5] placeholder-[#76887E] focus:outline-none transition-all ${
-                      emailValidation && !emailValidation.valid
+                      isUserExistsError
+                        ? 'border-amber-500/80 focus:ring-2 focus:ring-amber-500'
+                        : emailValidation && !emailValidation.valid
                         ? 'border-[#E34234]/70 focus:ring-2 focus:ring-[#E34234]'
                         : emailValidation && emailValidation.valid
                         ? 'border-[#059669]/70 focus:ring-2 focus:ring-[#059669]'
                         : 'border-[#E5D9C8]/20 focus:ring-2 focus:ring-[#059669]'
                     }`}
                   />
-                  {emailValidation && !emailValidation.valid && (
+                  {isUserExistsError ? (
+                    <p className="mt-1 text-[11px] text-amber-300">
+                      An account is already linked to this email. You cannot register again.
+                    </p>
+                  ) : emailValidation && !emailValidation.valid ? (
                     <p className="mt-1 text-[11px] text-[#FF8577]">
                       {emailValidation.message}
                     </p>
-                  )}
+                  ) : null}
                 </div>
 
                 <div>
@@ -842,20 +942,35 @@ export function AuthScreen({
                   </label>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full mt-2 h-11 rounded-xl bg-gradient-to-r from-[#059669] to-[#047857] hover:from-[#047857] hover:to-[#022C22] text-[#FAF8F5] font-bold text-xs sm:text-sm shadow-lg shadow-emerald-950/60 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-[#FAF8F5]/30 border-t-[#FAF8F5] rounded-full animate-spin" />
-                      <span>Dispatching verification code...</span>
-                    </>
-                  ) : (
-                    <span>Send 6-Digit Verification Code →</span>
-                  )}
-                </button>
+                {isUserExistsError ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('signin');
+                      setIsUserExistsError(false);
+                      setErrorMessage(null);
+                      setSuccessMessage(`Welcome back! Sign in to access your account for ${email}.`);
+                    }}
+                    className="w-full mt-2 h-11 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-[#FAF8F5] font-bold text-xs sm:text-sm shadow-lg shadow-amber-950/60 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>Email Already Registered — Sign In Instead →</span>
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isLoading || isCheckingEmail}
+                    className="w-full mt-2 h-11 rounded-xl bg-gradient-to-r from-[#059669] to-[#047857] hover:from-[#047857] hover:to-[#022C22] text-[#FAF8F5] font-bold text-xs sm:text-sm shadow-lg shadow-emerald-950/60 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isLoading || isCheckingEmail ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-[#FAF8F5]/30 border-t-[#FAF8F5] rounded-full animate-spin" />
+                        <span>{isCheckingEmail ? 'Checking email availability...' : 'Dispatching verification code...'}</span>
+                      </>
+                    ) : (
+                      <span>Send 6-Digit Verification Code →</span>
+                    )}
+                  </button>
+                )}
               </form>
             </div>
           )}

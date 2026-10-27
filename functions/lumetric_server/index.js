@@ -1344,6 +1344,38 @@ async function sendOtpEmail(req, recipientEmail, otpCode, purpose, userName) {
   };
 }
 
+// 1b. Authentication: Real-Time Account & Email Registration Status Check
+app.post('/api/auth/check-email', rateLimiter({ windowMs: 5 * 60 * 1000, max: 150 }), async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email address is required.' });
+    }
+    const normalizedEmail = email.trim().toLowerCase();
+    const emailValidation = validateEmailAuthenticity(normalizedEmail);
+    if (!emailValidation.valid) {
+      return res.status(400).json({ success: false, error: emailValidation.message });
+    }
+
+    const existingUser = await getUserFromStore(req, normalizedEmail);
+    const exists = Boolean(existingUser);
+
+    return res.json({
+      success: true,
+      exists,
+      email: normalizedEmail,
+      message: exists
+        ? 'An account with this email address already exists. Please sign in instead.'
+        : 'Email address is available for registration.'
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: `Server error checking email availability: ${err.message}`
+    });
+  }
+});
+
 // 1c. Authentication: Dispatch 6-Digit Email Verification Code (Anti-Hijack)
 app.post('/api/auth/send-otp', rateLimiter({ windowMs: 15 * 60 * 1000, max: 30, message: 'Too many verification code requests. Please wait 15 minutes.' }), async (req, res) => {
   try {
@@ -1362,11 +1394,12 @@ app.post('/api/auth/send-otp', rateLimiter({ windowMs: 15 * 60 * 1000, max: 30, 
     const existingUser = await getUserFromStore(req, normalizedEmail);
 
     if (targetPurpose === 'signup') {
-      if (existingUser && existingUser.passwordHash) {
+      if (existingUser) {
+        logAuditEvent(normalizedEmail, 'SIGNUP_REJECTED_USER_EXISTS', 'Security', 'Rejected signup OTP dispatch because account already exists');
         return res.status(409).json({
           success: false,
           code: 'USER_EXISTS',
-          error: 'An account with this email address already exists. Please sign in or use a different email.'
+          error: 'An account with this email address already exists. Please sign in instead.'
         });
       }
       if (payload && payload.password) {
@@ -1512,6 +1545,15 @@ app.post('/api/auth/verify-otp', rateLimiter({ windowMs: 15 * 60 * 1000, max: 40
     const combinedPayload = { ...(entry?.payload || {}), ...(clientPayload || {}) };
 
     if (targetPurpose === 'signup') {
+      if (existingUser) {
+        logAuditEvent(normalizedEmail, 'SIGNUP_VERIFY_REJECTED_USER_EXISTS', 'Security', 'Rejected signup verification completion because account already exists');
+        return res.status(409).json({
+          success: false,
+          code: 'USER_EXISTS',
+          error: 'An account with this email address already exists. Please sign in instead.'
+        });
+      }
+
       const name = (combinedPayload.name && combinedPayload.name.trim()) || normalizedEmail.split('@')[0];
       const password = combinedPayload.password;
       const role = combinedPayload.role || 'builder';
@@ -1709,11 +1751,12 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 20, 
     }
 
     const existingUser = await getUserFromStore(req, normalizedEmail);
-    if (existingUser && existingUser.passwordHash) {
+    if (existingUser) {
+      logAuditEvent(normalizedEmail, 'REGISTER_REJECTED_USER_EXISTS', 'Security', 'Rejected direct registration because user already exists');
       return res.status(409).json({
         success: false,
         code: 'USER_EXISTS',
-        error: 'An account with this email address already exists. Please sign in or use a different email.'
+        error: 'An account with this email address already exists. Please sign in instead.'
       });
     }
 
