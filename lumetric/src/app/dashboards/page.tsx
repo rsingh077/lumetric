@@ -24,6 +24,7 @@ import {
 import { DatasetProfile } from '@/types';
 import { CustomChartBuilder } from '@/components/charts/CustomChartBuilder';
 import { GeographicIntelligenceMap } from '@/components/charts/GeographicIntelligenceMap';
+import { parseNumeric } from '@/lib/csvParser';
 
 // Theme presets inspired directly by user's reference images
 type ThemePreset = 'modern' | 'cyberpunk' | 'enterprise';
@@ -297,8 +298,8 @@ export default function DashboardsPage() {
     const catMap: Record<string, number> = {};
 
     filteredRows.forEach((r) => {
-      const v1 = parseFloat(r[currentMetric]) || 0;
-      const v2 = parseFloat(r[currentSecondaryMetric]) || 0;
+      const v1 = parseNumeric(r[currentMetric]) ?? 0;
+      const v2 = parseNumeric(r[currentSecondaryMetric]) ?? 0;
       sum1 += v1;
       sum2 += v2;
       pVals.push(v1);
@@ -520,8 +521,8 @@ export default function DashboardsPage() {
     const hasTemporal = temporalColumns.some((c) => c.name === currentTimeCol);
 
     return sampled.map((r, i) => {
-      const p1 = parseFloat(r[currentMetric]) || 0;
-      const p2 = parseFloat(r[currentSecondaryMetric]) || 0;
+      const p1 = parseNumeric(r[currentMetric]) ?? 0;
+      const p2 = parseNumeric(r[currentSecondaryMetric]) ?? 0;
       let label: string;
       if (hasTemporal && r[currentTimeCol]) {
         label = String(r[currentTimeCol]);
@@ -548,8 +549,8 @@ export default function DashboardsPage() {
 
     categoryBaseRows.forEach((r) => {
       const cat = r[currentDim] || 'Other';
-      const v1 = parseFloat(r[currentMetric]) || 0;
-      const v2 = parseFloat(r[currentSecondaryMetric]) || 0;
+      const v1 = parseNumeric(r[currentMetric]) ?? 0;
+      const v2 = parseNumeric(r[currentSecondaryMetric]) ?? 0;
       grandSum += v1;
 
       if (!map[cat]) {
@@ -631,7 +632,7 @@ export default function DashboardsPage() {
         .filter((r) => (r[currentDim] || 'Other') === pCat)
         .forEach((r) => {
           const sg = r[currentSecondaryDim] || 'Other';
-          const val = parseFloat(r[currentMetric]) || 0;
+          const val = parseNumeric(r[currentMetric]) ?? 0;
           if (subMap[sg] !== undefined) {
             subMap[sg] += val;
           }
@@ -650,7 +651,7 @@ export default function DashboardsPage() {
   const radarAxes = useMemo(() => {
     if (filteredRows.length === 0) return [];
 
-    const maxP = Math.max(...filteredRows.map((r) => parseFloat(r[currentMetric]) || 0), 1);
+    const maxP = Math.max(...filteredRows.map((r) => parseNumeric(r[currentMetric]) ?? 0), 1);
 
     const normPrimaryVol = Math.min((kpis.totalPrimary / (maxP * filteredRows.length)) * 100, 100);
     const normMargin = Math.min(kpis.marginRate * 2.5, 100);
@@ -704,11 +705,11 @@ export default function DashboardsPage() {
       let valA: string | number = 0;
       let valB: string | number = 0;
       if (tableSortCol === 'primary') {
-        valA = parseFloat(a[currentMetric]) || 0;
-        valB = parseFloat(b[currentMetric]) || 0;
+        valA = parseNumeric(a[currentMetric]) ?? 0;
+        valB = parseNumeric(b[currentMetric]) ?? 0;
       } else if (tableSortCol === 'secondary') {
-        valA = parseFloat(a[currentSecondaryMetric]) || 0;
-        valB = parseFloat(b[currentSecondaryMetric]) || 0;
+        valA = parseNumeric(a[currentSecondaryMetric]) ?? 0;
+        valB = parseNumeric(b[currentSecondaryMetric]) ?? 0;
       } else if (tableSortCol === 'dim') {
         valA = a[currentDim] || '';
         valB = b[currentDim] || '';
@@ -2512,9 +2513,9 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
             <tbody className="divide-y divide-[var(--lm-border-default)]/60 font-medium">
               {pagedRows.map((row, idx) => {
                 const globalIdx = (tablePage - 1) * pageSize + idx;
-                const v1 = parseFloat(row[currentMetric]) || 0;
-                const v2 = parseFloat(row[currentSecondaryMetric]) || 0;
-                const maxVal = Math.max(...filteredRows.map((r) => parseFloat(r[currentMetric]) || 0), 1);
+                const v1 = parseNumeric(row[currentMetric]) ?? 0;
+                const v2 = parseNumeric(row[currentSecondaryMetric]) ?? 0;
+                const maxVal = Math.max(...filteredRows.map((r) => parseNumeric(r[currentMetric]) ?? 0), 1);
                 const barWidth = Math.min((v1 / maxVal) * 100, 100);
 
                 return (

@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { GlobeIcon, MaximizeIcon } from '@/components/icons';
 import { REAL_WORLD_COUNTRIES, WorldCountryEntity } from './worldCountriesData';
+import { parseNumeric } from '@/lib/csvParser';
 
 export type GeographicGranularity = 'world' | 'us-states' | 'india-states';
 
@@ -433,12 +434,10 @@ export function GeographicIntelligenceMap({
     const targetCols = columns.length > 0 ? columns.map((c) => c.name) : Object.keys(rows[0] || {});
 
     rows.forEach((r) => {
-      let metricNum = 0;
+      let metricNum = 1;
       if (currentMetric && r[currentMetric] !== undefined) {
-        const cleaned = String(r[currentMetric]).replace(/[^0-9.-]/g, '');
-        metricNum = parseFloat(cleaned) || 1;
-      } else {
-        metricNum = 1;
+        const parsed = parseNumeric(r[currentMetric]);
+        metricNum = parsed !== null && !isNaN(parsed) ? parsed : 1;
       }
 
       currentRegistry.entities.forEach((ent) => {

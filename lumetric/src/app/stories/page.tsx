@@ -18,6 +18,7 @@ import {
   XIcon,
   RefreshCwIcon,
 } from '@/components/icons';
+import { parseNumeric } from '@/lib/csvParser';
 
 type SlideTheme = 'midnight' | 'emerald' | 'ivory';
 type AudienceType = 'Executive' | 'Business' | 'Technical';
@@ -81,6 +82,20 @@ export default function StoriesPage() {
       };
     }
 
+    const cols = Object.keys(rows[0] || {});
+    const metricCol =
+      cols.find((c) =>
+        /^(sales_amount|total_sales|sales|revenue|arr|mrr|amount|price|spend|cost|balance|total)$/i.test(c)
+      ) ||
+      cols.find((c) => /sales|revenue|arr|amount|price|cost/i.test(c)) ||
+      cols[1] ||
+      '';
+    const npsCol = cols.find((c) => /nps|score|rating|satisfaction/i.test(c)) || '';
+    const churnCol = cols.find((c) => /churn|risk|prob|attrition|status/i.test(c)) || '';
+    const regCol = cols.find((c) => /region|country|area|location|geo|territory|city/i.test(c)) || cols[0] || '';
+    const tierCol = cols.find((c) => c !== regCol && /tier|plan|segment|channel|type|category/i.test(c)) || cols[1] || '';
+    const nameCol = cols.find((c) => /name|customer|account|client/i.test(c)) || cols[0] || '';
+
     // Sum ARR or Revenue
     let totalARR = 0;
     let npsSum = 0;
@@ -93,37 +108,42 @@ export default function StoriesPage() {
     const atRiskList: { name: string; arr: number; churn: number }[] = [];
 
     rows.forEach((r) => {
-      // ARR
-      const arr = parseFloat(r.ARR_USD || r.ARR || r.Revenue || r.Amount || '0') || 0;
+      // Metric
+      const arr = (metricCol ? parseNumeric(r[metricCol]) : null) ?? 0;
       totalARR += arr;
 
       // NPS
-      const nps = parseFloat(r.NPS_Score || r.NPS || r.Score || '0');
-      if (!isNaN(nps) && nps > 0) {
-        npsSum += nps;
-        npsCount++;
+      if (npsCol) {
+        const nps = parseNumeric(r[npsCol]);
+        if (nps !== null && !isNaN(nps)) {
+          npsSum += nps;
+          npsCount++;
+        }
       }
 
       // Churn
-      const churn = parseFloat(r.Churn_Probability || r.Churn || r.Risk || '0');
-      if (!isNaN(churn) && churn > 0) {
-        churnSum += churn;
-        churnCount++;
-        if (churn > 0.2) {
-          atRiskList.push({
-            name: r.Customer_Name || r.Account_ID || r.Name || 'Account',
-            arr,
-            churn,
-          });
+      if (churnCol) {
+        let churn = parseNumeric(r[churnCol]);
+        if (churn !== null && !isNaN(churn)) {
+          if (churn > 1) churn = churn / 100;
+          churnSum += churn;
+          churnCount++;
+          if (churn > 0.2) {
+            atRiskList.push({
+              name: String(r[nameCol] || 'Account'),
+              arr,
+              churn,
+            });
+          }
         }
       }
 
       // Region
-      const region = r.Region || r.Geography || r.Location || 'North America';
+      const region = String(r[regCol] || 'Global');
       regionMap[region] = (regionMap[region] || 0) + (arr > 0 ? arr : 1);
 
       // Tier
-      const tier = r.Plan_Tier || r.Tier || r.Plan || 'Enterprise';
+      const tier = String(r[tierCol] || 'Standard');
       if (!tierMap[tier]) tierMap[tier] = { count: 0, arr: 0 };
       tierMap[tier].count++;
       tierMap[tier].arr += arr;
@@ -131,7 +151,7 @@ export default function StoriesPage() {
 
     const avgNPS = npsCount > 0 ? (npsSum / npsCount).toFixed(1) : '84.2';
     const avgChurnPct = churnCount > 0 ? ((churnSum / churnCount) * 100).toFixed(1) : '14.8';
-    const fallbackARR = totalARR > 0 ? totalARR : 2450000;
+    const fallbackARR = totalARR > 0 ? totalARR : 0;
 
     // Region percentages
     const regionTotal = Object.values(regionMap).reduce((a, b) => a + b, 0) || 1;

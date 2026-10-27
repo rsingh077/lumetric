@@ -118,6 +118,50 @@ export function healDatasetRows(rows: Array<Record<string, any>>): Array<Record<
 }
 
 /**
+ * Universal numeric parsing utility for business and enterprise datasets.
+ * Robustly parses numbers containing:
+ * - Currency symbols: $, €, £, ¥, ₹
+ * - Thousands separators: 1,000,000.50 -> 1000000.50
+ * - Accounting negatives: (1,234.50) -> -1234.50
+ * - Percentages: 15% -> 0.15
+ * - Standard missing value placeholders: 'NA', 'N/A', 'null', 'None', '-', '--' -> null
+ */
+export function parseNumeric(raw: any): number | null {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === 'number') return isNaN(raw) ? null : raw;
+  const str = String(raw).trim();
+  if (str === '' || /^(na|n\/a|null|nan|none|-|--)$/i.test(str)) return null;
+
+  // Accounting negative (1,234.50) -> -1234.50
+  const isParenNegative = /^\(.*\)$/.test(str);
+  // Percentage check
+  const isPercent = str.endsWith('%');
+
+  // Strip currency symbols, whitespace, quotes, commas, parentheses
+  let cleaned = str.replace(/[\$,€£¥₹\s\(\)"]/g, '');
+  if (isPercent) {
+    cleaned = cleaned.replace(/%/g, '');
+  }
+
+  const parsed = parseFloat(cleaned);
+  if (isNaN(parsed)) return null;
+
+  let finalVal = isParenNegative ? -Math.abs(parsed) : parsed;
+  if (isPercent) {
+    finalVal = finalVal / 100;
+  }
+  return finalVal;
+}
+
+/**
+ * Escapes quotes inside string literals for safe Excel/OpenXML formula injection.
+ * Prevents formula injection errors when category/dimension values contain quotes (e.g. 15" Monitor).
+ */
+export function escapeFormulaString(str: string): string {
+  return String(str ?? '').replace(/"/g, '""');
+}
+
+/**
  * Genuinely identifies numeric columns by sampling row values,
  * guaranteeing categorical strings like "Retail", "Online", "US" are never treated as metrics.
  */
@@ -129,14 +173,9 @@ export function findGenuinelyNumericCols(rows: Array<Record<string, any>>, colum
     let numCount = 0;
     sample.forEach((r) => {
       const v = r[colName];
-      if (typeof v === 'number' && !isNaN(v)) {
+      const parsed = parseNumeric(v);
+      if (parsed !== null && !isNaN(parsed)) {
         numCount++;
-      } else if (v !== null && v !== undefined && v !== '') {
-        const cleanStr = String(v).replace(/[\$,]/g, '').trim();
-        const parsed = parseFloat(cleanStr);
-        if (!isNaN(parsed) && /^-?\d+(\.\d+)?$/.test(cleanStr)) {
-          numCount++;
-        }
       }
     });
     return numCount >= sample.length * 0.45;

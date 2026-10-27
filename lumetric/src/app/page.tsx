@@ -21,7 +21,7 @@ import {
 
 import { DatasetProfile, DocumentFileProfile } from '@/types';
 import { AIStudioSection } from '@/components/ai/AIStudioSection';
-import { parseCSVStrict, healDatasetRows } from '@/lib/csvParser';
+import { parseCSVStrict, healDatasetRows, parseNumeric } from '@/lib/csvParser';
 
 // Sub-page imports for routing between application tabs
 import ProjectsPage from './projects/page';
@@ -131,20 +131,29 @@ function HomeView() {
           const sample = rows.slice(0, 100).map((r) => r[header] || '');
           let inferredType: 'string' | 'integer' | 'float' | 'date' = 'string';
 
-          const isAllNumeric = sample.every((v) => v === '' || !isNaN(Number(v)));
-          if (isAllNumeric && sample.some((v) => v !== '')) {
-            const hasDecimals = sample.some((v) => v.includes('.'));
+          const validNums = sample
+            .map((v) => parseNumeric(v))
+            .filter((v): v is number => v !== null && !isNaN(v));
+
+          if (validNums.length >= sample.filter((v) => v !== '').length * 0.6 && validNums.length > 0) {
+            const hasDecimals = validNums.some((v) => v % 1 !== 0);
             inferredType = hasDecimals ? 'float' : 'integer';
+          } else if (sample.some((v) => /^\d{4}-\d{2}-\d{2}/.test(v))) {
+            inferredType = 'date';
           }
 
           const semanticRole: 'dimension' | 'metric' | 'identifier' =
-            inferredType === 'integer' || inferredType === 'float' ? 'metric' : 'dimension';
+            /id|key|code|hash|uuid/i.test(header)
+              ? 'identifier'
+              : inferredType === 'integer' || inferredType === 'float'
+              ? 'metric'
+              : 'dimension';
 
           return {
             name: header,
             inferredType,
             totalCount: rows.length,
-            nullCount: rows.filter((r) => !r[header]).length,
+            nullCount: rows.filter((r) => !r[header] || r[header] === '' || /^(na|n\/a|null|nan)$/i.test(r[header])).length,
             uniqueCount: new Set(rows.map((r) => r[header])).size,
             sampleValues: sample.slice(0, 5),
             semanticRole,
@@ -251,7 +260,7 @@ function HomeView() {
     let totalARR = 0;
     if (financialKey) {
       for (const r of rows) {
-        const val = parseFloat(r[financialKey] || '0') || 0;
+        const val = parseNumeric(r[financialKey]) ?? 0;
         totalARR += val;
         financialValues.push(val);
       }
@@ -259,14 +268,14 @@ function HomeView() {
 
     const avgNPS =
       npsKey && rows.length > 0
-        ? Math.round(rows.reduce((acc, r) => acc + (parseFloat(r[npsKey] || '0') || 0), 0) / rows.length)
+        ? Math.round(rows.reduce((acc, r) => acc + (parseNumeric(r[npsKey]) ?? 0), 0) / rows.length)
         : 0;
 
     const avgChurn =
       churnKey && rows.length > 0
         ? (
             (rows.reduce((acc, r) => {
-              let val = parseFloat(r[churnKey] || '0');
+              let val = parseNumeric(r[churnKey]) ?? 0;
               if (val > 1) val = val / 100;
               return acc + val;
             }, 0) /

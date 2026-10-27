@@ -2,6 +2,9 @@
 // Verified algorithms: Pearson correlation, Welch's t-test, IQR/Z-score outlier detection,
 // OLS linear regression, and exponential trend forecasting.
 
+import { parseNumeric } from './csvParser';
+export { parseNumeric };
+
 export interface CorrelationItem {
   feature: string;
   r: number;
@@ -20,6 +23,8 @@ export interface TwoSampleTestResult {
   diff: number;
   pctDiff: number;
   tStat: number;
+  df: number;
+  pValue: number;
   cohensD: number;
   isSignificant: boolean;
   verdict: string;
@@ -58,6 +63,8 @@ export interface RegressionResult {
   intercept: number;
   r: number;
   rSquared: number;
+  se: number;
+  fStat: number;
   equation: string;
   interpretation: string;
   points: { x: number; y: number; yPred: number; residual: number }[];
@@ -88,28 +95,6 @@ export interface GroupAggregateRow {
   mean: number;
   min: number;
   max: number;
-}
-
-// Robust Numerical Parser (handles currencies, commas, accounting parentheses, percentages)
-export function parseNumeric(raw: any): number | null {
-  if (raw === null || raw === undefined) return null;
-  if (typeof raw === 'number') return isNaN(raw) ? null : raw;
-  const str = String(raw).trim();
-  if (str === '') return null;
-  let cleanStr = str;
-  let isNegative = false;
-  if (cleanStr.startsWith('(') && cleanStr.endsWith(')')) {
-    isNegative = true;
-    cleanStr = cleanStr.slice(1, -1);
-  }
-  cleanStr = cleanStr.replace(/[\$,\s€£¥]/g, '');
-  if (cleanStr.endsWith('%')) {
-    const num = parseFloat(cleanStr.slice(0, -1));
-    return isNaN(num) ? null : (isNegative ? -num : num) / 100;
-  }
-  const parsed = parseFloat(cleanStr);
-  if (isNaN(parsed)) return null;
-  return isNegative ? -Math.abs(parsed) : parsed;
 }
 
 // 1. Pearson Correlation Matrix & Key Drivers
@@ -176,6 +161,24 @@ export function calculateCorrelations(
   return results.sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
 }
 
+// Standard Normal error function approximation for p-value calculation (Abramowitz & Stegun 7.1.26)
+function studentT_pValue(t: number, df: number): number {
+  const x = Math.abs(t);
+  if (df <= 0 || isNaN(x)) return 1.0;
+  // Cornish-Fisher expansion mapping Student-t to standard normal quantile
+  const z = x * (1 - 1 / (4 * df)) / Math.sqrt(1 + (x * x) / (2 * df));
+  const t_norm = 1 / (1 + 0.2316419 * z);
+  const d = 0.3989422804014337 * Math.exp(-0.5 * z * z);
+  const pOneTail =
+    d *
+    t_norm *
+    (0.31938153 +
+      t_norm *
+        (-0.356563782 +
+          t_norm * (1.781477937 + t_norm * (-1.821255978 + t_norm * 1.330274429))));
+  return Math.min(1.0, Math.max(0.0, 2 * pOneTail));
+}
+
 // 2. Two-Sample Cohort Comparison / Hypothesis Test (Welch's t-test)
 export function calculateTwoSampleTest(
   rows: Record<string, string>[],
@@ -206,8 +209,16 @@ export function calculateTwoSampleTest(
   const varA = valsA.reduce((acc, v) => acc + Math.pow(v - meanA, 2), 0) / (countA - 1);
   const varB = valsB.reduce((acc, v) => acc + Math.pow(v - meanB, 2), 0) / (countB - 1);
 
-  const seDiff = Math.sqrt(varA / countA + varB / countB);
+  const seA = varA / countA;
+  const seB = varB / countB;
+  const seDiff = Math.sqrt(seA + seB);
   const tStat = seDiff > 0 ? (meanA - meanB) / seDiff : 0;
+
+  // Exact Welch-Satterthwaite degrees of freedom
+  const denomDF = (Math.pow(seA, 2) / (countA - 1)) + (Math.pow(seB, 2) / (countB - 1));
+  const df = denomDF > 0 ? Math.pow(seA + seB, 2) / denomDF : countA + countB - 2;
+
+  const pValue = studentT_pValue(tStat, df);
 
   const pooledSD = Math.sqrt(((countA - 1) * varA + (countB - 1) * varB) / (countA + countB - 2));
   const cohensD = pooledSD > 0 ? Math.abs(meanA - meanB) / pooledSD : 0;
@@ -215,11 +226,10 @@ export function calculateTwoSampleTest(
   const diff = meanA - meanB;
   const pctDiff = meanB !== 0 ? ((meanA - meanB) / Math.abs(meanB)) * 100 : 0;
 
-  // Approximate p < 0.05 significance for df > 10 is |t| > 2.05
-  const isSignificant = Math.abs(tStat) >= 2.05;
+  const isSignificant = pValue < 0.05;
   const verdict = isSignificant
-    ? `Statistically significant difference detected (t = ${tStat.toFixed(2)}, |d| = ${cohensD.toFixed(2)}).`
-    : `Difference is not statistically distinguishable from random variation (t = ${tStat.toFixed(2)}).`;
+    ? `Statistically significant difference (t = ${tStat.toFixed(2)}, df = ${df.toFixed(1)}, p = ${pValue < 0.001 ? '<0.001' : pValue.toFixed(3)}, |d| = ${cohensD.toFixed(2)}).`
+    : `Difference is not statistically significant from random noise (t = ${tStat.toFixed(2)}, p = ${pValue.toFixed(3)}).`;
 
   return {
     groupA,
@@ -231,6 +241,8 @@ export function calculateTwoSampleTest(
     diff: parseFloat(diff.toFixed(2)),
     pctDiff: parseFloat(pctDiff.toFixed(1)),
     tStat: parseFloat(tStat.toFixed(2)),
+    df: parseFloat(df.toFixed(1)),
+    pValue: parseFloat(pValue.toFixed(4)),
     cohensD: parseFloat(cohensD.toFixed(2)),
     isSignificant,
     verdict,
@@ -273,20 +285,31 @@ export function detectAnomalies(
   const median = getPercentile(0.5);
   const q3 = getPercentile(0.75);
   const iqr = q3 - q1;
-  const lowerBound = q1 - 1.5 * iqr;
-  const upperBound = q3 + 1.5 * iqr;
 
   const sum = sortedVals.reduce((a, b) => a + b, 0);
   const mean = sum / n;
   const variance = sortedVals.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / n;
   const stdDev = Math.sqrt(variance);
 
+  // Robust bounds: if IQR is 0 (constant or heavily clustered), fallback to 2.5 sigma
+  let lowerBound = q1 - 1.5 * iqr;
+  let upperBound = q3 + 1.5 * iqr;
+  if (iqr === 0) {
+    if (stdDev > 0) {
+      lowerBound = mean - 2.5 * stdDev;
+      upperBound = mean + 2.5 * stdDev;
+    } else {
+      lowerBound = mean;
+      upperBound = mean;
+    }
+  }
+
   const anomalies: AnomalyItem[] = [];
 
   entries.forEach((e) => {
     if (e.val < lowerBound) {
       const deviation = Math.abs(e.val - lowerBound);
-      const isSevere = e.val < q1 - 3 * iqr || (stdDev > 0 && (mean - e.val) / stdDev > 3);
+      const isSevere = (iqr > 0 && e.val < q1 - 3 * iqr) || (stdDev > 0 && (mean - e.val) / stdDev > 3);
       anomalies.push({
         rowIndex: e.idx,
         recordId: e.id,
@@ -297,7 +320,7 @@ export function detectAnomalies(
       });
     } else if (e.val > upperBound) {
       const deviation = Math.abs(e.val - upperBound);
-      const isSevere = e.val > q3 + 3 * iqr || (stdDev > 0 && (e.val - mean) / stdDev > 3);
+      const isSevere = (iqr > 0 && e.val > q3 + 3 * iqr) || (stdDev > 0 && (e.val - mean) / stdDev > 3);
       anomalies.push({
         rowIndex: e.idx,
         recordId: e.id,
@@ -369,19 +392,28 @@ export function calculateLinearRegression(
   const r = denomY > 0 ? numer / Math.sqrt(denom * denomY) : 0;
   const rSquared = parseFloat((r * r).toFixed(4));
 
+  let ssRes = 0;
   const points = xVals.map((x, i) => {
     const yPred = slope * x + intercept;
+    const residual = yVals[i] - yPred;
+    ssRes += residual * residual;
     return {
       x,
       y: yVals[i],
       yPred: parseFloat(yPred.toFixed(2)),
-      residual: parseFloat((yVals[i] - yPred).toFixed(2)),
+      residual: parseFloat(residual.toFixed(2)),
     };
   });
 
+  const dfRes = Math.max(1, n - 2);
+  const se = Math.sqrt(ssRes / dfRes);
+  const ssTot = denomY;
+  const ssReg = Math.max(0, ssTot - ssRes);
+  const fStat = ssRes > 0 ? (ssReg / 1) / (ssRes / dfRes) : 0;
+
   const sign = intercept >= 0 ? '+' : '-';
   const equation = `${yCol} = ${slope.toFixed(3)} × ${xCol} ${sign} ${Math.abs(intercept).toFixed(2)}`;
-  const interpretation = `Every 1-unit increase in ${xCol} is associated with a ${slope >= 0 ? '+' : ''}${slope.toFixed(2)} change in ${yCol} (explains ${(rSquared * 100).toFixed(1)}% of variance).`;
+  const interpretation = `Every 1-unit increase in ${xCol} is associated with a ${slope >= 0 ? '+' : ''}${slope.toFixed(2)} change in ${yCol} (R² = ${(rSquared * 100).toFixed(1)}%, Se = ${se.toFixed(2)}).`;
 
   return {
     xCol,
@@ -391,6 +423,8 @@ export function calculateLinearRegression(
     intercept: parseFloat(intercept.toFixed(2)),
     r: parseFloat(r.toFixed(3)),
     rSquared,
+    se: parseFloat(se.toFixed(2)),
+    fStat: parseFloat(fStat.toFixed(2)),
     equation,
     interpretation,
     points: points.slice(0, 30),

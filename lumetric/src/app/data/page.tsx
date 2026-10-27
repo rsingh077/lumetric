@@ -17,7 +17,7 @@ import {
   DatasetRequirements,
   QualityCheckResult,
 } from '@/types';
-import { parseCSVStrict, healDatasetRows } from '@/lib/csvParser';
+import { parseCSVStrict, healDatasetRows, parseNumeric } from '@/lib/csvParser';
 
 
 
@@ -160,12 +160,18 @@ export default function DataWorkspacePage() {
           initialRoles[h] = 'identifier';
         } else if (lower.includes('date') || lower.includes('time')) {
           initialRoles[h] = 'temporal';
-        } else if (lower.includes('arr') || lower.includes('cost') || lower.includes('revenue') || lower.includes('amount') || lower.includes('score')) {
+        } else if (/arr|cost|revenue|amount|score|price|spend|sales|margin|profit|balance|total|fee|discount/i.test(lower)) {
           initialRoles[h] = 'metric';
         } else if (lower.includes('churn') || lower.includes('target') || lower.includes('outcome')) {
           initialRoles[h] = 'target';
         } else {
-          initialRoles[h] = 'dimension';
+          const sample = rows.slice(0, 30).map((r) => r[h] || '');
+          const numHits = sample.filter((v) => parseNumeric(v) !== null).length;
+          if (numHits >= sample.length * 0.7 && sample.length > 0) {
+            initialRoles[h] = 'metric';
+          } else {
+            initialRoles[h] = 'dimension';
+          }
         }
       });
 
@@ -246,8 +252,10 @@ export default function DataWorkspacePage() {
       const uniqueCount = new Set(nonNulls).size;
       const sampleValues = Array.from(new Set(nonNulls)).slice(0, 5);
 
-      const numericValues = nonNulls.map((v) => Number(v)).filter((n) => !isNaN(n));
-      const isNumeric = numericValues.length === nonNulls.length && nonNulls.length > 0;
+      const numericValues = nonNulls
+        .map((v) => parseNumeric(v))
+        .filter((n): n is number => n !== null && !isNaN(n));
+      const isNumeric = numericValues.length >= nonNulls.length * 0.7 && nonNulls.length > 0;
       const isDate = nonNulls.every((v) => !isNaN(Date.parse(v)) && (v.includes('-') || v.includes('/')));
       const isBoolean = nonNulls.every((v) => ['true', 'false', '0', '1'].includes(v.toLowerCase()));
 

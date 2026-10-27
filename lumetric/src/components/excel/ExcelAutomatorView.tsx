@@ -8,6 +8,8 @@ import {
   healDatasetRows,
   findGenuinelyNumericCols,
   resolvePrimaryMetricCol,
+  parseNumeric,
+  escapeFormulaString,
 } from '@/lib/csvParser';
 import {
   FileSpreadsheetIcon,
@@ -747,8 +749,12 @@ export function ExcelAutomatorView() {
             clean[k] = '';
           } else {
             const strVal = String(v).trim();
-            const num = parseFloat(strVal.replace(/[\$,]/g, ''));
-            if (!isNaN(num) && /^-?\d+(\.\d+)?$/.test(strVal.replace(/[\$,]/g, ''))) {
+            const num = parseNumeric(strVal);
+            if (
+              num !== null &&
+              !isNaN(num) &&
+              !(/^(id|account_id|customer_id|order_id|trans_id|key|code)$/i.test(k) && /^[a-zA-Z]/.test(strVal))
+            ) {
               clean[k] = num;
             } else {
               clean[k] = strVal;
@@ -930,7 +936,7 @@ export function ExcelAutomatorView() {
 
           const cCount = wsDash.getCell(`C${curRow}`);
           cCount.value = {
-            formula: `COUNTIF(DataLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${regName}")`,
+            formula: `COUNTIF(DataLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${escapeFormulaString(regName)}")`,
             result: stats.count,
           };
           cCount.font = { name: 'Segoe UI', size: 10 };
@@ -940,7 +946,7 @@ export function ExcelAutomatorView() {
 
           const cArr = wsDash.getCell(`D${curRow}`);
           cArr.value = {
-            formula: `SUMIF(DataLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${regName}", DataLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger})`,
+            formula: `SUMIF(DataLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${escapeFormulaString(regName)}", DataLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger})`,
             result: stats.arr,
           };
           cArr.font = { name: 'Segoe UI', size: 10, bold: true };
@@ -992,7 +998,7 @@ export function ExcelAutomatorView() {
         wsDash.getCell(`D${totRow}`).alignment = { horizontal: 'right' };
         wsDash.getCell(`D${totRow}`).border = borderThin;
 
-        wsDash.getCell(`E${totRow}`).value = { formula: `AVERAGE(E11:E${totRow - 1})`, result: datasetStats.avgArr };
+        wsDash.getCell(`E${totRow}`).value = { formula: `D${totRow}/C${totRow}`, result: datasetStats.avgArr };
         wsDash.getCell(`E${totRow}`).font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: palette.headerFont } };
         wsDash.getCell(`E${totRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
         wsDash.getCell(`E${totRow}`).numFmt = '$#,##0';
@@ -1039,14 +1045,15 @@ export function ExcelAutomatorView() {
           tierGroups[tier].npsSum += nps;
         });
 
+        const pTotRow = 3 + Object.keys(tierGroups).length;
         let pRow = 3;
         Object.entries(tierGroups).forEach(([tierName, tStat]) => {
           wsPivot.addRow([
             tierName,
-            { formula: `COUNTIF(DataLedger!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${tierName}")`, result: tStat.count },
-            { formula: `SUMIF(DataLedger!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${tierName}", DataLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger})`, result: tStat.arr },
+            { formula: `COUNTIF(DataLedger!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${escapeFormulaString(tierName)}")`, result: tStat.count },
+            { formula: `SUMIF(DataLedger!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${escapeFormulaString(tierName)}", DataLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger})`, result: tStat.arr },
             { formula: `C${pRow}/B${pRow}`, result: tStat.count > 0 ? tStat.arr / tStat.count : 0 },
-            { formula: `C${pRow}/Dashboard!$D$${11 + Object.keys(regionGroups).length}`, result: datasetStats.totalArr > 0 ? tStat.arr / datasetStats.totalArr : 0 },
+            { formula: `C${pRow}/$C$${pTotRow}`, result: datasetStats.totalArr > 0 ? tStat.arr / datasetStats.totalArr : 0 },
           ]);
           const r = wsPivot.getRow(pRow);
           r.getCell(2).numFmt = '#,##0';
@@ -1058,12 +1065,11 @@ export function ExcelAutomatorView() {
         });
 
         // PivotSummary Grand Total Row
-        const pTotRow = pRow;
         wsPivot.addRow([
           'GRAND TOTAL',
           { formula: `SUM(B3:B${pTotRow - 1})`, result: datasetStats.rowCount },
           { formula: `SUM(C3:C${pTotRow - 1})`, result: datasetStats.totalArr },
-          { formula: `AVERAGE(D3:D${pTotRow - 1})`, result: datasetStats.avgArr },
+          { formula: `C${pTotRow}/B${pTotRow}`, result: datasetStats.avgArr },
           { formula: `SUM(E3:E${pTotRow - 1})`, result: 1.0 },
         ]);
         const pTotR = wsPivot.getRow(pTotRow);
@@ -1390,7 +1396,7 @@ export function ExcelAutomatorView() {
           });
         }
         const marginRowNum = wsFin.rowCount + 1;
-        marginCells.push({ formula: `AVERAGE(C${marginRowNum}:N${marginRowNum})`, result: 0.43 });
+        marginCells.push({ formula: `O${ebitdaRowNum}/O${revRow}`, result: 0.43 });
         const marginR = wsFin.addRow(marginCells);
         marginR.height = 20;
         marginR.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true };
@@ -1529,28 +1535,42 @@ export function ExcelAutomatorView() {
           c.border = borderThin;
         });
 
-        const bvaData = [
-          ['Subscription Revenue', datasetStats.totalArr * 0.95, datasetStats.totalArr],
-          ['Enterprise Expansion ARR', datasetStats.totalArr * 0.2, datasetStats.totalArr * 0.24],
-          ['Hosting Infrastructure', datasetStats.totalArr * 0.1, datasetStats.totalArr * 0.085],
-          ['R&D Engineering', datasetStats.totalArr * 0.25, datasetStats.totalArr * 0.23],
-          ['Sales & Marketing', datasetStats.totalArr * 0.3, datasetStats.totalArr * 0.32],
+        const bvaData: [string, number, number, 'revenue' | 'expense'][] = [
+          ['Subscription Revenue', datasetStats.totalArr * 0.95, datasetStats.totalArr, 'revenue'],
+          ['Enterprise Expansion ARR', datasetStats.totalArr * 0.2, datasetStats.totalArr * 0.24, 'revenue'],
+          ['Hosting Infrastructure', datasetStats.totalArr * 0.1, datasetStats.totalArr * 0.085, 'expense'],
+          ['R&D Engineering', datasetStats.totalArr * 0.25, datasetStats.totalArr * 0.23, 'expense'],
+          ['Sales & Marketing', datasetStats.totalArr * 0.3, datasetStats.totalArr * 0.32, 'expense'],
         ];
 
-        bvaData.forEach(([item, budget, actual], idx) => {
+        bvaData.forEach(([item, budget, actual, type], idx) => {
           const rowNum = idx + 3;
           const numBudget = Number(budget);
           const numActual = Number(actual);
-          const varAmt = numActual - numBudget;
-          const varPct = numBudget > 0 ? varAmt / numBudget : 0;
-          const isFavorable = varAmt >= 0;
+
+          let varAmt = 0;
+          let varPct = 0;
+          let isFavorable = true;
+          let varFormula = '';
+
+          if (type === 'revenue') {
+            varAmt = numActual - numBudget;
+            varPct = numBudget > 0 ? varAmt / numBudget : 0;
+            isFavorable = varAmt >= 0;
+            varFormula = `C${rowNum}-B${rowNum}`;
+          } else {
+            varAmt = numBudget - numActual;
+            varPct = numBudget > 0 ? (numActual - numBudget) / numBudget : 0;
+            isFavorable = numActual <= numBudget;
+            varFormula = `B${rowNum}-C${rowNum}`;
+          }
 
           const r = wsBvA.addRow([
             item,
             numBudget,
             numActual,
-            { formula: `C${rowNum}-B${rowNum}`, result: varAmt },
-            { formula: `D${rowNum}/B${rowNum}`, result: varPct },
+            { formula: varFormula, result: varAmt },
+            { formula: type === 'revenue' ? `D${rowNum}/B${rowNum}` : `(C${rowNum}-B${rowNum})/B${rowNum}`, result: varPct },
             isFavorable ? 'FAVORABLE' : 'UNFAVORABLE',
           ]);
           r.height = 20;
@@ -1637,7 +1657,7 @@ export function ExcelAutomatorView() {
             rowSumCalc += sumVal;
 
             rowVals.push({
-              formula: `SUMIFS(SourceData!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, SourceData!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${reg}", SourceData!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${tier}")`,
+              formula: `SUMIFS(SourceData!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, SourceData!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${escapeFormulaString(reg)}", SourceData!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${escapeFormulaString(tier)}")`,
               result: sumVal,
             });
           });
@@ -1839,15 +1859,15 @@ export function ExcelAutomatorView() {
               result: ifResult,
             },
             {
-              formula: `SUMIFS(MasterLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, MasterLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${regVal}")`,
+              formula: `SUMIFS(MasterLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, MasterLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${escapeFormulaString(regVal)}")`,
               result: actualRegSum,
             },
             {
-              formula: `COUNTIFS(MasterLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${regVal}")`,
+              formula: `COUNTIFS(MasterLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${escapeFormulaString(regVal)}")`,
               result: actualRegCount,
             },
             {
-              formula: `AVERAGEIFS(MasterLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, MasterLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${regVal}")`,
+              formula: `IFERROR(AVERAGEIFS(MasterLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, MasterLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${escapeFormulaString(regVal)}"), 0)`,
               result: actualRegAvg,
             },
             `Dynamic XLOOKUP, nested IF risk rules, SUMIFS, COUNTIFS, and AVERAGEIFS aggregation`,
@@ -2181,7 +2201,7 @@ export function ExcelAutomatorView() {
               operator: 'equal',
               formulae: ['"HIGH RISK"'],
               style: {
-                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEE2E2' } },
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEE2E2' }, fgColor: { argb: 'FFFEE2E2' } },
                 font: { color: { argb: 'FF991B1B' }, bold: true },
               },
             },
@@ -2191,7 +2211,7 @@ export function ExcelAutomatorView() {
               operator: 'equal',
               formulae: ['"MEDIUM RISK"'],
               style: {
-                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEF3C7' } },
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEF3C7' }, fgColor: { argb: 'FFFEF3C7' } },
                 font: { color: { argb: 'FF92400E' }, bold: true },
               },
             },
@@ -2201,7 +2221,7 @@ export function ExcelAutomatorView() {
               operator: 'equal',
               formulae: ['"LOW RISK"'],
               style: {
-                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFD1FAE5' } },
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFD1FAE5' }, fgColor: { argb: 'FFD1FAE5' } },
                 font: { color: { argb: 'FF065F46' }, bold: true },
               },
             },
@@ -2211,7 +2231,7 @@ export function ExcelAutomatorView() {
               operator: 'equal',
               formulae: ['"CRITICAL OUTLIER"'],
               style: {
-                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEE2E2' } },
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEE2E2' }, fgColor: { argb: 'FFFEE2E2' } },
                 font: { color: { argb: 'FF991B1B' }, bold: true },
               },
             },
@@ -2221,7 +2241,7 @@ export function ExcelAutomatorView() {
               operator: 'equal',
               formulae: ['"WATCHLIST ANOMALY"'],
               style: {
-                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEF3C7' } },
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEF3C7' }, fgColor: { argb: 'FFFEF3C7' } },
                 font: { color: { argb: 'FF92400E' }, bold: true },
               },
             },
@@ -2231,7 +2251,7 @@ export function ExcelAutomatorView() {
               operator: 'equal',
               formulae: ['"Delivered"'],
               style: {
-                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFD1FAE5' } },
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFD1FAE5' }, fgColor: { argb: 'FFD1FAE5' } },
                 font: { color: { argb: 'FF065F46' }, bold: true },
               },
             },
@@ -2241,7 +2261,7 @@ export function ExcelAutomatorView() {
               operator: 'equal',
               formulae: ['"Cancelled"'],
               style: {
-                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEE2E2' } },
+                fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFEE2E2' }, fgColor: { argb: 'FFFEE2E2' } },
                 font: { color: { argb: 'FF991B1B' }, bold: true },
               },
             },
@@ -2694,8 +2714,9 @@ export function ExcelAutomatorView() {
           const nums: number[] = [];
           sanitizedRows.forEach((r) => {
             const v = r[colKey];
-            if (typeof v === 'number' && !isNaN(v)) {
-              nums.push(v);
+            const num = parseNumeric(v);
+            if (num !== null && !isNaN(num)) {
+              nums.push(num);
             }
           });
           nums.sort((a, b) => a - b);
@@ -2711,7 +2732,13 @@ export function ExcelAutomatorView() {
           const cleanedRow: Record<string, any> = {};
           cols.forEach((colKey) => {
             const rawVal = row[colKey];
-            if (rawVal === '' || rawVal === null || rawVal === undefined) {
+            const isMissing =
+              rawVal === '' ||
+              rawVal === null ||
+              rawVal === undefined ||
+              /^(na|n\/a|null|nan|none)$/i.test(String(rawVal).trim());
+
+            if (isMissing) {
               if (numericCols.includes(colKey)) {
                 const med = columnMedians[colKey] ?? 0;
                 cleanedRow[colKey] = med;

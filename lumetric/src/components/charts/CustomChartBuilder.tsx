@@ -13,6 +13,7 @@ import {
   TableIcon,
   XIcon,
 } from '@/components/icons';
+import { parseNumeric } from '@/lib/csvParser';
 
 export type AggregationType = 'sum' | 'avg' | 'count' | 'max' | 'min';
 export type ChartType = 'vertical_bar' | 'horizontal_bar' | 'line' | 'donut' | 'scatter';
@@ -44,12 +45,12 @@ export function CustomChartBuilder() {
   const numericColumns = useMemo(() => {
     if (rows.length === 0) return [];
     return columns.filter((col) => {
-      const sample = rows.slice(0, 20);
+      const sample = rows.slice(0, 30);
       const validNums = sample.filter((r) => {
-        const val = parseFloat(r[col] || '');
-        return !isNaN(val);
+        const val = parseNumeric(r[col]);
+        return val !== null && !isNaN(val);
       });
-      return validNums.length >= sample.length * 0.7;
+      return validNums.length >= sample.length * 0.6;
     });
   }, [rows, columns]);
 
@@ -101,9 +102,9 @@ export function CustomChartBuilder() {
 
     rows.forEach((r) => {
       const key = r[dimensionCol] || 'Unassigned';
-      const val = parseFloat(r[metricCol] || '0');
+      const val = parseNumeric(r[metricCol]);
       if (!groups[key]) groups[key] = [];
-      if (!isNaN(val)) groups[key].push(val);
+      if (val !== null && !isNaN(val)) groups[key].push(val);
     });
 
     const results = Object.entries(groups).map(([category, vals]) => {

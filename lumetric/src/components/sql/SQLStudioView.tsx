@@ -16,6 +16,7 @@ import {
   TableIcon,
 } from '@/components/icons';
 import { DatasetProfile } from '@/types';
+import { parseNumeric } from '@/lib/csvParser';
 
 // Pre-built corporate templates for Data Engineers, Data Scientists, and Analysts
 const SQL_TEMPLATES = [
@@ -152,8 +153,16 @@ export function SQLStudioView() {
       const convertedActive = activeRows.map((r) => {
         const row: Record<string, any> = {};
         for (const [k, v] of Object.entries(r)) {
-          const num = Number(v);
-          row[k] = !isNaN(num) && String(v).trim() !== '' ? num : v;
+          const num = parseNumeric(v);
+          if (
+            num !== null &&
+            !isNaN(num) &&
+            !(/id|code|key|phone|zip/i.test(k) && /^[a-zA-Z]/.test(String(v)))
+          ) {
+            row[k] = num;
+          } else {
+            row[k] = v;
+          }
         }
         return row;
       });
@@ -173,8 +182,16 @@ export function SQLStudioView() {
           alasql.tables[cleanName].data = rows.map((r: Record<string, any>) => {
             const row: Record<string, any> = {};
             for (const [k, v] of Object.entries(r)) {
-              const num = Number(v);
-              row[k] = !isNaN(num) && String(v).trim() !== '' ? num : v;
+              const num = parseNumeric(v);
+              if (
+                num !== null &&
+                !isNaN(num) &&
+                !(/id|code|key|phone|zip/i.test(k) && /^[a-zA-Z]/.test(String(v)))
+              ) {
+                row[k] = num;
+              } else {
+                row[k] = v;
+              }
             }
             return row;
           });

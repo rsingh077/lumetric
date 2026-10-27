@@ -16,6 +16,7 @@ import {
   calculateGroupAggregates,
   detectAnomalies,
 } from '@/lib/analytics';
+import { parseNumeric } from '@/lib/csvParser';
 
 // AI Provider configurations
 export type AIProvider = 'local' | 'gemini' | 'openai';
@@ -263,8 +264,10 @@ export function AIStudioSection() {
       }
 
       const filtered = rows.filter((r) => {
-        const cVal = parseFloat(r[churnCol] || '0');
-        return !isNaN(cVal) && cVal >= threshold;
+        let cVal = parseNumeric(r[churnCol]);
+        if (cVal === null || isNaN(cVal)) return false;
+        if (cVal > 1 && threshold <= 1) cVal = cVal / 100;
+        return cVal >= threshold;
       });
 
       return {

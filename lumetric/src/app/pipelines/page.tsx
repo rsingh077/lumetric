@@ -138,12 +138,18 @@ export default function PipelinesPage() {
   };
 
   const handleDownloadGoldCSV = () => {
-    if (!executionResult || executionResult.sampleRows.length === 0) return;
-    const headers = Object.keys(executionResult.sampleRows[0]);
+    const rowsToExport = activeRows.length > 0 ? activeRows : (executionResult?.sampleRows || []);
+    if (rowsToExport.length === 0) return;
+    const headers = Object.keys(rowsToExport[0]);
     const csvLines = [
       headers.join(','),
-      ...executionResult.sampleRows.map((r) =>
-        headers.map((h) => `"${r[h] || ''}"`).join(',')
+      ...rowsToExport.map((r) =>
+        headers
+          .map((h) => {
+            const val = String(r[h] ?? '');
+            return val.includes(',') ? `"${val.replace(/"/g, '""')}"` : val;
+          })
+          .join(',')
       ),
     ];
     const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });

@@ -19,7 +19,7 @@ import {
   calculateGroupAggregates,
 } from '@/lib/analytics';
 import { ColumnProfile, DatasetProfile, ColumnSemanticRole, DatasetRequirements, QualityCheckResult } from '@/types';
-import { parseCSVStrict, healDatasetRows } from '@/lib/csvParser';
+import { parseCSVStrict, healDatasetRows, parseNumeric } from '@/lib/csvParser';
 
 // Helper: Pseudo-SHA256 for deterministic hashing in browser
 function computeHash(str: string): string {
@@ -235,20 +235,25 @@ export default function AnalysisStudioPage() {
       const hash = computeHash(content);
       const profiles: ColumnProfile[] = headers.map((colName) => {
         const vals = rows.map((r) => r[colName] ?? '');
-        const nonNulls = vals.filter((v) => v !== '');
-        const numCount = nonNulls.filter((v) => !isNaN(Number(v))).length;
-        const isNumeric = nonNulls.length > 0 && numCount / nonNulls.length > 0.8;
+        const nonNulls = vals.filter((v) => v !== '' && !/^(na|n\/a|null|nan)$/i.test(v));
+        const numCount = nonNulls.filter((v) => parseNumeric(v) !== null).length;
+        const isNumeric = nonNulls.length > 0 && numCount / nonNulls.length > 0.6;
 
         let inferredType: ColumnProfile['inferredType'] = 'string';
         if (isNumeric) {
-          inferredType = nonNulls.some((v) => v.includes('.')) ? 'float' : 'integer';
+          inferredType = nonNulls.some((v) => {
+            const num = parseNumeric(v);
+            return num !== null && num % 1 !== 0;
+          })
+            ? 'float'
+            : 'integer';
         } else if (nonNulls.some((v) => /^\d{4}-\d{2}-\d{2}/.test(v))) {
           inferredType = 'date';
         }
 
         let semanticRole: ColumnSemanticRole = 'dimension';
-        if (colName.toLowerCase().includes('id')) semanticRole = 'identifier';
-        else if (inferredType === 'integer' || inferredType === 'float') semanticRole = 'metric';
+        if (colName.toLowerCase().includes('id') || colName.toLowerCase().includes('key')) semanticRole = 'identifier';
+        else if (inferredType === 'integer' || inferredType === 'float' || /arr|revenue|sales|profit|price|cost|amount/i.test(colName)) semanticRole = 'metric';
         else if (inferredType === 'date') semanticRole = 'temporal';
 
         return {
