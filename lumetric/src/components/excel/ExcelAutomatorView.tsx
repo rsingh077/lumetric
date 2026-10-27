@@ -1046,7 +1046,7 @@ export function ExcelAutomatorView() {
             { formula: `COUNTIF(DataLedger!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${tierName}")`, result: tStat.count },
             { formula: `SUMIF(DataLedger!$${tierColLetter}$2:$${tierColLetter}$${totalRowsLedger}, "${tierName}", DataLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger})`, result: tStat.arr },
             { formula: `C${pRow}/B${pRow}`, result: tStat.count > 0 ? tStat.arr / tStat.count : 0 },
-            { formula: `C${pRow}/$D$${11 + Object.keys(regionGroups).length}`, result: datasetStats.totalArr > 0 ? tStat.arr / datasetStats.totalArr : 0 },
+            { formula: `C${pRow}/Dashboard!$D$${11 + Object.keys(regionGroups).length}`, result: datasetStats.totalArr > 0 ? tStat.arr / datasetStats.totalArr : 0 },
           ]);
           const r = wsPivot.getRow(pRow);
           r.getCell(2).numFmt = '#,##0';
@@ -1055,6 +1055,33 @@ export function ExcelAutomatorView() {
           r.getCell(5).numFmt = '0.0%';
           r.eachCell((c) => (c.border = borderThin));
           pRow++;
+        });
+
+        // PivotSummary Grand Total Row
+        const pTotRow = pRow;
+        wsPivot.addRow([
+          'GRAND TOTAL',
+          { formula: `SUM(B3:B${pTotRow - 1})`, result: datasetStats.rowCount },
+          { formula: `SUM(C3:C${pTotRow - 1})`, result: datasetStats.totalArr },
+          { formula: `AVERAGE(D3:D${pTotRow - 1})`, result: datasetStats.avgArr },
+          { formula: `SUM(E3:E${pTotRow - 1})`, result: 1.0 },
+        ]);
+        const pTotR = wsPivot.getRow(pTotRow);
+        pTotR.height = 24;
+        pTotR.eachCell({ includeEmpty: true }, (c, idx) => {
+          c.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: palette.headerFont } };
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
+          c.border = borderThin;
+          if (idx === 2) {
+            c.numFmt = '#,##0';
+            c.alignment = { horizontal: 'right' };
+          } else if (idx === 3 || idx === 4) {
+            c.numFmt = '$#,##0.00';
+            c.alignment = { horizontal: 'right' };
+          } else if (idx === 5) {
+            c.numFmt = '0.0%';
+            c.alignment = { horizontal: 'right' };
+          }
         });
 
         // TAB 3: DATA LEDGER
@@ -1092,11 +1119,21 @@ export function ExcelAutomatorView() {
               cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.zebraBg } };
             }
 
-            const colKey = cols[colNumber - 1];
-            if (colKey.includes('ARR') || colKey.includes('revenue') || colKey.includes('Price')) {
+            const colKey = cols[colNumber - 1]?.toLowerCase() || '';
+            if (
+              colKey.includes('arr') ||
+              colKey.includes('revenue') ||
+              colKey.includes('price') ||
+              colKey.includes('amount') ||
+              colKey.includes('sale') ||
+              colKey.includes('cost') ||
+              colKey.includes('total') ||
+              colKey.includes('balance') ||
+              colKey.includes('spend')
+            ) {
               cell.numFmt = '$#,##0.00';
               cell.alignment = { horizontal: 'right' };
-            } else if (colKey.includes('Probability') || colKey.includes('Rate') || colKey.includes('pct')) {
+            } else if (colKey.includes('probability') || colKey.includes('rate') || colKey.includes('pct') || colKey.includes('margin')) {
               cell.numFmt = '0.0%';
               cell.alignment = { horizontal: 'right' };
             } else if (typeof cell.value === 'number') {
@@ -1298,6 +1335,173 @@ export function ExcelAutomatorView() {
           }
         });
 
+        // 4. Operating Expenses (OPEX 35%)
+        const opexCells: any[] = ['4. Operating Expenses (OPEX 35%)', baselineRevenue * 0.35];
+        for (let m = 0; m < 12; m++) {
+          const col = colLetters[m];
+          opexCells.push({
+            formula: `${col}${revRow}*0.35`,
+            result: (baselineRevenue * Math.pow(1 + growthScenarioPct / 100, m + 1)) * 0.35,
+          });
+        }
+        const opexRowNum = wsFin.rowCount + 1;
+        opexCells.push({ formula: `SUM(C${opexRowNum}:N${opexRowNum})`, result: baselineRevenue * 0.35 * 12 });
+        const opexR = wsFin.addRow(opexCells);
+        opexR.height = 20;
+        opexR.eachCell({ includeEmpty: true }, (c, idx) => {
+          c.border = borderThin;
+          if (idx > 1) {
+            c.numFmt = '$#,##0';
+            c.alignment = { horizontal: 'right' };
+          }
+        });
+
+        // 5. Operating Income (EBITDA = Gross Profit - OPEX)
+        const ebitdaCells: any[] = ['5. Operating Income (EBITDA)', baselineRevenue * 0.43];
+        for (let m = 0; m < 12; m++) {
+          const col = colLetters[m];
+          ebitdaCells.push({
+            formula: `${col}${gpRowNum}-${col}${opexRowNum}`,
+            result: (baselineRevenue * Math.pow(1 + growthScenarioPct / 100, m + 1)) * 0.43,
+          });
+        }
+        const ebitdaRowNum = wsFin.rowCount + 1;
+        ebitdaCells.push({ formula: `SUM(C${ebitdaRowNum}:N${ebitdaRowNum})`, result: baselineRevenue * 0.43 * 12 });
+        const ebitdaR = wsFin.addRow(ebitdaCells);
+        ebitdaR.height = 22;
+        ebitdaR.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: palette.accentBg } };
+        ebitdaR.eachCell({ includeEmpty: true }, (c, idx) => {
+          c.border = borderThin;
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.badgeBg } };
+          if (idx > 1) {
+            c.numFmt = '$#,##0';
+            c.alignment = { horizontal: 'right' };
+            c.font = { name: 'Segoe UI', size: 9, bold: true };
+          }
+        });
+
+        // 6. Operating Margin % (EBITDA / Revenue)
+        const marginCells: any[] = ['6. Operating Margin (%)', 0.43];
+        for (let m = 0; m < 12; m++) {
+          const col = colLetters[m];
+          marginCells.push({
+            formula: `${col}${ebitdaRowNum}/${col}${revRow}`,
+            result: 0.43,
+          });
+        }
+        const marginRowNum = wsFin.rowCount + 1;
+        marginCells.push({ formula: `AVERAGE(C${marginRowNum}:N${marginRowNum})`, result: 0.43 });
+        const marginR = wsFin.addRow(marginCells);
+        marginR.height = 20;
+        marginR.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true };
+        marginR.eachCell({ includeEmpty: true }, (c, idx) => {
+          c.border = borderThin;
+          if (idx > 1) {
+            c.numFmt = '0.0%';
+            c.alignment = { horizontal: 'right' };
+          }
+        });
+
+        // ══════════════════════════════════════════════════════════════
+        // ADDITIONAL RUNWAYS: CONSERVATIVE (5%) & HYPER-GROWTH (25%)
+        // ══════════════════════════════════════════════════════════════
+        const addAdditionalScenario = (scenarioTitle: string, rateVal: number) => {
+          wsFin.addRow([]);
+          const sBanner = wsFin.addRow([scenarioTitle, '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+          const sIdx = sBanner.number;
+          wsFin.mergeCells(`A${sIdx}:O${sIdx}`);
+          sBanner.getCell(1).font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+          sBanner.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
+          sBanner.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+          sBanner.height = 24;
+
+          const rHead = wsFin.addRow(['Scenario Monthly Compound Growth Rate:', rateVal]);
+          rHead.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true };
+          rHead.getCell(2).numFmt = '0.0%';
+          rHead.getCell(2).font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: palette.accentBg } };
+          const sRateCell = `$B$${rHead.number}`;
+
+          const mH = wsFin.addRow(monthHeaders);
+          mH.height = 22;
+          mH.eachCell((c) => {
+            c.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
+            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.accentBg } };
+            c.alignment = { vertical: 'middle', horizontal: 'center' };
+            c.border = borderThin;
+          });
+
+          // Revenue line
+          const sRevCells: any[] = ['1. Gross Recurring Revenue (MRR)', baselineRevenue];
+          for (let m = 0; m < 12; m++) {
+            const prevCol = m === 0 ? 'B' : colLetters[m - 1];
+            sRevCells.push({
+              formula: `${prevCol}${wsFin.rowCount + 1}*(1+${sRateCell})`,
+              result: baselineRevenue * Math.pow(1 + rateVal, m + 1),
+            });
+          }
+          const sRevRow = wsFin.rowCount + 1;
+          sRevCells.push({ formula: `SUM(C${sRevRow}:N${sRevRow})`, result: baselineRevenue * 12 });
+          const sRevR = wsFin.addRow(sRevCells);
+          sRevR.height = 20;
+          sRevR.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true };
+          sRevR.eachCell({ includeEmpty: true }, (c, idx) => {
+            c.border = borderThin;
+            if (idx > 1) {
+              c.numFmt = '$#,##0';
+              c.alignment = { horizontal: 'right' };
+            }
+          });
+
+          // Gross Profit line (78%)
+          const sGpCells: any[] = ['2. Gross Profit (78% Margin)', baselineRevenue * 0.78];
+          for (let m = 0; m < 12; m++) {
+            const col = colLetters[m];
+            sGpCells.push({
+              formula: `${col}${sRevRow}*0.78`,
+              result: baselineRevenue * Math.pow(1 + rateVal, m + 1) * 0.78,
+            });
+          }
+          const sGpRow = wsFin.rowCount + 1;
+          sGpCells.push({ formula: `SUM(C${sGpRow}:N${sGpRow})`, result: baselineRevenue * 0.78 * 12 });
+          const sGpR = wsFin.addRow(sGpCells);
+          sGpR.height = 20;
+          sGpR.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true };
+          sGpR.eachCell({ includeEmpty: true }, (c, idx) => {
+            c.border = borderThin;
+            if (idx > 1) {
+              c.numFmt = '$#,##0';
+              c.alignment = { horizontal: 'right' };
+            }
+          });
+
+          // Operating Income (43% Margin)
+          const sEbCells: any[] = ['3. Operating Income (EBITDA 43%)', baselineRevenue * 0.43];
+          for (let m = 0; m < 12; m++) {
+            const col = colLetters[m];
+            sEbCells.push({
+              formula: `${col}${sRevRow}*0.43`,
+              result: baselineRevenue * Math.pow(1 + rateVal, m + 1) * 0.43,
+            });
+          }
+          const sEbRow = wsFin.rowCount + 1;
+          sEbCells.push({ formula: `SUM(C${sEbRow}:N${sEbRow})`, result: baselineRevenue * 0.43 * 12 });
+          const sEbR = wsFin.addRow(sEbCells);
+          sEbR.height = 22;
+          sEbR.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: palette.accentBg } };
+          sEbR.eachCell({ includeEmpty: true }, (c, idx) => {
+            c.border = borderThin;
+            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.badgeBg } };
+            if (idx > 1) {
+              c.numFmt = '$#,##0';
+              c.alignment = { horizontal: 'right' };
+              c.font = { name: 'Segoe UI', size: 9, bold: true };
+            }
+          });
+        };
+
+        addAdditionalScenario('SCENARIO 2: CONSERVATIVE FORWARD RUNWAY (5.0% MoM COMPOUND GROWTH)', 0.05);
+        addAdditionalScenario('SCENARIO 3: HYPER-GROWTH SCALE RUNWAY (25.0% MoM COMPOUND GROWTH)', 0.25);
+
         // TAB 2: VARIANCE ANALYSIS (BvA)
         const wsBvA = wb.addWorksheet('VarianceAnalysis', {
           views: [{ showGridLines: true }],
@@ -1370,8 +1574,24 @@ export function ExcelAutomatorView() {
         const regColName = cols[regColIdx] || 'Region';
         const tierColName = cols[tierColIdx] || 'Plan_Tier';
 
-        const regions = Array.from(new Set(sanitizedRows.map((r) => String(r[regColName] || 'Global')))).sort();
-        const tiers = Array.from(new Set(sanitizedRows.map((r) => String(r[tierColName] || 'Standard')))).sort();
+        // Select top unique tiers (up to 10) and regions (up to 25) for clean matrix legibility
+        const tierCounts: Record<string, number> = {};
+        sanitizedRows.forEach((r) => {
+          const t = String(r[tierColName] || 'Standard');
+          tierCounts[t] = (tierCounts[t] || 0) + 1;
+        });
+        const tiers = Object.keys(tierCounts)
+          .sort((a, b) => tierCounts[b] - tierCounts[a])
+          .slice(0, 10);
+
+        const regCounts: Record<string, number> = {};
+        sanitizedRows.forEach((r) => {
+          const reg = String(r[regColName] || 'Global');
+          regCounts[reg] = (regCounts[reg] || 0) + 1;
+        });
+        const regions = Object.keys(regCounts)
+          .sort((a, b) => regCounts[b] - regCounts[a])
+          .slice(0, 25);
 
         wsPivotMaster.columns = [
           { width: 24 },
@@ -1441,9 +1661,13 @@ export function ExcelAutomatorView() {
           r.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true };
           r.eachCell({ includeEmpty: true }, (c, idx) => {
             c.border = borderThin;
-            if (idx > 1 && idx <= tiers.length + 2) {
-              c.numFmt = '$#,##0';
+            if (idx > 1 && idx <= tiers.length + 1) {
+              c.numFmt = '$#,##0.00';
               c.alignment = { horizontal: 'right' };
+            } else if (idx === totalCols - 1) {
+              c.numFmt = '$#,##0.00';
+              c.alignment = { horizontal: 'right' };
+              c.font = { name: 'Segoe UI', size: 9, bold: true };
             } else if (idx === totalCols) {
               c.numFmt = '0.0%';
               c.alignment = { horizontal: 'right' };
@@ -1474,8 +1698,11 @@ export function ExcelAutomatorView() {
           c.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: palette.headerFont } };
           c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
           c.border = borderThin;
-          if (idx > 1 && idx <= tiers.length + 2) {
-            c.numFmt = '$#,##0';
+          if (idx > 1 && idx <= tiers.length + 1) {
+            c.numFmt = '$#,##0.00';
+            c.alignment = { horizontal: 'right' };
+          } else if (idx === totalCols - 1) {
+            c.numFmt = '$#,##0.00';
             c.alignment = { horizontal: 'right' };
           } else if (idx === totalCols) {
             c.numFmt = '0.0%';
@@ -1503,17 +1730,19 @@ export function ExcelAutomatorView() {
         });
 
         wsDynamic.columns = [
-          { width: 18 },
-          { width: 24 },
-          { width: 20 },
-          { width: 26 },
-          { width: 22 },
-          { width: 32 },
+          { width: 18 }, // A: ID
+          { width: 22 }, // B: Dimension Context
+          { width: 22 }, // C: XLOOKUP
+          { width: 22 }, // D: IF Status
+          { width: 24 }, // E: SUMIFS
+          { width: 20 }, // F: COUNTIFS
+          { width: 22 }, // G: AVERAGEIFS
+          { width: 38 }, // H: Formula Explanation
         ];
 
-        wsDynamic.mergeCells('A1:F1');
+        wsDynamic.mergeCells('A1:H1');
         const fTitle = wsDynamic.getCell('A1');
-        fTitle.value = 'ENTERPRISE FORMULA INJECTION SUITE (XLOOKUP, SUMIFS, IF)';
+        fTitle.value = 'ENTERPRISE FORMULA INJECTION SUITE (XLOOKUP, SUMIFS, COUNTIFS, AVERAGEIFS, IF)';
         fTitle.font = { name: 'Segoe UI', size: 12, bold: true, color: { argb: palette.headerFont } };
         fTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
         fTitle.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -1528,8 +1757,10 @@ export function ExcelAutomatorView() {
           'Dimension Context',
           `${metricHeader} (XLOOKUP)`,
           'Classification (IF)',
-          `${dimHeader} Subtotal (SUMIFS)`,
-          'Formula Explanation',
+          `${dimHeader} Total Volume (SUMIFS)`,
+          `${dimHeader} Record Count (COUNTIFS)`,
+          `${dimHeader} Benchmark Avg (AVERAGEIFS)`,
+          'Corporate Engineering Specification',
         ];
         const dRow = wsDynamic.addRow(dynHeaders);
         dRow.height = 24;
@@ -1542,6 +1773,16 @@ export function ExcelAutomatorView() {
         const isChurnColNumeric = typeof sanitizedRows[0]?.[cols[churnColIdx]] === 'number';
         const isStatusTextCol = typeof sanitizedRows[0]?.[cols[churnColIdx]] === 'string';
 
+        // Pre-compute exact region stats for 100% mathematical accuracy on cached evaluations
+        const regionStats: Record<string, { sum: number; count: number }> = {};
+        sanitizedRows.forEach((r) => {
+          const reg = String(r[cols[regColIdx]] || 'Global');
+          const m = typeof r[cols[arrColIdx]] === 'number' ? r[cols[arrColIdx]] : 0;
+          if (!regionStats[reg]) regionStats[reg] = { sum: 0, count: 0 };
+          regionStats[reg].sum += m;
+          regionStats[reg].count++;
+        });
+
         sanitizedRows.forEach((row, idx) => {
           const rowNum = idx + 3;
           const accId = String(row[cols[idColIdx]] || `ID-${1000 + idx}`);
@@ -1550,6 +1791,11 @@ export function ExcelAutomatorView() {
           const rawRiskVal = row[cols[churnColIdx]];
           const churnVal = typeof rawRiskVal === 'number' ? rawRiskVal : 0.05;
           const regVal = String(row[cols[regColIdx]] || 'Global');
+
+          const rStats = regionStats[regVal] || { sum: arrVal, count: 1 };
+          const actualRegSum = rStats.sum;
+          const actualRegCount = rStats.count;
+          const actualRegAvg = actualRegCount > 0 ? actualRegSum / actualRegCount : 0;
 
           let ifFormula = '';
           let ifResult = 'HEALTHY';
@@ -1594,14 +1840,24 @@ export function ExcelAutomatorView() {
             },
             {
               formula: `SUMIFS(MasterLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, MasterLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${regVal}")`,
-              result: datasetStats.totalArr * 0.35,
+              result: actualRegSum,
             },
-            `Injected live XLOOKUP and multi-branch nested IF statement`,
+            {
+              formula: `COUNTIFS(MasterLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${regVal}")`,
+              result: actualRegCount,
+            },
+            {
+              formula: `AVERAGEIFS(MasterLedger!$${arrColLetter}$2:$${arrColLetter}$${totalRowsLedger}, MasterLedger!$${regColLetter}$2:$${regColLetter}$${totalRowsLedger}, "${regVal}")`,
+              result: actualRegAvg,
+            },
+            `Dynamic XLOOKUP, nested IF risk rules, SUMIFS, COUNTIFS, and AVERAGEIFS aggregation`,
           ]);
 
           r.height = 20;
           r.getCell(3).numFmt = '$#,##0.00';
           r.getCell(5).numFmt = '$#,##0.00';
+          r.getCell(6).numFmt = '#,##0';
+          r.getCell(7).numFmt = '$#,##0.00';
           r.getCell(4).font = {
             name: 'Segoe UI',
             size: 9,
@@ -2420,7 +2676,11 @@ export function ExcelAutomatorView() {
           views: [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }],
         });
 
-        wsClean.columns = cols.map((c) => ({ header: c, key: c, width: 20 }));
+        wsClean.columns = cols.map((c) => ({
+          header: c.replace(/_/g, ' '),
+          key: c,
+          width: Math.max(16, c.length + 5),
+        }));
         wsClean.getRow(1).height = 28;
         wsClean.getRow(1).eachCell((c) => {
           c.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: palette.headerFont } };
@@ -2428,22 +2688,85 @@ export function ExcelAutomatorView() {
           c.border = borderThin;
         });
 
-        const cleaningLog: { row: number; col: string; action: string }[] = [];
+        // Pre-compute medians for all numeric columns to satisfy: "Null value imputation (standardized N/A and numeric medians)"
+        const columnMedians: Record<string, number> = {};
+        numericCols.forEach((colKey) => {
+          const nums: number[] = [];
+          sanitizedRows.forEach((r) => {
+            const v = r[colKey];
+            if (typeof v === 'number' && !isNaN(v)) {
+              nums.push(v);
+            }
+          });
+          nums.sort((a, b) => a - b);
+          columnMedians[colKey] = nums.length > 0 ? nums[Math.floor(nums.length / 2)] : 0;
+        });
+
+        const cleaningLog: { row: number; col: string; action: string; originalVal: string; newVal: any }[] = [];
+        let trimCount = 0;
+        let imputeCount = 0;
+        let titleCaseCount = 0;
 
         sanitizedRows.forEach((row, idx) => {
           const cleanedRow: Record<string, any> = {};
           cols.forEach((colKey) => {
             const rawVal = row[colKey];
             if (rawVal === '' || rawVal === null || rawVal === undefined) {
-              cleanedRow[colKey] = 'N/A';
-              cleaningLog.push({ row: idx + 2, col: colKey, action: 'Imputed missing value with standardized "N/A"' });
+              if (numericCols.includes(colKey)) {
+                const med = columnMedians[colKey] ?? 0;
+                cleanedRow[colKey] = med;
+                imputeCount++;
+                if (cleaningLog.length < 2000) {
+                  cleaningLog.push({
+                    row: idx + 2,
+                    col: colKey,
+                    action: `Imputed missing numeric value with median ($${med.toFixed(2)})`,
+                    originalVal: 'EMPTY / NULL',
+                    newVal: med,
+                  });
+                }
+              } else {
+                cleanedRow[colKey] = 'N/A';
+                imputeCount++;
+                if (cleaningLog.length < 2000) {
+                  cleaningLog.push({
+                    row: idx + 2,
+                    col: colKey,
+                    action: 'Imputed missing value with standardized "N/A"',
+                    originalVal: 'EMPTY / NULL',
+                    newVal: 'N/A',
+                  });
+                }
+              }
             } else if (typeof rawVal === 'string') {
               const trimmed = rawVal.trim();
               if (trimmed !== rawVal) {
-                cleaningLog.push({ row: idx + 2, col: colKey, action: 'Trimmed surrounding whitespace' });
+                trimCount++;
+                if (cleaningLog.length < 2000) {
+                  cleaningLog.push({
+                    row: idx + 2,
+                    col: colKey,
+                    action: 'Trimmed surrounding whitespace characters',
+                    originalVal: `"${rawVal}"`,
+                    newVal: `"${trimmed}"`,
+                  });
+                }
               }
-              if (colKey.includes('Name') || colKey.includes('City') || colKey.includes('Region')) {
-                cleanedRow[colKey] = trimmed.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.substr(1).toLowerCase());
+              if (colKey.toLowerCase().includes('name') || colKey.toLowerCase().includes('city') || colKey.toLowerCase().includes('region') || colKey.toLowerCase().includes('channel')) {
+                const titleCased = trimmed.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.substring(1).toLowerCase());
+                if (titleCased !== trimmed) {
+                  titleCaseCount++;
+                  if (cleaningLog.length < 2000) {
+                    cleaningLog.push({
+                      row: idx + 2,
+                      col: colKey,
+                      action: 'Standardized casing to formal Title Case',
+                      originalVal: trimmed,
+                      newVal: titleCased,
+                    });
+                  }
+                }
+                cleanedRow[colKey] = titleCased;
               } else {
                 cleanedRow[colKey] = trimmed;
               }
@@ -2454,22 +2777,85 @@ export function ExcelAutomatorView() {
 
           const r = wsClean.addRow(cleanedRow);
           r.height = 20;
-          r.eachCell((c) => (c.border = borderThin));
+          r.eachCell({ includeEmpty: true }, (c, colIdx) => {
+            c.font = { name: 'Segoe UI', size: 9 };
+            c.border = borderThin;
+            const colKey = cols[colIdx - 1]?.toLowerCase() || '';
+            if (colKey.includes('arr') || colKey.includes('revenue') || colKey.includes('price') || colKey.includes('amount') || colKey.includes('sale') || colKey.includes('cost')) {
+              c.numFmt = '$#,##0.00';
+              c.alignment = { horizontal: 'right' };
+            } else if (typeof c.value === 'number') {
+              c.numFmt = '#,##0';
+              c.alignment = { horizontal: 'right' };
+            }
+          });
         });
 
+        // TAB 2: CLEANING AUDIT LOG
         const wsLog = wb.addWorksheet('CleaningAuditLog', { views: [{ showGridLines: true }] });
-        wsLog.columns = [{ width: 14 }, { width: 22 }, { width: 50 }];
-        wsLog.addRow(['Row Number', 'Column Name', 'Sanitization Action Applied']);
-        wsLog.getRow(1).eachCell((c) => {
-          c.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
+        wsLog.columns = [
+          { width: 14 },
+          { width: 22 },
+          { width: 44 },
+          { width: 24 },
+          { width: 24 },
+        ];
+
+        wsLog.mergeCells('A1:E1');
+        const logTitle = wsLog.getCell('A1');
+        logTitle.value = `${companyName.toUpperCase()} — DATA SANITATION & AUDIT REPAIR TRAIL`;
+        logTitle.font = { name: 'Segoe UI', size: 12, bold: true, color: { argb: palette.headerFont } };
+        logTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.headerBg } };
+        logTitle.alignment = { vertical: 'middle', horizontal: 'center' };
+        wsLog.getRow(1).height = 32;
+
+        // KPI Summary Cards
+        const kpiHeaders = ['TOTAL RECORDS', 'TOTAL REPAIRS', 'NULLS IMPUTED', 'WHITESPACE TRIMS', 'CASING STANDARDIZED'];
+        const kRow1 = wsLog.addRow(kpiHeaders);
+        kRow1.height = 20;
+        kRow1.eachCell((c) => {
+          c.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF475569' } };
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.badgeBg } };
+          c.alignment = { vertical: 'middle', horizontal: 'center' };
+          c.border = borderThin;
         });
 
-        cleaningLog.slice(0, 100).forEach((entry) => {
-          const r = wsLog.addRow([`Row ${entry.row}`, entry.col, entry.action]);
-          r.height = 20;
-          r.eachCell((c) => (c.border = borderThin));
+        const totalRepairs = trimCount + imputeCount + titleCaseCount;
+        const kpiValues = [sanitizedRows.length, totalRepairs, imputeCount, trimCount, titleCaseCount];
+        const kRow2 = wsLog.addRow(kpiValues);
+        kRow2.height = 28;
+        kRow2.eachCell((c) => {
+          c.font = { name: 'Segoe UI', size: 14, bold: true, color: { argb: palette.accentBg } };
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.badgeBg } };
+          c.alignment = { vertical: 'middle', horizontal: 'center' };
+          c.border = borderThin;
+          c.numFmt = '#,##0';
         });
+
+        wsLog.addRow([]);
+
+        // Table Header
+        const tHead = wsLog.addRow(['Row Number', 'Column Target', 'Sanitization Action Applied', 'Original Value', 'Cleaned Value']);
+        tHead.height = 24;
+        tHead.eachCell((c) => {
+          c.font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: palette.accentBg } };
+          c.alignment = { vertical: 'middle', horizontal: 'center' };
+          c.border = borderThin;
+        });
+
+        if (cleaningLog.length === 0) {
+          const emptyR = wsLog.addRow(['Spotless', 'All Columns', '100% compliant: No missing values or format anomalies detected', 'Clean', 'Verified']);
+          emptyR.height = 22;
+          emptyR.eachCell((c) => (c.border = borderThin));
+        } else {
+          cleaningLog.forEach((entry) => {
+            const r = wsLog.addRow([`Row ${entry.row}`, entry.col, entry.action, String(entry.originalVal), String(entry.newVal)]);
+            r.height = 20;
+            r.getCell(1).font = { name: 'Segoe UI', size: 9, bold: true };
+            r.eachCell((c) => (c.border = borderThin));
+          });
+        }
       }
 
       // Write buffer and trigger client-side download

@@ -90,56 +90,70 @@ export interface GroupAggregateRow {
   max: number;
 }
 
+// Robust Numerical Parser (handles currencies, commas, accounting parentheses, percentages)
+export function parseNumeric(raw: any): number | null {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === 'number') return isNaN(raw) ? null : raw;
+  const str = String(raw).trim();
+  if (str === '') return null;
+  let cleanStr = str;
+  let isNegative = false;
+  if (cleanStr.startsWith('(') && cleanStr.endsWith(')')) {
+    isNegative = true;
+    cleanStr = cleanStr.slice(1, -1);
+  }
+  cleanStr = cleanStr.replace(/[\$,\s€£¥]/g, '');
+  if (cleanStr.endsWith('%')) {
+    const num = parseFloat(cleanStr.slice(0, -1));
+    return isNaN(num) ? null : (isNegative ? -num : num) / 100;
+  }
+  const parsed = parseFloat(cleanStr);
+  if (isNaN(parsed)) return null;
+  return isNegative ? -Math.abs(parsed) : parsed;
+}
+
 // 1. Pearson Correlation Matrix & Key Drivers
 export function calculateCorrelations(
   rows: Record<string, string>[],
   targetCol: string,
   candidateCols: string[]
 ): CorrelationItem[] {
-  const targetNums: number[] = [];
-  const validIndices: number[] = [];
-
-  rows.forEach((r, idx) => {
-    const val = parseFloat(r[targetCol]);
-    if (!isNaN(val)) {
-      targetNums.push(val);
-      validIndices.push(idx);
-    }
-  });
-
-  if (targetNums.length < 3) return [];
-
-  const meanT = targetNums.reduce((a, b) => a + b, 0) / targetNums.length;
-  const denomT = Math.sqrt(targetNums.reduce((acc, val) => acc + Math.pow(val - meanT, 2), 0));
-
-  if (denomT === 0) return [];
-
   const results: CorrelationItem[] = [];
 
   candidateCols.forEach((col) => {
     if (col === targetCol) return;
 
-    let sumProd = 0;
-    const colNums: number[] = [];
-
-    validIndices.forEach((idx, i) => {
-      const val = parseFloat(rows[idx][col]);
-      if (!isNaN(val)) {
-        colNums.push(val);
-      } else {
-        colNums.push(0);
+    const pairs: { t: number; c: number }[] = [];
+    rows.forEach((r) => {
+      const t = parseNumeric(r[targetCol]);
+      const c = parseNumeric(r[col]);
+      if (t !== null && c !== null) {
+        pairs.push({ t, c });
       }
-      sumProd += (targetNums[i] - meanT) * val;
     });
 
-    const meanC = colNums.reduce((a, b) => a + b, 0) / colNums.length;
-    const denomC = Math.sqrt(colNums.reduce((acc, val) => acc + Math.pow(val - meanC, 2), 0));
+    if (pairs.length < 3) return;
 
-    if (denomC === 0) return;
+    const n = pairs.length;
+    const meanT = pairs.reduce((sum, p) => sum + p.t, 0) / n;
+    const meanC = pairs.reduce((sum, p) => sum + p.c, 0) / n;
 
-    // Pearson r
-    let r = sumProd / (denomT * denomC);
-    if (isNaN(r)) r = 0;
+    let cov = 0;
+    let varT = 0;
+    let varC = 0;
+
+    pairs.forEach((p) => {
+      const dt = p.t - meanT;
+      const dc = p.c - meanC;
+      cov += dt * dc;
+      varT += dt * dt;
+      varC += dc * dc;
+    });
+
+    if (varT === 0 || varC === 0) return;
+
+    let r = cov / (Math.sqrt(varT) * Math.sqrt(varC));
+    if (isNaN(r)) return;
     r = Math.max(-1, Math.min(1, r));
 
     const rSquared = parseFloat((r * r).toFixed(4));
@@ -175,8 +189,8 @@ export function calculateTwoSampleTest(
 
   rows.forEach((r) => {
     const g = r[groupCol];
-    const val = parseFloat(r[metricCol]);
-    if (!isNaN(val)) {
+    const val = parseNumeric(r[metricCol]);
+    if (val !== null) {
       if (g === groupA) valsA.push(val);
       else if (g === groupB) valsB.push(val);
     }
@@ -232,8 +246,8 @@ export function detectAnomalies(
   const entries: { val: number; idx: number; id: string }[] = [];
 
   rows.forEach((r, idx) => {
-    const val = parseFloat(r[metricCol]);
-    if (!isNaN(val)) {
+    const val = parseNumeric(r[metricCol]);
+    if (val !== null) {
       const id = idCol ? r[idCol] || `Row #${idx + 1}` : `Row #${idx + 1}`;
       entries.push({ val, idx, id });
     }
@@ -322,9 +336,9 @@ export function calculateLinearRegression(
   const yVals: number[] = [];
 
   rows.forEach((r) => {
-    const x = parseFloat(r[xCol]);
-    const y = parseFloat(r[yCol]);
-    if (!isNaN(x) && !isNaN(y)) {
+    const x = parseNumeric(r[xCol]);
+    const y = parseNumeric(r[yCol]);
+    if (x !== null && y !== null) {
       xVals.push(x);
       yVals.push(y);
     }
@@ -393,9 +407,9 @@ export function calculateTrendForecast(
   const vals: { label: string; val: number }[] = [];
 
   rows.forEach((r, idx) => {
-    const v = parseFloat(r[metricCol]);
-    if (!isNaN(v)) {
-      const label = timeCol && r[timeCol] ? r[timeCol] : `P${idx + 1}`;
+    const v = parseNumeric(r[metricCol]);
+    if (v !== null) {
+      const label = timeCol && r[timeCol] ? String(r[timeCol]) : `P${idx + 1}`;
       vals.push({ label, val: v });
     }
   });
@@ -462,8 +476,8 @@ export function calculateGroupAggregates(
 
   rows.forEach((r) => {
     const g = r[groupCol] || 'Unassigned';
-    const val = parseFloat(r[metricCol]);
-    if (!isNaN(val)) {
+    const val = parseNumeric(r[metricCol]);
+    if (val !== null) {
       if (!groups[g]) groups[g] = [];
       groups[g].push(val);
     }
