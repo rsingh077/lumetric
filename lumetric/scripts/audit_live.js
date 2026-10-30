@@ -11,6 +11,7 @@ const testEndpoints = [
   { name: 'Dashboards View (/app/dashboards.html)', url: baseUrl + '/app/dashboards.html', method: 'GET' },
   { name: 'Data Management (/app/data.html)', url: baseUrl + '/app/data.html', method: 'GET' },
   { name: 'Excel Automator (/app/excel.html)', url: baseUrl + '/app/excel.html', method: 'GET' },
+  { name: 'Investment Planner (/app/investment.html)', url: baseUrl + '/app/investment.html', method: 'GET' },
   { name: 'AutoML Studio (/app/models.html)', url: baseUrl + '/app/models.html', method: 'GET' },
   { name: 'Operations (/app/operations.html)', url: baseUrl + '/app/operations.html', method: 'GET' },
   { name: 'Pipelines (/app/pipelines.html)', url: baseUrl + '/app/pipelines.html', method: 'GET' },

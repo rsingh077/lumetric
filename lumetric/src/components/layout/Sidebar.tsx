@@ -23,6 +23,7 @@ import {
   LogOutIcon,
   TerminalIcon,
   FileSpreadsheetIcon,
+  TrendingUpIcon,
 } from '@/components/icons';
 import { UserRole, ActiveView } from '@/types';
 
@@ -50,6 +51,7 @@ const navSections: NavSection[] = [
       { id: 'models', label: 'ML Models & AI', icon: BrainIcon },
       { id: 'sql', label: 'SQL Studio', badge: 'New', icon: TerminalIcon },
       { id: 'excel', label: 'Excel Automator', badge: 'Pro', icon: FileSpreadsheetIcon },
+      { id: 'investment', label: 'Investment & Venture Planner', badge: 'AI', icon: TrendingUpIcon },
     ],
   },
   {

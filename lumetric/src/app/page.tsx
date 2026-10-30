@@ -35,6 +35,7 @@ import OperationsPage from './operations/page';
 import SettingsPage from './settings/page';
 import SQLStudioPage from './sql/page';
 import ExcelAutomatorPage from './excel/page';
+import InvestmentPlannerPage from './investment/page';
 
 function HomeView() {
   const {
@@ -1131,6 +1132,7 @@ export default function AppHomePage() {
   if (activeView === 'models') return <ModelsPage />;
   if (activeView === 'sql') return <SQLStudioPage />;
   if (activeView === 'excel') return <ExcelAutomatorPage />;
+  if (activeView === 'investment') return <InvestmentPlannerPage />;
   if (activeView === 'dashboards') return <DashboardsPage />;
   if (activeView === 'stories') return <StoriesPage />;
   if (activeView === 'operations') return <OperationsPage />;

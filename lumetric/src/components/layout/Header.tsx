@@ -118,6 +118,7 @@ export function Header() {
       settings: 'Workspace Settings',
       sql: 'SQL Studio',
       excel: 'Excel Automator',
+      investment: 'Investment & Venture Planner',
     };
     return titles[activeView] || 'Studio Overview';
   };
@@ -206,6 +207,7 @@ export function Header() {
       '/stories': 'stories',
       '/operations': 'operations',
       '/settings': 'settings',
+      '/investment': 'investment',
     };
     if (viewMap[item.href]) {
       setActiveView(viewMap[item.href]);
