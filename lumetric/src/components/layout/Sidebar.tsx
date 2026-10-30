@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/contexts/AppContext';
 import {
+  LumetricLogoMark,
   BrandMascotIcon,
   HomeIcon,
   FolderIcon,
@@ -138,7 +139,7 @@ export function Sidebar() {
               }}
               className="flex items-center gap-2.5 overflow-hidden group cursor-pointer"
             >
-              <BrandMascotIcon className="w-6 h-6 shrink-0 text-[#059669]" />
+              <LumetricLogoMark size={28} className="shrink-0" />
               {!sidebarCollapsed && (
                 <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-1.5">

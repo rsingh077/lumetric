@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import { LumetricLogoMark } from '@/components/common/LumetricLogo';
 
 interface SplashScreenProps {
   onComplete?: () => void;
@@ -112,40 +113,20 @@ export function SplashScreen({ onComplete, serverStatus = 'connecting', serverLa
         }}
       />
 
-      {/* Hexagonal App Logo (Emerald + Vermilion + Warm Ivory) */}
+      {/* Premium Photonic L-Prism Logo Container */}
       <div
         style={{
           position: 'relative',
-          width: '88px',
-          height: '88px',
-          borderRadius: '24px',
-          background: 'linear-gradient(135deg, #059669 0%, #10B981 50%, #E34234 100%)',
-          padding: '2.5px',
-          boxShadow: '0 20px 35px -8px rgba(5, 150, 105, 0.5)',
+          width: '84px',
+          height: '84px',
           marginBottom: '22px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          filter: 'drop-shadow(0 20px 35px rgba(5, 150, 105, 0.45))',
         }}
       >
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            borderRadius: '21px',
-            backgroundColor: '#0D1612',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <svg viewBox="0 0 32 32" style={{ width: '46px', height: '46px' }} fill="none">
-            <polygon points="16,3 28,9 28,23 16,29 4,23 4,9" stroke="#10B981" strokeWidth="2.4" fill="#0D1612" fillOpacity="0.8" />
-            <polygon points="16,3 28,9 16,16 4,9" fill="#059669" fillOpacity="0.4" />
-            <polygon points="16,16 28,9 28,23 16,29" fill="#E34234" fillOpacity="0.3" />
-            <circle cx="16" cy="16" r="3.8" fill="#FAF8F5" />
-          </svg>
-        </div>
+        <LumetricLogoMark size={84} />
       </div>
 
       {/* Title (Warm Ivory) */}

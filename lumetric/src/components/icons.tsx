@@ -6,39 +6,32 @@ interface IconProps {
   className?: string;
 }
 
-// Handcrafted Precision Lumetric Geometric Prism Logo
+// Re-export Lumetric Premium Brand Identity Suite
+export { LumetricLogo, LumetricLogoMark } from './common/LumetricLogo';
+
+// Handcrafted Precision Lumetric 3D L-Prism Logo Mascot
 export function BrandMascotIcon({ className = 'w-6 h-6' }: IconProps) {
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      width="24"
-      height="24"
       aria-hidden="true"
     >
-      <path
-        d="M12 2L2 7L12 12L22 7L12 2Z"
-        fill="#2563EB"
-        stroke="#1D4ED8"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M2 17L12 22L22 17"
-        stroke="#2563EB"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M2 12L12 17L22 12"
-        stroke="#3B82F6"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <rect x="2.5" y="2.5" width="59" height="59" rx="16" fill="#0A110E" stroke="#10B981" strokeWidth="1.5" strokeOpacity="0.6" />
+      <g transform="translate(1, 0)">
+        <path d="M16 18L26 23.5V47L16 41.5V18Z" fill="#059669" />
+        <path d="M26 12.5L34 17L26 21.5L18 17L26 12.5Z" fill="#34D399" />
+        <path d="M26 21.5L34 17V35L26 39.5V21.5Z" fill="#047857" opacity="0.9" />
+        <path d="M26 39.5L44 30L48 32.5L30 42L26 39.5Z" fill="#10B981" />
+        <path d="M26 39.5L30 42V49.5L26 47V39.5Z" fill="#059669" />
+        <path d="M30 42L48 32.5V38.5L30 49.5V42Z" fill="#06B6D4" />
+        <line x1="26" y1="12.5" x2="34" y2="17" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" opacity="0.9" />
+        <line x1="16" y1="18" x2="26" y2="23.5" stroke="#FFFFFF" strokeWidth="1" strokeLinecap="round" opacity="0.75" />
+        <line x1="30" y1="42" x2="48" y2="32.5" stroke="#E0F2FE" strokeWidth="1.1" strokeLinecap="round" opacity="0.85" />
+        <circle cx="40" cy="19" r="1.6" fill="#FAF8F5" />
+      </g>
     </svg>
   );
 }

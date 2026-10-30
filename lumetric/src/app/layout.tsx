@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   title: 'Lumetric — AI Data & Decision Studio',
   description:
     'Unified multi-tenant SaaS application connecting data engineering, analytics, statistics, forecasting, predictive modeling, financial analysis and visual storytelling.',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
 };
 
 export const viewport: Viewport = {

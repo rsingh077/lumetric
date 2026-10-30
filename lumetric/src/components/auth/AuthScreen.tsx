@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { LumetricAuthService, validateEmailAuthenticity, OtpResponse } from '@/lib/auth';
+import { LumetricLogo } from '@/components/common/LumetricLogo';
 import { UserRole } from '@/types';
 
 export type AuthMode = 'signin' | 'signup' | 'otp-verify' | 'forgot-password';
@@ -503,20 +504,10 @@ export function AuthScreen({
         {/* Modal Header Brand Bar */}
         {isModal && (
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5D9C8]/15">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#059669] via-[#10B981] to-[#E34234] p-[1.5px] shadow-sm">
-                <div className="w-full h-full bg-[#0D1612] rounded-[10px] flex items-center justify-center">
-                  <span className="text-[#10B981] font-bold text-xs">✦</span>
-                </div>
-              </div>
-              <div>
-                <span className="font-extrabold text-sm tracking-tight text-[#FAF8F5] block leading-tight">LUMETRIC</span>
-                <span className="text-[9px] text-[#10B981] font-mono tracking-wider uppercase font-semibold">Decision Studio</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#0A110E] border border-[#E5D9C8]/10 text-[10px] font-mono text-[#84968C]">
+            <LumetricLogo size="sm" variant="horizontal" showBadge={false} subtitle="Decision Studio" />
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#0A110E] border border-[#E5D9C8]/10 text-[10px] font-mono text-[#84968C]">
               <span className={`w-1.5 h-1.5 rounded-full ${serverStatus === 'connected' ? 'bg-[#10B981]' : 'bg-[#D97706] animate-pulse'}`} />
-              <span>{serverStatus === 'connected' ? (serverLatency ? `${serverLatency}ms` : 'Cloud Active') : 'Live Cloud'}</span>
+              <span>{serverStatus === 'connected' ? 'Cloud Active' : 'Live Cloud'}</span>
             </div>
           </div>
         )}
@@ -1374,25 +1365,14 @@ export function AuthScreen({
       {/* Top Header Bar */}
       <header className="w-full max-w-md mx-auto flex items-center justify-between z-10 py-2 mb-2">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#059669] via-[#10B981] to-[#E34234] p-[1.5px] shadow-lg shadow-emerald-950/60">
-            <div className="w-full h-full bg-[#0D1612] rounded-[14px] flex items-center justify-center">
-              <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#FAF8F5]" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5" stroke="#10B981" />
-                <circle cx="12" cy="12" r="3" fill="#E34234" />
-              </svg>
-            </div>
-          </div>
-          <div>
-            <span className="font-extrabold text-base tracking-tight text-[#FAF8F5] block leading-tight">LUMETRIC</span>
-            <span className="text-[10px] text-[#10B981] font-mono tracking-wider uppercase font-semibold">Data &amp; Decision Studio</span>
-          </div>
+          <LumetricLogo size="md" variant="horizontal" showBadge={false} subtitle="Data &amp; Decision Studio" />
         </div>
 
         {/* Server & Security Status */}
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${serverStatus === 'connected' ? 'bg-[#10B981]' : 'bg-[#D97706] animate-pulse'}`} />
           <span className="text-[11px] text-[#84968C] font-mono">
-            {serverStatus === 'connected' ? (serverLatency ? `${serverLatency}ms` : 'Cloud Active') : 'Connecting...'}
+            {serverStatus === 'connected' ? 'Cloud Active' : 'Connecting...'}
           </span>
         </div>
       </header>

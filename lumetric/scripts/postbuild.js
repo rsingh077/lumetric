@@ -45,6 +45,14 @@ if (fs.existsSync(faviconSrc)) {
   console.log('✓ Mirrored favicon.ico to out/app/favicon.ico');
 }
 
+// Mirror icon.svg into out/ and out/app/
+const iconSrc = path.join(__dirname, '..', 'public', 'icon.svg');
+if (fs.existsSync(iconSrc)) {
+  fs.copyFileSync(iconSrc, path.join(outDir, 'icon.svg'));
+  fs.copyFileSync(iconSrc, path.join(appOutDir, 'icon.svg'));
+  console.log('✓ Mirrored icon.svg to out/ and out/app/');
+}
+
 // 2. Head injector for Turbopack base chunk resolution
 const catalystHeadInject = '<script>window.TURBOPACK_CHUNK_BASE_PATH = "/app/_next/";</script>';
 const androidHeadInject = '<script>window.TURBOPACK_CHUNK_BASE_PATH = "/_next/";</script>';
