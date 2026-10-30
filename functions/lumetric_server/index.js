@@ -869,11 +869,57 @@ app.get('/', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     healthy: true,
+    status: 'online',
+    code: 200,
+    service: 'Lumetric Enterprise Production Engine',
     totalRegisteredUsers: memoryStore.size,
     totalAuditEntries: auditTrailLedger.length,
     rateLimiterActiveIPs: rateLimitMap.size,
     memoryUsage: process.memoryUsage(),
     catalystTimestamp: Date.now()
+  });
+});
+
+// 1a. Server Status & Ping Endpoints (Guaranteed 200 OK)
+app.get(['/api/status', '/status', '/api/ping', '/ping', '/api/version'], (req, res) => {
+  res.json({
+    status: 'online',
+    success: true,
+    code: 200,
+    service: 'Lumetric Decision Studio Engine',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    registeredUsers: memoryStore.size
+  });
+});
+
+// 1b. Geo Intelligence Summary
+app.get(['/api/geo/summary', '/api/geo/entities'], (req, res) => {
+  res.json({
+    success: true,
+    code: 200,
+    provider: 'Survey of India Sovereign GIS & US Census Bureau',
+    totalIndiaEntities: 37,
+    totalUSEntities: 51,
+    totalWorldCountries: 176,
+    activeGranularities: ['india-states', 'us-states', 'world'],
+    defaultTerritory: 'Maharashtra',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 1c. System & Cloud Diagnostics
+app.get(['/api/diagnostics/system', '/api/system'], (req, res) => {
+  res.json({
+    success: true,
+    code: 200,
+    system: 'Lumetric Cloud Serverless Compute Engine',
+    environment: 'production',
+    nodeVersion: process.version,
+    memoryStoreSize: memoryStore.size,
+    rateLimiterActive: rateLimitMap.size,
+    auditTrailCount: auditTrailLedger.length,
+    timestamp: new Date().toISOString()
   });
 });
 

@@ -80,19 +80,26 @@ if (fs.existsSync(outDir)) {
   console.log('✓ Reconciled Catalyst web hosting assets in out/ and out/app/ (prefixed with /app/_next/)');
 }
 
-// 4. Generate client-package.json for Catalyst
+// 4. Generate client-package.json for Catalyst (homepage: index.html, 404: 404.html)
 const pkgInfo = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
 fs.writeFileSync(
   path.join(outDir, 'client-package.json'),
   JSON.stringify({
     name: 'lumetric',
-    version: pkgInfo.version || '2.0.2',
+    version: pkgInfo.version || '2.3.4',
     homepage: 'index.html',
     login_redirect: 'index.html',
     '404': '404.html'
   }, null, 2)
 );
-console.log(`✓ Generated client-package.json (v${pkgInfo.version || '2.0.2'})`);
+console.log(`✓ Generated client-package.json (v${pkgInfo.version || '2.3.4'})`);
+
+// Ensure out/app.html exists as a direct fallback
+const indexPath = path.join(outDir, 'index.html');
+if (fs.existsSync(indexPath)) {
+  fs.copyFileSync(indexPath, path.join(outDir, 'app.html'));
+  console.log('✓ Created out/app.html fallback');
+}
 
 // 5. If Android assets directory exists, enforce clean /_next/ paths so Android WebView hydrates without errors
 if (fs.existsSync(androidPublicDir)) {
