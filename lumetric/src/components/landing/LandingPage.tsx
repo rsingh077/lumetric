@@ -16,6 +16,8 @@ import {
   ShieldIcon,
   MaximizeIcon,
   ActivityIcon,
+  TrendingUpIcon,
+  LandmarkIcon,
 } from '@/components/icons';
 
 export function LandingPage() {
@@ -51,7 +53,7 @@ export function LandingPage() {
   }, [heroEmail]);
 
   // Interactive Demo Simulator State
-  const [activeDemoTab, setActiveDemoTab] = useState<'geo' | 'excel' | 'models' | 'sql'>('geo');
+  const [activeDemoTab, setActiveDemoTab] = useState<'geo' | 'excel' | 'investment' | 'models' | 'sql'>('geo');
 
   // Check URL parameters on mount (e.g., ?action=login or ?action=signup)
   useEffect(() => {
@@ -253,6 +255,17 @@ export function LandingPage() {
                 <span>Excel Automator</span>
               </button>
               <button
+                onClick={() => setActiveDemoTab('investment')}
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeDemoTab === 'investment'
+                    ? 'bg-emerald-500 text-white font-bold shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <TrendingUpIcon className="w-3.5 h-3.5" />
+                <span>Investment &amp; Loans</span>
+              </button>
+              <button
                 onClick={() => setActiveDemoTab('models')}
                 className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeDemoTab === 'models'
@@ -375,6 +388,99 @@ export function LandingPage() {
                     className="mt-2 px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold border border-emerald-500/40 transition-all cursor-pointer"
                   >
                     Open Excel Automator →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: INVESTMENT & VENTURE PLANNER PREVIEW */}
+            {activeDemoTab === 'investment' && (
+              <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-center animate-in fade-in duration-300 text-left">
+                <div className="lg:col-span-7 bg-[#101A15] p-5 rounded-2xl border border-emerald-500/30 shadow-xl space-y-3.5 font-mono text-xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px]">
+                    <div className="flex items-center gap-2">
+                      <TrendingUpIcon className="w-4 h-4 text-emerald-400" />
+                      <span className="text-white font-bold">SEED VENTURE FINANCIAL MODEL</span>
+                    </div>
+                    <span className="text-emerald-400 font-bold bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      S-Curve Growth Decay (0.985^m)
+                    </span>
+                  </div>
+
+                  {/* 4 Metric Badges */}
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase block">Starting Cash</span>
+                      <div className="text-white font-bold text-sm">$250,000</div>
+                    </div>
+                    <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase block">Net Burn</span>
+                      <div className="text-rose-400 font-bold text-sm">-$15,600<span className="text-[10px] font-normal">/mo</span></div>
+                    </div>
+                    <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase block">Real Runway</span>
+                      <div className="text-emerald-400 font-bold text-sm">17.5 Mos</div>
+                    </div>
+                    <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase block">Bank DSCR</span>
+                      <div className="text-cyan-400 font-bold text-sm">1.84x <span className="text-[9px] text-emerald-300 font-sans">✓ OK</span></div>
+                    </div>
+                  </div>
+
+                  {/* Visual SVG Mini Trajectory */}
+                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                    <div className="flex justify-between items-center text-[10px] text-slate-400 mb-1">
+                      <span>Realistic 36-Month Runway &amp; Breakeven Curve</span>
+                      <span className="text-emerald-400 font-bold">Breakeven at Month 27</span>
+                    </div>
+                    <div className="w-full h-16 relative">
+                      <svg viewBox="0 0 400 60" className="w-full h-full overflow-visible">
+                        <defs>
+                          <linearGradient id="lpMiniCashGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#10B981" stopOpacity="0.4" />
+                            <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
+                        <path d="M 0 10 Q 150 45 280 48 T 400 20 L 400 60 L 0 60 Z" fill="url(#lpMiniCashGrad)" />
+                        <path d="M 0 10 Q 150 45 280 48 T 400 20" fill="none" stroke="#10B981" strokeWidth="2" />
+                        <circle cx="280" cy="48" r="4" fill="#FFFFFF" stroke="#059669" strokeWidth="2" />
+                        <text x="280" y="40" textAnchor="middle" fill="#34D399" fontSize="8" fontWeight="bold">Breakeven (M27)</text>
+                      </svg>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                    <span>Includes $50k SBA Term Loan @ 8.0% (EMI: $1,566/mo)</span>
+                    <span className="text-emerald-300 font-bold">Grade A (82/100 Survival)</span>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-5 space-y-4">
+                  <h3 className="text-xl font-bold text-white tracking-tight">
+                    Investment, Bank Loans &amp; Venture Intelligence
+                  </h3>
+                  <p className="text-sm text-slate-300 leading-relaxed">
+                    Institutional financial modeling built specifically for founders and CFOs. Accurately calculate cash burn-down, loan amortization, bank covenant DSCR, dilution cap tables, and 1,000-run Monte Carlo simulations.
+                  </p>
+                  <ul className="space-y-2 text-xs text-slate-300">
+                    <li className="flex items-center gap-2">
+                      <span className="text-emerald-400 font-bold">✓</span>
+                      <span>Real S-Curve Growth Decay (No runaway compounding errors)</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-emerald-400 font-bold">✓</span>
+                      <span>Commercial Bank Loans &amp; DSCR Coverage Validation</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-emerald-400 font-bold">✓</span>
+                      <span>7 Automated Startup Failure Mode Diagnostics</span>
+                    </li>
+                  </ul>
+                  <button
+                    onClick={() => openAuth('signup')}
+                    className="mt-2 px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold border border-emerald-500/40 transition-all cursor-pointer"
+                  >
+                    Open Investment Studio →
                   </button>
                 </div>
               </div>
@@ -588,14 +694,14 @@ export function LandingPage() {
             </p>
           </div>
 
-          {/* Card 6: Executive Reporting */}
-          <div className="p-7 rounded-3xl bg-[#0F171D] border border-slate-800 hover:border-emerald-500/40 transition-all shadow-lg hover:shadow-emerald-950/20 group">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/15 text-purple-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <BarChart3Icon className="w-6 h-6" />
+          {/* Card 6: Investment & Bank Loans */}
+          <div id="investment" className="p-7 rounded-3xl bg-[#0F171D] border border-slate-800 hover:border-emerald-500/40 transition-all shadow-lg hover:shadow-emerald-950/20 group">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+              <TrendingUpIcon className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Executive Stories &amp; PDF Exports</h3>
+            <h3 className="text-lg font-bold text-white mb-2">Venture &amp; Bank Debt Intelligence</h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Export high-resolution, vector-crisp presentations and data stories ready for executive reviews and stakeholder meetings.
+              Plan startup runway, calculate commercial bank loan amortization and DSCR ratios, model cap table equity dilution, and run 1,000 Monte Carlo simulations.
             </p>
           </div>
         </div>

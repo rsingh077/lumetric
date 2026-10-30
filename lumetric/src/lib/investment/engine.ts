@@ -83,6 +83,7 @@ export function calculateMonthlyProjections(state: InvestmentPlanState): {
   timeline: MonthlyProjectionPoint[];
   runwayMonths: number;
   zeroCashMonth: number | null;
+  breakevenMonth: number | null;
   totalLoansMonthlyPayment: number;
   annualDebtService: number;
   monthlyTreasuryIncome: number;
@@ -94,7 +95,9 @@ export function calculateMonthlyProjections(state: InvestmentPlanState): {
   const timeline: MonthlyProjectionPoint[] = [];
   let currentCash = state.initialCash;
   let zeroCashMonth: number | null = null;
+  let breakevenMonth: number | null = null;
   let cumulativeRevenue = 0;
+  let currentRevenue = state.monthlyRevenue;
 
   // Total monthly bank debt service from all active loans
   const totalLoansMonthlyPayment = state.loans.reduce((acc, l) => acc + (l.status === 'active' ? l.monthlyPayment : 0), 0);
@@ -104,18 +107,20 @@ export function calculateMonthlyProjections(state: InvestmentPlanState): {
   const treasuryCalc = calculateTreasuryYield(state.initialCash, state.treasury.allocationPercent, state.treasury.annualYieldPercent);
   const monthlyTreasuryIncome = treasuryCalc.monthlyInterest;
 
-  const growthMultiplier = 1 + state.monthlyGrowthRatePercent / 100;
-
   for (let m = 1; m <= state.timeHorizonMonths; m++) {
-    // Compounded revenue
-    const revenue = state.monthlyRevenue * Math.pow(growthMultiplier, m - 1);
-    cumulativeRevenue += revenue;
+    // Growth rate realistic decay (tapers smoothly from early-stage initial growth toward steady-state 2.0%/mo)
+    const currentGrowthRate = Math.max(0.02, (state.monthlyGrowthRatePercent / 100) * Math.pow(0.985, m - 1));
+    if (m > 1) {
+      currentRevenue = currentRevenue * (1 + currentGrowthRate);
+    }
+    cumulativeRevenue += currentRevenue;
 
     // Gross profit
-    const grossProfit = revenue * (state.grossMarginPercent / 100);
+    const grossProfit = currentRevenue * (state.grossMarginPercent / 100);
 
-    // OPEX with modest operational scale creep (1.5% monthly creep)
-    const opex = state.monthlyOpex * Math.pow(1.015, m - 1);
+    // Realistic OPEX scaling (Base fixed OPEX + 18% variable reinvestment on revenue growth)
+    const incrementalRev = Math.max(0, currentRevenue - state.monthlyRevenue);
+    const opex = state.monthlyOpex * Math.pow(1.008, m - 1) + (incrementalRev * 0.18);
 
     // Dynamic Treasury yield on current remaining cash
     const currentTreasuryYield = calculateTreasuryYield(Math.max(0, currentCash), state.treasury.allocationPercent, state.treasury.annualYieldPercent).monthlyInterest;
@@ -123,10 +128,18 @@ export function calculateMonthlyProjections(state: InvestmentPlanState): {
     // Net operating EBITDA
     const netEbitda = grossProfit - opex;
 
+    // Total debt service
+    const loanDebt = totalLoansMonthlyPayment;
+
     // Net Burn (Cash drained from bank account)
-    const netBurn = opex + totalLoansMonthlyPayment - grossProfit - currentTreasuryYield;
+    const netBurn = (opex + loanDebt) - (grossProfit + currentTreasuryYield);
 
     currentCash -= netBurn;
+
+    // Check Breakeven Point (Gross profit exceeds OPEX + Debt service)
+    if (grossProfit >= (opex + loanDebt) && breakevenMonth === null) {
+      breakevenMonth = m;
+    }
 
     if (currentCash <= 0 && zeroCashMonth === null) {
       zeroCashMonth = m;
@@ -134,10 +147,10 @@ export function calculateMonthlyProjections(state: InvestmentPlanState): {
 
     timeline.push({
       month: m,
-      revenue: Math.round(revenue),
+      revenue: Math.round(currentRevenue),
       grossProfit: Math.round(grossProfit),
       opex: Math.round(opex),
-      loanDebtService: Math.round(totalLoansMonthlyPayment),
+      loanDebtService: Math.round(loanDebt),
       treasuryInterest: Math.round(currentTreasuryYield),
       netEbitda: Math.round(netEbitda),
       netBurn: Math.round(netBurn),
@@ -155,7 +168,12 @@ export function calculateMonthlyProjections(state: InvestmentPlanState): {
   const runwayWithoutTreasury = state.initialCash / burnWithoutTreasury;
   const runwayExtensionMonths = Math.max(0, Math.round((baseRunwayMonths - runwayWithoutTreasury) * 10) / 10);
 
-  // Exit Valuation at end of horizon based on ending annualized ARR multiple
+  // Exact runway: If zeroCashMonth is reached, that's the exact runway. If breakeven is reached before zero cash, it's self-sustaining.
+  const effectiveRunway = zeroCashMonth !== null
+    ? zeroCashMonth
+    : (breakevenMonth !== null ? 99.9 : baseRunwayMonths);
+
+  // Exit Valuation at end of horizon based on ending annualized ARR multiple (capped realistically)
   const endingMonthlyRevenue = timeline[timeline.length - 1]?.revenue || state.monthlyRevenue;
   const endingARR = endingMonthlyRevenue * 12;
   const exitValuation = Math.round(endingARR * state.exitMultipleARR);
@@ -177,8 +195,9 @@ export function calculateMonthlyProjections(state: InvestmentPlanState): {
 
   return {
     timeline,
-    runwayMonths: zeroCashMonth !== null ? zeroCashMonth : baseRunwayMonths,
+    runwayMonths: effectiveRunway,
     zeroCashMonth,
+    breakevenMonth,
     totalLoansMonthlyPayment,
     annualDebtService,
     monthlyTreasuryIncome,
