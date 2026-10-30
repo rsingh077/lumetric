@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { AuthScreen } from '@/components/auth/AuthScreen';
 import { LumetricAuthService } from '@/lib/auth';
+import { LandingGeoMapDemo } from './LandingGeoMapDemo';
 import {
   GlobeIcon,
   FileSpreadsheetIcon,
@@ -301,57 +302,8 @@ export function LandingPage() {
             {/* TAB 1: GEOGRAPHIC INTELLIGENCE PREVIEW */}
             {activeDemoTab === 'geo' && (
               <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-center animate-in fade-in duration-300">
-                <div className="lg:col-span-7 bg-[#122A42] p-6 rounded-2xl border border-slate-700/80 relative overflow-hidden shadow-inner flex flex-col justify-between min-h-[300px]">
-                  {/* Radar Telemetry Header */}
-                  <div className="flex items-center justify-between z-10">
-                    <div className="flex items-center gap-2 text-xs font-mono text-emerald-400">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                      <span>SURVEY OF INDIA (37 STATES &amp; UTS)</span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      Telemetry Radar Active
-                    </span>
-                  </div>
-
-                  {/* Visual Map Representation */}
-                  <div className="my-6 flex items-center justify-center relative">
-                    <svg viewBox="0 0 400 240" className="w-full max-w-sm h-auto drop-shadow-lg">
-                      {/* Grid lines */}
-                      <g stroke="#334155" strokeWidth="0.5" strokeDasharray="3,3" opacity="0.4">
-                        <line x1="0" y1="60" x2="400" y2="60" />
-                        <line x1="0" y1="120" x2="400" y2="120" />
-                        <line x1="0" y1="180" x2="400" y2="180" />
-                        <line x1="100" y1="0" x2="100" y2="240" />
-                        <line x1="200" y1="0" x2="200" y2="240" />
-                        <line x1="300" y1="0" x2="300" y2="240" />
-                      </g>
-                      {/* Abstracted India Cartography Silhouettes */}
-                      <path d="M190,20 L210,35 L230,65 L260,85 L280,110 L240,140 L215,195 L200,225 L185,190 L160,150 L140,115 L165,70 Z" fill="#FFFFFF" stroke="#122A42" strokeWidth="1" />
-                      {/* Active States (Maharashtra, Karnataka, Gujarat) */}
-                      <path d="M165,115 L195,120 L190,155 L160,150 Z" fill="#10B981" stroke="#FFFFFF" strokeWidth="1.5" className="animate-pulse" />
-                      <path d="M160,150 L190,155 L180,195 L165,185 Z" fill="#059669" stroke="#34D399" strokeWidth="1" />
-                      <circle cx="178" cy="135" r="5" fill="#34D399" className="animate-ping" />
-                      <circle cx="178" cy="135" r="3" fill="#FFFFFF" />
-                      <text x="178" y="152" textAnchor="middle" fill="#FFFFFF" fontSize="8" fontWeight="bold">MAHARASHTRA</text>
-                    </svg>
-                  </div>
-
-                  {/* Floating Territory Dossier Card */}
-                  <div className="bg-slate-900/90 backdrop-blur-md p-3 rounded-xl border border-emerald-500/30 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 font-mono font-bold flex items-center justify-center text-xs">
-                        MH
-                      </div>
-                      <div>
-                        <div className="font-bold text-white">Maharashtra (Mumbai Hub)</div>
-                        <div className="text-[10px] text-slate-400">42,890 Records • 34.8% Market Share</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-mono font-bold text-emerald-400 text-sm">$4,289,100</div>
-                      <div className="text-[10px] text-emerald-300">Primary Revenue</div>
-                    </div>
-                  </div>
+                <div className="lg:col-span-7 w-full">
+                  <LandingGeoMapDemo />
                 </div>
 
                 <div className="lg:col-span-5 space-y-4 text-left">
