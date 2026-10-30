@@ -1160,19 +1160,19 @@ async function sendOtpEmail(req, recipientEmail, otpCode, purpose, userName) {
       <td align="center">
         <table role="presentation" width="100%" style="max-width: 480px; text-align: left; background-color: #000000;">
           
-          <!-- Brand Header (Matching Meta Logo Layout) -->
+          <!-- Brand Header (Bespoke 3D L-Prism Logo) -->
           <tr>
             <td style="padding: 12px 0 16px 0;">
               <table role="presentation" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td style="vertical-align: middle; padding-right: 10px;">
-                    <!-- Lumetric Geometric Emerald Prism Icon -->
-                    <div style="width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg, #10B981 0%, #06B6D4 100%); display: inline-block; text-align: center; line-height: 32px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);">
-                      <span style="font-size: 18px; color: #FFFFFF; font-weight: 900; vertical-align: middle;">✦</span>
-                    </div>
+                  <td style="vertical-align: middle; padding-right: 12px;">
+                    <a href="https://project-rainfall-60092395179.development.catalystserverless.in/app/index.html" style="text-decoration: none; display: inline-block;">
+                      <img src="https://project-rainfall-60092395179.development.catalystserverless.in/app/icon.svg" alt="Lumetric" width="36" height="36" style="display: block; width: 36px; height: 36px; border-radius: 10px; border: 0; outline: none;" />
+                    </a>
                   </td>
                   <td style="vertical-align: middle;">
-                    <span style="font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: #FFFFFF;">Lumetric</span>
+                    <span style="font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: block; line-height: 1.1;">Lumetric</span>
+                    <span style="font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #10B981; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace; display: block; margin-top: 2px;">AI Data &amp; Decision Studio</span>
                   </td>
                 </tr>
               </table>
