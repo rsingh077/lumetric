@@ -1641,7 +1641,7 @@ export function ExcelAutomatorView() {
           c.border = borderThin;
         });
 
-        let startRow = 3;
+        const startRow = 3;
         const grandTotalRow = startRow + regions.length;
 
         regions.forEach((reg, rIdx) => {

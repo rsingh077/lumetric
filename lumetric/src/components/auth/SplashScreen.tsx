@@ -14,8 +14,11 @@ export function SplashScreen({ onComplete, serverStatus = 'connecting', serverLa
   const [phaseText, setPhaseText] = useState('Initializing Lumetric Data & Document Studio...');
   const [showBypass, setShowBypass] = useState(false);
   const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
   const completedRef = useRef(false);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   const handleEnter = () => {
     if (!completedRef.current) {

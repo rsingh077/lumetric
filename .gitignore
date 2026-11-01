@@ -31,13 +31,15 @@ id_rsa*
 id_ed25519*
 
 # 3. Access Tokens, API Credentials & Service Accounts
-*credentials*
-*secret*
+*credentials*.json
+*secret*.json
+*.secret
 *.token
 *.auth
 service-account*.json
 client_secrets*.json
 oauth*.json
+!docs/**/*.md
 
 # 4. Zoho Catalyst Local State & Deployment Artifacts
 .catalyst/
@@ -62,6 +64,8 @@ node_modules/
 **/out/
 build/
 dist/
+coverage/
+**/coverage/
 .tsbuildinfo
 next-env.d.ts
 .eslintcache

@@ -35,18 +35,24 @@ export function AuthScreen({
   const [signInMethod, setSignInMethod] = useState<SignInMethod>('password');
 
   // Form Fields
-  const [email, setEmail] = useState(initialEmail);
+  const [email, setEmail] = useState(initialEmail || '');
+  const [resetEmail, setResetEmail] = useState(initialEmail || '');
 
-  useEffect(() => {
+  // Synchronize state with props during render without effects
+  const [prevInitialMode, setPrevInitialMode] = useState(initialMode);
+  if (initialMode !== prevInitialMode) {
+    setPrevInitialMode(initialMode);
     if (initialMode) setMode(initialMode);
-  }, [initialMode]);
+  }
 
-  useEffect(() => {
+  const [prevInitialEmail, setPrevInitialEmail] = useState(initialEmail);
+  if (initialEmail !== prevInitialEmail) {
+    setPrevInitialEmail(initialEmail);
     if (initialEmail) {
       setEmail(initialEmail);
       setResetEmail(initialEmail);
     }
-  }, [initialEmail]);
+  }
 
   useEffect(() => {
     if (!isModal || !onClose) return;
@@ -79,10 +85,9 @@ export function AuthScreen({
   const [totpToken, setTotpToken] = useState('');
 
   // Password Reset State
-  const [resetEmail, setResetEmail] = useState('');
   const [resetNewPassword, setResetNewPassword] = useState('');
   const [resetConfirmPassword, setResetConfirmPassword] = useState('');
-  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showResetPassword, _setShowResetPassword] = useState(false);
 
   // Status feedback & Real-Time Presence Detection
   const [isLoading, setIsLoading] = useState(false);
@@ -99,10 +104,12 @@ export function AuthScreen({
 
     // Reset status if incomplete email
     if (!clean || !clean.includes('@') || clean.length < 5) {
-      setEmailStatus('idle');
-      setIsUserExistsError(false);
-      setDetectedUserName(null);
-      return;
+      const timer = setTimeout(() => {
+        setEmailStatus('idle');
+        setIsUserExistsError(false);
+        setDetectedUserName(null);
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     const atParts = clean.split('@');

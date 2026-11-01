@@ -158,11 +158,14 @@ async function sendOtpEmail(req, recipientEmail, otpCode, purpose, userName) {
 
   // 1. Attempt Zoho SMTP Relay (Primary: security@techexon.app on smtp.zoho.in:587)
   const smtpHost = process.env.SMTP_HOST || 'smtp.zoho.in';
-  const smtpUser = process.env.SMTP_USER || 'security@techexon.app';
+  const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
   const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
   const smtpFromName = process.env.SMTP_FROM_NAME || 'Lumetric';
 
+  if (!smtpUser) {
+    console.warn('[SECURITY] Zoho SMTP notice: SMTP_USER environment variable is not configured.');
+  }
   if (!smtpPass) {
     console.warn('[SECURITY] Zoho SMTP notice: SMTP_PASS environment variable is not configured.');
   }
@@ -290,7 +293,7 @@ async function runMailDiagnostics(req) {
   const result = {
     catalystEmailAvailable: false,
     smtpConfigured: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
-    senderEmailConfig: process.env.CATALYST_SENDER_EMAIL || process.env.SENDER_EMAIL || 'security@techexon.app',
+    senderEmailConfig: process.env.CATALYST_SENDER_EMAIL || process.env.SENDER_EMAIL || process.env.SMTP_USER || null,
     catalystMailError: null,
     networkTests: {}
   };

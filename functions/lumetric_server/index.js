@@ -37,6 +37,7 @@ const catalyst = require('zcatalyst-sdk-node');
 
 const { issueTokenPair, revokeToken, isTokenRevoked } = require('./services/auth.service');
 const { globalLimiter } = require('./middleware/rateLimiter');
+const { requestTracingMiddleware, errorHandlerMiddleware } = require('./middleware/observability');
 
 // Import modular domain routers
 const telemetryRoutes = require('./routes/telemetry.routes');
@@ -82,6 +83,9 @@ app.use(helmet({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Request tracing and structured telemetry
+app.use(requestTracingMiddleware);
+
 // Handle Zoho Catalyst gateway path prefix if present
 app.use((req, res, next) => {
   if (req.url.startsWith('/server/lumetric_server')) {
@@ -117,6 +121,7 @@ app.use((req, res, next) => {
     req.path === '/' ||
     req.path === '/api/status' ||
     req.path === '/api/version' ||
+    req.path === '/api/metrics' ||
     req.path === '/api/mail/diagnostics' ||
     req.path === '/api/datastore/status'
   ) {
@@ -140,15 +145,13 @@ app.use(billingRoutes);
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    error: `Endpoint not found: ${req.method} ${req.url}`
+    error: `Endpoint not found: ${req.method} ${req.url}`,
+    reqId: req.id || undefined
   });
 });
 
-// Global error catcher
-app.use((err, req, res, next) => {
-  console.error('Lumetric Server Unhandled Error:', err);
-  res.status(500).json({ success: false, error: err.message || 'Internal server error' });
-});
+// Global error catcher (observability middleware)
+app.use(errorHandlerMiddleware);
 
 // Catalyst Entry Export
 app.issueTokenPair = issueTokenPair;

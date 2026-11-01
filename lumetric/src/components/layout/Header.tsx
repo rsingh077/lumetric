@@ -55,6 +55,10 @@ export function Header() {
     setAuthModalOpen,
     authModalMode,
     logout,
+    theme,
+    toggleTheme,
+    language,
+    setLanguage,
   } = useApp();
 
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
@@ -355,6 +359,28 @@ export function Header() {
             </kbd>
           </button>
 
+          {/* Language Selector Pill */}
+          <button
+            type="button"
+            onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
+            className="px-2 py-1 rounded-xl text-[11px] font-mono font-bold bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] hover:border-[var(--lm-border-strong)] text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] transition-all apple-pressable cursor-pointer"
+            title={language === 'en' ? 'Passer au Français' : 'Switch to English'}
+            aria-label="Toggle language"
+          >
+            {language.toUpperCase()}
+          </button>
+
+          {/* Dark / Light Mode Toggle */}
+          <button
+            type="button"
+            onClick={() => toggleTheme()}
+            className="p-2 rounded-xl text-[var(--lm-text-secondary)] hover:bg-[var(--lm-bg-secondary)] hover:text-[var(--lm-text-primary)] transition-all apple-pressable cursor-pointer text-xs"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label="Toggle dark mode"
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+
 
           {/* Notifications Dropdown */}
           <div className="relative">
@@ -449,14 +475,21 @@ export function Header() {
 
       {/* Fully Functional Global Search Dialog */}
       {searchOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/40 backdrop-blur-md animate-fade-in">
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/40 backdrop-blur-md animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="global-search-input"
+        >
           <div className="bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] rounded-3xl shadow-[var(--lm-shadow-xl)] p-4 w-full max-w-xl">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--lm-border-default)]">
               <div className="flex items-center gap-2.5 flex-1">
                 <SearchIcon className="w-4 h-4 text-blue-500" />
                 <input
+                  id="global-search-input"
                   type="text"
                   autoFocus
+                  aria-label="Search studio"
                   placeholder="Search pages, datasets, projects, models..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -465,7 +498,8 @@ export function Header() {
               </div>
               <button
                 onClick={() => setSearchOpen(false)}
-                className="p-1 rounded-xl text-[var(--lm-text-tertiary)] hover:bg-[var(--lm-bg-tertiary)] apple-pressable"
+                aria-label="Close search dialog"
+                className="p-1 rounded-xl text-[var(--lm-text-tertiary)] hover:bg-[var(--lm-bg-tertiary)] apple-pressable cursor-pointer"
               >
                 <XIcon className="w-4 h-4" />
               </button>
@@ -520,9 +554,14 @@ export function Header() {
 
       {/* New Project Modal */}
       {newProjectModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md animate-fade-in">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="new-project-dialog-title"
+        >
           <div className="bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] rounded-3xl shadow-[var(--lm-shadow-xl)] p-6 w-full max-w-md">
-            <h3 className="text-base font-bold text-[var(--lm-text-primary)] mb-1">
+            <h3 id="new-project-dialog-title" className="text-base font-bold text-[var(--lm-text-primary)] mb-1">
               Create New Project
             </h3>
             <p className="text-xs text-[var(--lm-text-secondary)] mb-4">

@@ -1,0 +1,106 @@
+name: Lumetric CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Typecheck (Frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: lumetric/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: npm --prefix lumetric install
+
+      - name: Run ESLint
+        run: npm --prefix lumetric run lint
+
+      - name: Run TypeScript Strict Check
+        run: cd lumetric && npx tsc --noEmit
+
+  backend-tests:
+    name: Backend Jest Suite & Security Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Backend Dependencies
+        run: npm --prefix functions/lumetric_server install
+
+      - name: Run Backend Test Suite (Threshold ≥ 70%)
+        run: npm --prefix functions/lumetric_server test
+        env:
+          NODE_ENV: test
+          LUMETRIC_JWT_SECRET: ci_test_jwt_secret_32_bytes_super_secure!
+          BANK_WEBHOOK_SECRET: ci_bank_webhook_secret_key_12345
+          MERCHANT_UPI_VPA: billing@catalyst.okaxis
+          MERCHANT_PAYEE_NAME: Lumetric Technologies Private Limited
+          SMTP_HOST: smtp.zoho.in
+          SMTP_PORT: 587
+          SMTP_USER: admin@lumetric.in
+          SMTP_PASS: ci_smtp_dummy_token_never_commit_real
+
+  frontend-tests:
+    name: Frontend Jest & React Testing Library Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: lumetric/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: npm --prefix lumetric install
+
+      - name: Run Frontend Tests
+        run: npm --prefix lumetric test
+
+  build-verification:
+    name: Static Export & Next.js Build Gate
+    needs: [lint-and-typecheck, backend-tests, frontend-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: lumetric/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: npm --prefix lumetric install
+
+      - name: Build & Export Lumetric Studio
+        run: npm --prefix lumetric run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'

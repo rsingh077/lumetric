@@ -112,7 +112,8 @@
 }
 
 /* Dark Mode - Obsidian Emerald Night with Warm Ivory Typography */
-[data-theme='dark'] {
+[data-theme='dark'],
+.dark {
   --lm-bg-primary: #0A110E;          /* Deep Obsidian Emerald */
   --lm-bg-secondary: #111C17;        /* Dark Pine Slate */
   --lm-bg-tertiary: #192821;         /* Forest Obsidian */

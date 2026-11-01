@@ -171,7 +171,10 @@ router.post('/api/billing/create-order', async (req, res) => {
   const orderId = `ORD_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
   const amount = billingCycle === 'annual' ? plan.annualPriceINR : plan.priceINR;
   const formattedAmount = Number(amount).toFixed(2);
-  const merchantVpa = process.env.MERCHANT_UPI_VPA || '6005952031@jio';
+  const merchantVpa = process.env.MERCHANT_UPI_VPA;
+  if (!merchantVpa) {
+    return res.status(500).json({ success: false, error: 'MERCHANT_UPI_VPA environment variable not configured' });
+  }
   const payeeName = process.env.MERCHANT_PAYEE_NAME || 'Lumetric Studio';
   const note = encodeURIComponent(`Lumetric ${plan.name}`);
 
@@ -377,7 +380,10 @@ router.post('/api/billing/verify-upi', async (req, res) => {
 // POST /api/billing/webhook/bank-credit - Automated Bank Credit Webhook
 router.post('/api/billing/webhook/bank-credit', async (req, res) => {
   const { secret, amount, utrNumber, orderId } = req.body;
-  const expectedSecret = process.env.BANK_WEBHOOK_SECRET || 'lumetric_bank_webhook_key_2026';
+  const expectedSecret = process.env.BANK_WEBHOOK_SECRET;
+  if (!expectedSecret) {
+    throw new Error('BANK_WEBHOOK_SECRET not set');
+  }
   
   if (secret !== expectedSecret && req.headers['x-webhook-secret'] !== expectedSecret) {
     return res.status(403).json({ success: false, error: 'Unauthorized webhook access' });

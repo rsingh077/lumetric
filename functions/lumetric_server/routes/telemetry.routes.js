@@ -11,6 +11,7 @@ const { runMailDiagnostics } = require('../services/mail.service');
 const { getAuditTrailCount } = require('../services/audit.service');
 const { cloudConnectorsStore } = require('../services/data.service');
 const { rateLimitMap } = require('../middleware/rateLimiter');
+const { getMetrics } = require('../middleware/observability');
 
 // 1. Root Gateway Probe
 router.get('/', (req, res) => {
@@ -95,6 +96,16 @@ router.get('/api/datastore/status', async (req, res) => {
 router.get('/api/mail/diagnostics', async (req, res) => {
   const diag = await runMailDiagnostics(req);
   return res.json(diag);
+});
+
+// 8. Runtime & System Metrics (Observability)
+router.get('/api/metrics', (req, res) => {
+  const metrics = getMetrics();
+  res.json({
+    success: true,
+    code: 200,
+    metrics
+  });
 });
 
 module.exports = router;

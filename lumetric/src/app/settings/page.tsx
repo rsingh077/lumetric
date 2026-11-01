@@ -109,16 +109,20 @@ export default function SettingsPage() {
   const [generalSaving, setGeneralSaving] = useState(false);
   const [generalSavedNotice, setGeneralSavedNotice] = useState(false);
 
-  useEffect(() => {
-    if (currentWorkspace) {
-      setWsName(currentWorkspace.name || '');
-      setWsIcon(currentWorkspace.icon || '⚡');
-      setWsDesc(currentWorkspace.description || '');
-    }
-    if (currentUser) {
-      setDisplayName(currentUser.name || '');
-    }
-  }, [currentWorkspace, currentUser]);
+  // Synchronize state with incoming workspace/user without cascading render effects
+  const [prevWsId, setPrevWsId] = useState(currentWorkspace?.id);
+  if (currentWorkspace && currentWorkspace.id !== prevWsId) {
+    setPrevWsId(currentWorkspace.id);
+    setWsName(currentWorkspace.name || '');
+    setWsIcon(currentWorkspace.icon || '⚡');
+    setWsDesc(currentWorkspace.description || '');
+  }
+
+  const [prevUserId, setPrevUserId] = useState(currentUser?.id);
+  if (currentUser && currentUser.id !== prevUserId) {
+    setPrevUserId(currentUser.id);
+    setDisplayName(currentUser.name || '');
+  }
 
   const handleSaveGeneral = async (e: React.FormEvent) => {
     e.preventDefault();

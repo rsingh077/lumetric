@@ -905,7 +905,7 @@ export function GeographicIntelligenceMap({
           <div
             className="absolute z-30 pointer-events-none -translate-x-1/2 -translate-y-full mb-3 px-3.5 py-2.5 rounded-2xl bg-slate-900/95 text-white backdrop-blur-md border border-slate-700/80 shadow-2xl text-xs whitespace-nowrap transition-all duration-75"
             style={{
-              left: `${Math.max(80, Math.min(hoveredEntity.x, (containerRef.current?.clientWidth || 400) - 80))}px`,
+              left: `${hoveredEntity.x}px`,
               top: `${Math.max(55, hoveredEntity.y)}px`,
             }}
           >

@@ -12,6 +12,9 @@ const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL for read cache
 const memoryCache = new Map(); // email -> { user, cachedAt }
 const ordersStore = new Map(); // orderId -> order
 
+let cacheHits = 0;
+let cacheMisses = 0;
+
 let cachedUserTableName = null;
 
 const VERIFIED_PAID_SUBSCRIPTION = {
@@ -148,8 +151,10 @@ async function getUserFromStore(req, email, forceFresh = false) {
   const cached = memoryCache.get(normEmail);
   const now = Date.now();
   if (!forceFresh && cached && cached.user && (now - cached.cachedAt < CACHE_TTL_MS)) {
+    cacheHits++;
     return cached.user;
   }
+  cacheMisses++;
 
   const preSeeded = cached ? cached.user : null;
   const catApp = await initCatalystApp(req);
@@ -485,6 +490,19 @@ function getCacheSize() {
   return memoryCache.size;
 }
 
+function getCacheStats() {
+  const total = cacheHits + cacheMisses;
+  const rate = total > 0 ? Number(((cacheHits / total) * 100).toFixed(2)) : 100.0;
+  return {
+    hits: cacheHits,
+    misses: cacheMisses,
+    hitRatePercent: rate,
+    memoryCacheSize: memoryCache.size,
+    ordersStoreSize: ordersStore.size,
+    totalMemoryKeys: memoryCache.size + ordersStore.size
+  };
+}
+
 module.exports = {
   getUserFromStore,
   saveUserToStore,
@@ -494,6 +512,7 @@ module.exports = {
   initCatalystApp,
   extractRowData,
   getCacheSize,
+  getCacheStats,
   ordersStore,
   VERIFIED_PAID_USERS,
   VERIFIED_PAID_SUBSCRIPTION

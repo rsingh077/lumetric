@@ -26,6 +26,11 @@ interface NotificationItem {
 }
 
 interface AppContextType {
+  // Theme & Appearance
+  theme: 'light' | 'dark';
+  setTheme: (theme: 'light' | 'dark') => void;
+  toggleTheme: () => void;
+
   // Localization & Language
   language: AppLanguage;
   setLanguage: (lang: AppLanguage) => void;
@@ -516,6 +521,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const t = (key: string): string => {
     return TRANSLATIONS[language]?.[key] || TRANSLATIONS.en[key] || key;
+  };
+
+  // Theme & Appearance State (Default: Dark Obsidian Emerald)
+  const [theme, setThemeState] = useState<'light' | 'dark'>('dark');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedTheme = (localStorage.getItem('lumetric_theme') as 'light' | 'dark') || 'dark';
+      setThemeState(storedTheme);
+      document.documentElement.setAttribute('data-theme', storedTheme);
+      document.documentElement.classList.toggle('dark', storedTheme === 'dark');
+    }
+  }, []);
+
+  const setTheme = (newTheme: 'light' | 'dark') => {
+    setThemeState(newTheme);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('lumetric_theme', newTheme);
+        document.documentElement.setAttribute('data-theme', newTheme);
+        document.documentElement.classList.toggle('dark', newTheme === 'dark');
+      } catch {}
+    }
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   // 2. Splash & Authentication Life Cycle
@@ -1231,6 +1263,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
+        theme,
+        setTheme,
+        toggleTheme,
         language,
         setLanguage,
         t,

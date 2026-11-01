@@ -11,7 +11,10 @@ const bcrypt = require('bcryptjs');
 const { authenticator } = require('otplib');
 const qrcode = require('qrcode');
 
-const JWT_SECRET = process.env.LUMETRIC_JWT_SECRET || 'lumetric-production-hyper-secure-secret-key-2026';
+const JWT_SECRET = process.env.LUMETRIC_JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('LUMETRIC_JWT_SECRET not set');
+}
 const JWT_EXPIRES_IN = '7d';
 
 const tokenRevocationList = new Map(); // token / jti -> expiresAt

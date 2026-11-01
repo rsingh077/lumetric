@@ -99,7 +99,12 @@ export function WorkspaceSettingsModal({ isOpen, onClose }: WorkspaceSettingsMod
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-md animate-fade-in select-none">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-md animate-fade-in select-none"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="workspace-settings-dialog-title"
+    >
       <div className="bg-[var(--lm-bg-primary)] border border-[var(--lm-border-default)] rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-5 border-b border-[var(--lm-border-default)] bg-gradient-to-r from-[#059669]/15 via-emerald-500/5 to-transparent flex items-center justify-between">
@@ -108,7 +113,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose }: WorkspaceSettingsMod
               {workspaceIcon}
             </div>
             <div>
-              <h3 className="text-base font-bold text-[var(--lm-text-primary)]">
+              <h3 id="workspace-settings-dialog-title" className="text-base font-bold text-[var(--lm-text-primary)]">
                 Workspace &amp; Studio Branding
               </h3>
               <p className="text-[11px] text-[var(--lm-text-secondary)]">
@@ -118,6 +123,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose }: WorkspaceSettingsMod
           </div>
           <button
             onClick={onClose}
+            aria-label="Close workspace settings"
             className="p-1.5 rounded-full hover:bg-[var(--lm-bg-tertiary)] text-[var(--lm-text-tertiary)] hover:text-[var(--lm-text-primary)] transition-colors cursor-pointer"
           >
             ✕

@@ -145,16 +145,6 @@ export function UserAuthProfileModal({
     }
   }, [isOpen, initialMode]);
 
-  useEffect(() => {
-    if (mode === 'admin-dashboard' && authUser && (authUser.role === 'owner' || authUser.role === 'administrator')) {
-      loadWorkspaceUsers();
-    } else if (mode === 'connectors') {
-      loadConnectors();
-    } else if (mode === 'audit') {
-      loadAuditLogs();
-    }
-  }, [mode, authUser]);
-
   const loadWorkspaceUsers = async () => {
     setLoadingUsers(true);
     const res = await LumetricAuthService.fetchWorkspaceUsers();
@@ -194,6 +184,16 @@ export function UserAuthProfileModal({
       setAuditLogs(res.logs);
     }
   };
+
+  useEffect(() => {
+    if (mode === 'admin-dashboard' && authUser && (authUser.role === 'owner' || authUser.role === 'administrator')) {
+      loadWorkspaceUsers();
+    } else if (mode === 'connectors') {
+      loadConnectors();
+    } else if (mode === 'audit') {
+      loadAuditLogs();
+    }
+  }, [mode, authUser]);
 
   const handleSetup2FA = async () => {
     setLoading(true);
@@ -689,7 +689,12 @@ export function UserAuthProfileModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-fade-in select-none">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-fade-in select-none"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="user-profile-dialog-title"
+    >
       <div className="bg-[var(--lm-bg-primary)] border border-[var(--lm-border-default)] rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-5 border-b border-[var(--lm-border-default)] bg-gradient-to-r from-[#059669]/15 via-[#FAF8F5]/5 to-transparent dark:from-[#059669]/20 flex items-center justify-between">
@@ -698,7 +703,7 @@ export function UserAuthProfileModal({
               {authUser ? authUser.name.charAt(0).toUpperCase() : 'L'}
             </div>
             <div>
-              <h3 className="text-base font-bold text-[var(--lm-text-primary)]">
+              <h3 id="user-profile-dialog-title" className="text-base font-bold text-[var(--lm-text-primary)]">
                 {mode === 'profile'
                   ? 'Enterprise Profile & Security'
                   : mode === 'profile-db'
@@ -722,7 +727,8 @@ export function UserAuthProfileModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-[var(--lm-bg-tertiary)] text-[var(--lm-text-tertiary)] hover:text-[var(--lm-text-primary)] transition-colors"
+            aria-label="Close profile modal"
+            className="p-1.5 rounded-full hover:bg-[var(--lm-bg-tertiary)] text-[var(--lm-text-tertiary)] hover:text-[var(--lm-text-primary)] transition-colors cursor-pointer"
           >
             ✕
           </button>

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui';
 import {
@@ -30,7 +29,6 @@ import { parseNumeric } from '@/lib/csvParser';
 type ThemePreset = 'modern' | 'cyberpunk' | 'enterprise';
 
 export default function DashboardsPage() {
-  const router = useRouter();
   const { currentUser, activeDataset, activeRows, setActiveDataset, setActiveView } = useApp();
 
   // Visual Theme & Presentation State
@@ -832,7 +830,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
           <Button
             size="lg"
             variant="primary"
-            onClick={() => (setActiveView ? setActiveView('data') : router.push('/data'))}
+            onClick={() => setActiveView('data')}
             icon={<UploadIcon className="w-5 h-5" />}
             className="bg-[#059669] hover:bg-[#047857] text-[#FAF8F5] shadow-md shadow-emerald-900/20"
           >

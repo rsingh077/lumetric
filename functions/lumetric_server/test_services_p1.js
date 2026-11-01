@@ -1,5 +1,11 @@
 'use strict';
 
+process.env.NODE_ENV = 'test';
+process.env.LUMETRIC_JWT_SECRET = process.env.LUMETRIC_JWT_SECRET || 'test-jwt-secret-for-p1-testing-32chars';
+process.env.BANK_WEBHOOK_SECRET = process.env.BANK_WEBHOOK_SECRET || 'test-bank-webhook-secret-key-2026';
+process.env.MERCHANT_UPI_VPA = process.env.MERCHANT_UPI_VPA || 'lumetric@upi';
+process.env.SMTP_USER = process.env.SMTP_USER || 'security@test.lumetric.dev';
+
 const http = require('http');
 const assert = require('assert');
 const app = require('./index');

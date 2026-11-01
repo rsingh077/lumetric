@@ -37,7 +37,7 @@ let sharedWorker: Worker | null = null;
 let messageIdCounter = 0;
 const pendingCallbacks = new Map<
   number,
-  { resolve: (data: any) => void; reject: (err: any) => void }
+  { resolve: (data: unknown) => void; reject: (err: Error) => void }
 >();
 
 function getWorker(): Worker | null {
@@ -51,7 +51,7 @@ function getWorker(): Worker | null {
     // Attempt standard public worker path first
     const workerPath = '/workers/dataProfiler.worker.js';
     sharedWorker = new Worker(workerPath);
-  } catch (err) {
+  } catch (_err) {
     try {
       // Fallback for subpath environments like /app/ on Zoho Catalyst
       const appWorkerPath = '/app/workers/dataProfiler.worker.js';
@@ -84,7 +84,7 @@ function getWorker(): Worker | null {
   return sharedWorker;
 }
 
-function callWorker<T>(action: string, payload: any): Promise<T> {
+function callWorker<T>(action: string, payload: unknown): Promise<T> {
   const worker = getWorker();
   if (!worker) {
     return Promise.reject(new Error('No worker available'));
@@ -92,7 +92,7 @@ function callWorker<T>(action: string, payload: any): Promise<T> {
 
   return new Promise<T>((resolve, reject) => {
     const id = ++messageIdCounter;
-    pendingCallbacks.set(id, { resolve, reject });
+    pendingCallbacks.set(id, { resolve: resolve as (data: unknown) => void, reject });
     worker.postMessage({ id, action, payload });
   });
 }
@@ -272,7 +272,7 @@ export async function parseAndProfileDatasetAsync(
 ): Promise<ParseProfileResult> {
   try {
     return await callWorker<ParseProfileResult>('PARSE_AND_PROFILE', { text, options });
-  } catch (err) {
+  } catch (_err) {
     return parseAndProfileSync(text, options);
   }
 }
@@ -287,7 +287,7 @@ export async function profileDatasetRowsAsync(
 ): Promise<ProfileRowsResult> {
   try {
     return await callWorker<ProfileRowsResult>('PROFILE_ROWS', { rows, headers, options });
-  } catch (err) {
+  } catch (_err) {
     return profileRowsSync(rows, headers, options);
   }
 }

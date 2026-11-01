@@ -143,6 +143,49 @@ export function SQLStudioView() {
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
+  // Execute SQL Query
+  const runSQLQuery = (queryToRun = sqlQuery) => {
+    setQueryError(null);
+    const start = performance.now();
+
+    try {
+      const cleanSql = queryToRun.trim().replace(/;\s*$/, '');
+      if (!cleanSql) {
+        setQueryResults([]);
+        setQueryColumns([]);
+        return;
+      }
+
+      const res = alasql(cleanSql);
+      const end = performance.now();
+      setExecutionTimeMs(Math.round((end - start) * 10) / 10);
+
+      if (Array.isArray(res)) {
+        setQueryResults(res);
+        if (res.length > 0) {
+          const cols = Object.keys(res[0]);
+          setQueryColumns(cols);
+
+          // Auto-configure initial chart columns
+          const textCol = cols.find((c) => typeof res[0][c] === 'string') || cols[0];
+          const numCol = cols.find((c) => typeof res[0][c] === 'number') || cols[1] || cols[0];
+          setChartLabelCol(textCol);
+          setChartValueCol(numCol);
+        } else {
+          setQueryColumns([]);
+        }
+        setCurrentPage(1);
+      } else {
+        setQueryResults([{ status: 'Query executed successfully', affected: res }]);
+        setQueryColumns(['status', 'affected']);
+      }
+    } catch (err: any) {
+      setQueryError(err.message || 'SQL Execution Syntax Error');
+      setQueryResults([]);
+      setQueryColumns([]);
+    }
+  };
+
   // Initialize and register in-memory database tables in AlaSQL
   useEffect(() => {
     try {
@@ -204,49 +247,6 @@ export function SQLStudioView() {
       console.warn('AlaSQL table initialization error:', err);
     }
   }, [activeRows, datasets, datasetRowsMap]);
-
-  // Execute SQL Query
-  const runSQLQuery = (queryToRun = sqlQuery) => {
-    setQueryError(null);
-    const start = performance.now();
-
-    try {
-      const cleanSql = queryToRun.trim().replace(/;\s*$/, '');
-      if (!cleanSql) {
-        setQueryResults([]);
-        setQueryColumns([]);
-        return;
-      }
-
-      const res = alasql(cleanSql);
-      const end = performance.now();
-      setExecutionTimeMs(Math.round((end - start) * 10) / 10);
-
-      if (Array.isArray(res)) {
-        setQueryResults(res);
-        if (res.length > 0) {
-          const cols = Object.keys(res[0]);
-          setQueryColumns(cols);
-
-          // Auto-configure initial chart columns
-          const textCol = cols.find((c) => typeof res[0][c] === 'string') || cols[0];
-          const numCol = cols.find((c) => typeof res[0][c] === 'number') || cols[1] || cols[0];
-          setChartLabelCol(textCol);
-          setChartValueCol(numCol);
-        } else {
-          setQueryColumns([]);
-        }
-        setCurrentPage(1);
-      } else {
-        setQueryResults([{ status: 'Query executed successfully', affected: res }]);
-        setQueryColumns(['status', 'affected']);
-      }
-    } catch (err: any) {
-      setQueryError(err.message || 'SQL Execution Syntax Error');
-      setQueryResults([]);
-      setQueryColumns([]);
-    }
-  };
 
   // Keyboard shortcut: Ctrl+Enter or Cmd+Enter to execute query
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

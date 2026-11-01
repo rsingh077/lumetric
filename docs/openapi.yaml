@@ -103,6 +103,31 @@ paths:
         '200':
           description: Diagnostics result
 
+  /api/metrics:
+    get:
+      summary: Observability & System Performance Metrics
+      description: Returns service uptime, rolling p50/p95 latency metrics, total requests, error rate, and DataStore vs cache hit rate.
+      responses:
+        '200':
+          description: Runtime performance metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  code: { type: integer, example: 200 }
+                  metrics:
+                    type: object
+                    properties:
+                      uptimeSec: { type: integer, example: 3600 }
+                      memoryStoreSize: { type: integer, example: 12 }
+                      totalRequests: { type: integer, example: 1420 }
+                      errorCount: { type: integer, example: 0 }
+                      p50LatencyMs: { type: number, example: 4.2 }
+                      p95LatencyMs: { type: number, example: 18.5 }
+                      cacheHitRate: { type: string, example: "94.2%" }
+
   /api/auth/check-email:
     post:
       summary: Real-Time Account Availability & User Type Check
