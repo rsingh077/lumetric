@@ -969,21 +969,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // 7. Navigation / Shell View State (Universal Dual-Platform SPA Engine)
   const [activeView, setActiveViewState] = useState<ActiveView>('home');
 
-  // Detect view cleanly from any URL format (/app/investment, /investment.html, etc.)
+  // Detect view cleanly from any URL format (?view=data, #data, /app/investment, etc.)
   const detectViewFromLocation = (): ActiveView => {
     if (typeof window === 'undefined') return 'home';
-    let path = window.location.pathname || '/';
-    // Strip leading '/app' or '/app/'
-    if (path.startsWith('/app/')) {
-      path = path.slice(4);
-    } else if (path === '/app') {
-      path = '/';
-    }
-    // Strip trailing .html
-    path = path.replace(/\.html$/, '');
-    // Strip trailing slashes
-    path = path.replace(/\/+$/, '');
-    const slug = path.replace(/^\/+/, '');
 
     const validViews: ActiveView[] = [
       'home',
@@ -1000,6 +988,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       'excel',
       'investment',
     ];
+
+    // 1. Query parameter routing (Catalyst web hosting default: /app/?view=data)
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const queryView = searchParams.get('view');
+      if (queryView && validViews.includes(queryView as ActiveView)) {
+        return queryView as ActiveView;
+      }
+    } catch {}
+
+    // 2. Hash routing fallback (#data)
+    if (window.location.hash) {
+      const hashView = window.location.hash.replace(/^#\/?/, '').split('?')[0];
+      if (hashView && validViews.includes(hashView as ActiveView)) {
+        return hashView as ActiveView;
+      }
+    }
+
+    // 3. Pathname routing (/data, /app/data, /data.html)
+    let path = window.location.pathname || '/';
+    if (path.startsWith('/app/')) {
+      path = path.slice(4);
+    } else if (path === '/app') {
+      path = '/';
+    }
+    // Strip trailing .html
+    path = path.replace(/\.html$/, '');
+    // Strip trailing slashes
+    path = path.replace(/\/+$/, '');
+    const slug = path.replace(/^\/+/, '');
 
     if (!slug || slug === 'index') return 'home';
     if (validViews.includes(slug as ActiveView)) {
@@ -1037,13 +1055,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setActiveViewState(view);
     if (typeof window !== 'undefined') {
       const isCatalyst = window.location.pathname.startsWith('/app');
-      const base = isCatalyst ? '/app' : '';
-      const targetPath = view === 'home'
-        ? (isCatalyst ? '/app/index.html' : '/')
-        : (isCatalyst ? `/app/${view}.html` : `/${view}`);
-      if (window.location.pathname !== targetPath) {
+      // For Catalyst web hosting, use clean SPA query routing (?view=...) to prevent
+      // Next.js App Router pathname hydration/invariant mismatch errors on static export.
+      const targetUrl = isCatalyst
+        ? (view === 'home' ? '/app/' : `/app/?view=${view}`)
+        : (view === 'home' ? '/' : `/?view=${view}`);
+
+      const currentFull = window.location.pathname + window.location.search;
+      if (currentFull !== targetUrl) {
         try {
-          window.history.pushState({ view }, '', targetPath);
+          window.history.pushState({ view }, '', targetUrl);
         } catch {
           // PushState fallback in restricted iframe/webviews
         }

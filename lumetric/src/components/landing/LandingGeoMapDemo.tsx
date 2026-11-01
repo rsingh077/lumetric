@@ -139,13 +139,27 @@ export function LandingGeoMapDemo() {
   };
 
   const activeEntity = useMemo(() => {
+    if (!currentRegistry.entities || currentRegistry.entities.length === 0) {
+      if (mode === 'india') return { id: 'MH', name: 'Maharashtra', d: '', centroid: [230, 420] as [number, number] };
+      if (mode === 'us') return { id: 'CA', name: 'California', d: '', centroid: [100, 270] as [number, number] };
+      return { id: 'IN', name: 'India', d: '', centroid: [660, 260] as [number, number] };
+    }
     const found = currentRegistry.entities.find(
       (e) => e.id.toLowerCase() === selectedId.toLowerCase()
     );
     return found || currentRegistry.entities[0];
-  }, [currentRegistry, selectedId]);
+  }, [currentRegistry, selectedId, mode]);
 
   const activeMetrics = useMemo(() => {
+    if (!activeEntity) {
+      return {
+        records: 48500,
+        revenueFormatted: mode === 'india' ? '₹42.8 Cr' : '$42.8k',
+        share: '34.6%',
+        hub: 'Regional Financial Core',
+        tier: 'Tier 1 Enterprise Hub',
+      };
+    }
     return getEntityMetrics(activeEntity.id, activeEntity.name);
   }, [activeEntity, mode]);
 
@@ -353,7 +367,7 @@ export function LandingGeoMapDemo() {
           />
 
           {/* Active Centroid Sonar Beacon for Selected Territory */}
-          {activeEntity.centroid && (
+          {activeEntity?.centroid && (
             <g
               transform={`translate(${activeEntity.centroid[0]}, ${activeEntity.centroid[1]})`}
               className="pointer-events-none select-none"
@@ -370,24 +384,24 @@ export function LandingGeoMapDemo() {
       <div className="bg-slate-900/95 backdrop-blur-md p-3.5 rounded-xl border border-emerald-500/35 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs z-10 shadow-lg">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 font-mono font-bold flex items-center justify-center text-xs border border-emerald-500/30 shrink-0">
-            {activeEntity.id}
+            {activeEntity?.id || 'IND'}
           </div>
           <div>
             <div className="font-bold text-white text-sm flex items-center gap-2">
-              <span>{activeEntity.name}</span>
+              <span>{activeEntity?.name || 'Selected Territory'}</span>
               <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-emerald-500/20 text-emerald-300 font-normal">
-                {activeMetrics.tier}
+                {activeMetrics?.tier || 'Data Market'}
               </span>
             </div>
             <div className="text-[11px] text-slate-400 mt-0.5">
-              {activeMetrics.hub} • <strong className="text-slate-200 font-mono">{activeMetrics.records.toLocaleString()}</strong> Records • {activeMetrics.share} Share
+              {activeMetrics?.hub || 'Regional Core'} • <strong className="text-slate-200 font-mono">{(activeMetrics?.records || 0).toLocaleString()}</strong> Records • {activeMetrics?.share || '0%'} Share
             </div>
           </div>
         </div>
 
         <div className="text-left sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-800">
           <div className="font-mono font-extrabold text-emerald-400 text-base leading-none">
-            {activeMetrics.revenueFormatted}
+            {activeMetrics?.revenueFormatted || '₹0.0 Cr'}
           </div>
           <div className="text-[10px] text-slate-400 mt-1 uppercase font-semibold tracking-wider">
             Primary Volume Index

@@ -115,14 +115,44 @@ const indexPath = path.join(outDir, 'index.html');
 if (fs.existsSync(indexPath)) {
   const indexHtml = fs.readFileSync(indexPath, 'utf8');
 
-  // Overwrite fallbacks with full SPA
-  fs.writeFileSync(path.join(outDir, '404.html'), indexHtml, 'utf8');
-  fs.writeFileSync(path.join(appOutDir, '404.html'), indexHtml, 'utf8');
+  // Master SPA files
   fs.writeFileSync(path.join(outDir, 'app.html'), indexHtml, 'utf8');
   fs.writeFileSync(path.join(appOutDir, 'index.html'), indexHtml, 'utf8');
   fs.writeFileSync(path.join(appOutDir, 'app.html'), indexHtml, 'utf8');
 
-  // Mirror universal SPA across all 12 routes
+  // 404 Recovery Fallback with Instant Route Resolution
+  const recovery404Html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Lumetric Studio — Redirecting</title>
+<script>
+(function() {
+  var p = window.location.pathname;
+  var clean = p.replace(/^\\/app\\/?/, '').replace(/\\.html$/, '').replace(/\\/+$/, '');
+  var valid = ['projects','data','pipelines','analysis','models','dashboards','stories','operations','settings','sql','excel','investment'];
+  var search = window.location.search || '';
+  if (valid.indexOf(clean) !== -1) {
+    window.location.replace('/app/?view=' + clean + (search ? (search.indexOf('?') === 0 ? '&' + search.slice(1) : search) : ''));
+  } else {
+    window.location.replace('/app/' + search);
+  }
+})();
+</script>
+</head>
+<body style="background:#0A110E;color:#FAF8F5;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+<div style="text-align:center;">
+  <p style="font-size:14px;font-weight:600;letter-spacing:0.05em;color:#34D399;margin-bottom:8px;">Launching Lumetric Studio...</p>
+  <p style="font-size:12px;color:#94A3B8;">Redirecting to enterprise workspace...</p>
+</div>
+</body>
+</html>`;
+
+  fs.writeFileSync(path.join(outDir, '404.html'), recovery404Html, 'utf8');
+  fs.writeFileSync(path.join(appOutDir, '404.html'), recovery404Html, 'utf8');
+
+  // Mirror universal SPA across all 12 routes with Instant View Redirection
   const appRoutes = [
     'projects',
     'data',
@@ -139,25 +169,49 @@ if (fs.existsSync(indexPath)) {
   ];
 
   for (const r of appRoutes) {
+    const routeRedirectHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta http-equiv="refresh" content="0; url=/app/?view=${r}"/>
+<title>Lumetric Studio — ${r.charAt(0).toUpperCase() + r.slice(1)}</title>
+<script>
+(function() {
+  var base = window.location.pathname.startsWith('/app') ? '/app/' : '/';
+  var search = window.location.search || '';
+  var glue = search ? (search.indexOf('?') === 0 ? '&' + search.slice(1) : search) : '';
+  window.location.replace(base + '?view=${r}' + glue);
+})();
+</script>
+</head>
+<body style="background:#0A110E;color:#FAF8F5;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+<div style="text-align:center;">
+  <p style="font-size:14px;font-weight:600;letter-spacing:0.05em;color:#34D399;margin-bottom:8px;">Launching Lumetric ${r.charAt(0).toUpperCase() + r.slice(1)}...</p>
+  <p style="font-size:12px;color:#94A3B8;">Connecting to cloud workspace...</p>
+</div>
+</body>
+</html>`;
+
     // 1. Root route directories: out/r/index.html
     const routeDir = path.join(outDir, r);
     if (!fs.existsSync(routeDir)) {
       fs.mkdirSync(routeDir, { recursive: true });
     }
-    fs.writeFileSync(path.join(routeDir, 'index.html'), indexHtml, 'utf8');
+    fs.writeFileSync(path.join(routeDir, 'index.html'), routeRedirectHtml, 'utf8');
 
     // 2. Catalyst app route directories: out/app/r/index.html
     const appRouteDir = path.join(appOutDir, r);
     if (!fs.existsSync(appRouteDir)) {
       fs.mkdirSync(appRouteDir, { recursive: true });
     }
-    fs.writeFileSync(path.join(appRouteDir, 'index.html'), indexHtml, 'utf8');
+    fs.writeFileSync(path.join(appRouteDir, 'index.html'), routeRedirectHtml, 'utf8');
 
     // 3. Static html files: out/r.html and out/app/r.html
-    fs.writeFileSync(path.join(outDir, `${r}.html`), indexHtml, 'utf8');
-    fs.writeFileSync(path.join(appOutDir, `${r}.html`), indexHtml, 'utf8');
+    fs.writeFileSync(path.join(outDir, `${r}.html`), routeRedirectHtml, 'utf8');
+    fs.writeFileSync(path.join(appOutDir, `${r}.html`), routeRedirectHtml, 'utf8');
   }
-  console.log('✓ Mirrored universal SPA across all 12 application routes and 404 recovery fallbacks in out/ and out/app/');
+  console.log('✓ Configured zero-latency route redirection across all 12 routes and 404 recovery in out/ and out/app/');
 }
 
 // 5. If Android assets directory exists, enforce clean /_next/ paths so Android WebView hydrates without errors

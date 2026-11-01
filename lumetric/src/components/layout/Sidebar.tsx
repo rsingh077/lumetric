@@ -290,8 +290,8 @@ export function Sidebar() {
                 const isActive = activeView === item.id;
                 const IconComponent = item.icon;
                 const navHref = isCatalyst
-                  ? (item.id === 'home' ? '/app/index.html' : `/app/${item.id}.html`)
-                  : (item.id === 'home' ? '/' : `/${item.id}`);
+                  ? (item.id === 'home' ? '/app/' : `/app/?view=${item.id}`)
+                  : (item.id === 'home' ? '/' : `/?view=${item.id}`);
                 return (
                   <a
                     key={item.id}
