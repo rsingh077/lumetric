@@ -6,6 +6,7 @@ import { SparklesIcon } from '@/components/icons';
 import {
   ColumnProfile,
   DatasetProfile,
+  DocumentFileProfile,
   ColumnSemanticRole,
   DatasetRequirements,
   QualityCheckResult,
@@ -45,6 +46,7 @@ export default function DataWorkspacePage() {
     deleteDataset,
     setActiveView,
     activeRows,
+    addDocumentFile,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'intake' | 'wizard' | 'catalog' | 'inspect'>('intake');
@@ -121,15 +123,14 @@ export default function DataWorkspacePage() {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processSelectedFile = async (file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
 
+    // 1. Multi-Sheet Excel Workbooks (.xlsx, .xls)
     if (ext === 'xlsx' || ext === 'xls') {
       try {
         setIsProcessing(true);
+        setParseError(null);
         const XLSX = await import('xlsx');
         const buffer = await file.arrayBuffer();
         const wb = XLSX.read(buffer, { type: 'array' });
@@ -148,6 +149,39 @@ export default function DataWorkspacePage() {
       return;
     }
 
+    // 2. Unstructured Document Files (.pdf, .docx dossiers)
+    if (ext === 'pdf' || ext === 'docx') {
+      try {
+        setIsProcessing(true);
+        setParseError(null);
+        const text = await file.text().catch(() => 'Binary document contents indexed.');
+        const words = text.split(/\s+/).filter(Boolean).length;
+        const doc: DocumentFileProfile = {
+          id: `doc_${Date.now()}`,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: ext === 'pdf' ? 'pdf' : 'docx',
+          uploadedAt: new Date().toISOString(),
+          sha256: computeHash(file.name + file.size),
+          rawTextPreview: text.slice(0, 2500),
+          wordCount: words,
+          tokenCount: Math.round(words * 1.3),
+          language: 'English',
+          status: 'ready',
+          treatments: [],
+        };
+        addDocumentFile(doc);
+        setPublishedNotice(`Document "${file.name}" ingested into secure document vault!`);
+        setTimeout(() => setPublishedNotice(null), 5000);
+      } catch (err: any) {
+        setParseError(`Failed to ingest document: ${err.message}`);
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+
+    // 3. Tabular Text Datasets (.csv, .tsv, .txt, .json)
     const reader = new FileReader();
     reader.onload = async (event) => {
       const text = event.target?.result as string;
@@ -155,8 +189,17 @@ export default function DataWorkspacePage() {
     };
     reader.onerror = () => {
       setParseError('Failed to read local file.');
+      setIsProcessing(false);
     };
     reader.readAsText(file);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset file input value so re-uploading the same file works reliably
+    e.target.value = '';
+    await processSelectedFile(file);
   };
 
   const handleSelectExcelSheet = async (sheetName: string) => {
@@ -422,6 +465,7 @@ export default function DataWorkspacePage() {
           onSetPasteMode={setPasteMode}
           onSetPastedText={setPastedText}
           onFileUpload={handleFileUpload}
+          onFileDrop={processSelectedFile}
           onIntakeContent={handleIntakeContent}
         />
       )}

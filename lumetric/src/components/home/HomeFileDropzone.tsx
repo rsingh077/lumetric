@@ -23,38 +23,54 @@ export function HomeFileDropzone({ onSuccess }: HomeFileDropzoneProps) {
 
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleProcessFile = async (file: File) => {
     setIsUploading(true);
     setUploadError(null);
+    setUploadSuccess(null);
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
 
       if (['csv', 'tsv', 'txt', 'json', 'xlsx', 'xls'].includes(ext)) {
         if (ext === 'xlsx' || ext === 'xls') {
-          const ExcelJS = await import('exceljs');
-          const wb = new ExcelJS.Workbook();
-          const buf = await file.arrayBuffer();
-          await wb.xlsx.load(buf);
-          const sheet = wb.worksheets[0];
-          if (!sheet) throw new Error('No worksheets found in Excel file');
+          let headers: string[] = [];
+          let rows: Record<string, string>[] = [];
 
-          const headers: string[] = [];
-          const rows: Record<string, string>[] = [];
-          sheet.eachRow((row, rowNumber) => {
-            const values = Array.isArray(row.values) ? row.values.slice(1) : [];
-            if (rowNumber === 1) {
-              values.forEach((v, idx) => headers.push(String(v || `Col_${idx + 1}`).trim()));
-            } else {
-              const r: Record<string, string> = {};
-              headers.forEach((h, idx) => {
-                const cellVal = values[idx];
-                r[h] = cellVal !== undefined && cellVal !== null ? String(cellVal) : '';
-              });
-              rows.push(r);
-            }
-          });
+          try {
+            const XLSX = await import('xlsx');
+            const buf = await file.arrayBuffer();
+            const wb = XLSX.read(buf, { type: 'array' });
+            const sheetName = wb.SheetNames[0] || 'Sheet1';
+            const ws = wb.Sheets[sheetName];
+            if (!ws) throw new Error('No worksheets found in Excel file');
+            const jsonRows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
+            if (jsonRows.length === 0) throw new Error('Excel sheet contains no data records');
+            rows = healDatasetRows(jsonRows);
+            headers = Object.keys(rows[0] || {});
+          } catch {
+            const ExcelJS = await import('exceljs');
+            const wb = new ExcelJS.Workbook();
+            const buf = await file.arrayBuffer();
+            await wb.xlsx.load(buf);
+            const sheet = wb.worksheets[0];
+            if (!sheet) throw new Error('No worksheets found in Excel file');
+
+            sheet.eachRow((row, rowNumber) => {
+              const values = Array.isArray(row.values) ? row.values.slice(1) : [];
+              if (rowNumber === 1) {
+                values.forEach((v, idx) => headers.push(String(v || `Col_${idx + 1}`).trim()));
+              } else {
+                const r: Record<string, string> = {};
+                headers.forEach((h, idx) => {
+                  const cellVal = values[idx];
+                  r[h] = cellVal !== undefined && cellVal !== null ? String(cellVal) : '';
+                });
+                rows.push(r);
+              }
+            });
+          }
 
           const ds: DatasetProfile = {
             id: `ds_${Date.now()}`,
@@ -90,6 +106,7 @@ export function HomeFileDropzone({ onSuccess }: HomeFileDropzoneProps) {
             status: 'complete',
           };
           addDataset(ds, rows);
+          setUploadSuccess(`Successfully ingested "${file.name}" (${rows.length} rows)`);
         } else {
           const text = await file.text();
           if (ext === 'json') {
@@ -131,6 +148,7 @@ export function HomeFileDropzone({ onSuccess }: HomeFileDropzoneProps) {
               status: 'complete',
             };
             addDataset(ds, rows);
+            setUploadSuccess(`Successfully ingested "${file.name}" (${rows.length} rows)`);
           } else {
             const rawRows = parseCSVStrict(text);
             const headers = rawRows[0] || [];
@@ -176,6 +194,7 @@ export function HomeFileDropzone({ onSuccess }: HomeFileDropzoneProps) {
               status: 'complete',
             };
             addDataset(ds, healed);
+            setUploadSuccess(`Successfully ingested "${file.name}" (${healed.length} rows)`);
           }
         }
       } else {
@@ -199,6 +218,7 @@ export function HomeFileDropzone({ onSuccess }: HomeFileDropzoneProps) {
           treatments: [],
         };
         addDocumentFile(doc);
+        setUploadSuccess(`Successfully indexed "${file.name}" into document vault`);
       }
       if (onSuccess) onSuccess();
     } catch (err: any) {
@@ -262,7 +282,10 @@ export function HomeFileDropzone({ onSuccess }: HomeFileDropzoneProps) {
           disabled={isUploading}
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) handleProcessFile(file);
+            if (file) {
+              e.target.value = '';
+              handleProcessFile(file);
+            }
           }}
         />
 
@@ -283,6 +306,19 @@ export function HomeFileDropzone({ onSuccess }: HomeFileDropzoneProps) {
               Supports CSV, Excel, TXT, JSON, and PDF dossiers
             </p>
           </div>
+
+          {uploadSuccess && (
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-700 dark:text-emerald-300 flex items-center justify-between">
+              <span>✓ {uploadSuccess}</span>
+              <button
+                type="button"
+                onClick={() => setActiveView('data')}
+                className="font-bold underline ml-2"
+              >
+                Open Studio →
+              </button>
+            </div>
+          )}
 
           {uploadError && (
             <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300">

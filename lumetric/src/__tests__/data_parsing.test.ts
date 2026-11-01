@@ -43,4 +43,25 @@ describe('Data Ingestion & CSV Profiling Pipeline', () => {
     expect(ageCol).toBeDefined();
     expect(ageCol?.nullCount).toBe(1);
   });
+
+  test('parseAndProfileDatasetAsync automatically ingests and profiles JSON array records', async () => {
+    const jsonText = JSON.stringify([
+      { id: 'usr-1', name: 'Alice', score: 98, active: true },
+      { id: 'usr-2', name: 'Bob', score: 85, active: false },
+      { id: 'usr-3', name: 'Charlie', score: 91, active: true },
+    ]);
+    const profile = await parseAndProfileDatasetAsync(jsonText);
+    expect(profile.rowCount).toBe(3);
+    expect(profile.headers).toContain('id');
+    expect(profile.headers).toContain('name');
+    expect(profile.headers).toContain('score');
+    expect(profile.suggestedPrimaryKey).toBe('id');
+  });
+
+  test('parseAndProfileDatasetAsync automatically detects TSV tab-delimited records', async () => {
+    const tsv = `order_id\tamount\tcustomer\n101\t500\tAcme\n102\t350\tGlobex`;
+    const profile = await parseAndProfileDatasetAsync(tsv);
+    expect(profile.rowCount).toBe(2);
+    expect(profile.headers).toEqual(['order_id', 'amount', 'customer']);
+  });
 });

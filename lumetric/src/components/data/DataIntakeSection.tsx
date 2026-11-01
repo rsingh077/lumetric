@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, Button } from '@/components/ui';
 import { UploadIcon } from '@/components/icons';
 
@@ -15,6 +15,7 @@ interface DataIntakeSectionProps {
   onSetPasteMode: (mode: boolean) => void;
   onSetPastedText: (text: string) => void;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onFileDrop?: (file: File) => void;
   onIntakeContent: (content: string, name: string, size: number) => void;
 }
 
@@ -29,8 +30,10 @@ export function DataIntakeSection({
   onSetPasteMode,
   onSetPastedText,
   onFileUpload,
+  onFileDrop,
   onIntakeContent,
 }: DataIntakeSectionProps) {
+  const [isDragOver, setIsDragOver] = useState(false);
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Multi-Sheet Excel Workbook Selector */}
@@ -63,7 +66,26 @@ export function DataIntakeSection({
       )}
 
       {/* Main Drag & Drop Zone */}
-      <div className="border-2 border-dashed border-[var(--lm-border-default)] hover:border-blue-500/60 rounded-3xl p-8 sm:p-12 text-center bg-[var(--lm-bg-elevated)] backdrop-blur-2xl transition-all duration-300 shadow-[var(--lm-shadow-md)] apple-card-hover">
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragOver(true);
+        }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragOver(false);
+          const file = e.dataTransfer.files?.[0];
+          if (file && onFileDrop) {
+            onFileDrop(file);
+          }
+        }}
+        className={`border-2 border-dashed rounded-3xl p-8 sm:p-12 text-center bg-[var(--lm-bg-elevated)] backdrop-blur-2xl transition-all duration-300 shadow-[var(--lm-shadow-md)] apple-card-hover ${
+          isDragOver
+            ? 'border-blue-500 bg-blue-500/10 scale-[1.01]'
+            : 'border-[var(--lm-border-default)] hover:border-blue-500/60'
+        }`}
+      >
         <div className="max-w-xl mx-auto space-y-4">
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-500/25">
             <UploadIcon className="w-8 h-8" />

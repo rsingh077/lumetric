@@ -219,18 +219,33 @@ export default function AnalysisStudioPage() {
   const handleDirectIntake = (content: string, name: string, size: number) => {
     setIsIntaking(true);
     try {
-      const rawGrid = parseCSVStrict(content);
-      if (rawGrid.length < 2) throw new Error('File must contain a header and data rows.');
+      let headers: string[] = [];
+      let rows: Record<string, string>[] = [];
+      const trimmed = (content || '').trim();
 
-      const headers = rawGrid[0].map((h) => h.replace(/^["']|["']$/g, '').trim());
-      let rows = rawGrid.slice(1).map((parts) => {
-        const obj: Record<string, string> = {};
-        headers.forEach((h, i) => {
-          obj[h] = parts[i] ?? '';
+      if (trimmed.startsWith('[') || (trimmed.startsWith('{') && !trimmed.startsWith('{"status"'))) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          const arrayData = Array.isArray(parsed) ? parsed : [parsed];
+          rows = healDatasetRows(arrayData);
+          headers = Array.from(new Set(rows.flatMap((r) => Object.keys(r || {}))));
+        } catch {}
+      }
+
+      if (headers.length === 0 || rows.length === 0) {
+        const rawGrid = parseCSVStrict(content);
+        if (rawGrid.length < 2) throw new Error('File must contain a header and data rows.');
+
+        headers = rawGrid[0].map((h) => h.replace(/^["']|["']$/g, '').trim());
+        const dataRows = rawGrid.slice(1).map((parts) => {
+          const obj: Record<string, string> = {};
+          headers.forEach((h, i) => {
+            obj[h] = parts[i] ?? '';
+          });
+          return obj;
         });
-        return obj;
-      });
-      rows = healDatasetRows(rows);
+        rows = healDatasetRows(dataRows);
+      }
 
       const hash = computeHash(content);
       const profiles: ColumnProfile[] = headers.map((colName) => {
@@ -377,10 +392,28 @@ export default function AnalysisStudioPage() {
               <label className="cursor-pointer">
                 <input
                   type="file"
-                  accept=".csv,.txt,.json"
-                  onChange={(e) => {
+                  accept=".csv,.txt,.json,.xlsx,.xls"
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
+                    e.target.value = '';
+                    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+
+                    if (ext === 'xlsx' || ext === 'xls') {
+                      try {
+                        const XLSX = await import('xlsx');
+                        const buffer = await file.arrayBuffer();
+                        const wb = XLSX.read(buffer, { type: 'array' });
+                        const initialSheet = wb.SheetNames[0] || 'Sheet1';
+                        const ws = wb.Sheets[initialSheet];
+                        const csvContent = XLSX.utils.sheet_to_csv(ws);
+                        handleDirectIntake(csvContent, `${file.name} [${initialSheet}]`, file.size);
+                      } catch (err: any) {
+                        console.warn('Failed to parse Excel file:', err);
+                      }
+                      return;
+                    }
+
                     const r = new FileReader();
                     r.onload = (ev) => handleDirectIntake(ev.target?.result as string, file.name, file.size);
                     r.readAsText(file);

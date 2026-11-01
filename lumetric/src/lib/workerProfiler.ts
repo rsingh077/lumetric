@@ -48,18 +48,15 @@ function getWorker(): Worker | null {
   if (sharedWorker) return sharedWorker;
 
   try {
-    // Attempt standard public worker path first
-    const workerPath = '/workers/dataProfiler.worker.js';
+    const isCatalyst = window.location.pathname.startsWith('/app');
+    const workerPath = isCatalyst
+      ? '/app/workers/dataProfiler.worker.js'
+      : '/workers/dataProfiler.worker.js';
+
     sharedWorker = new Worker(workerPath);
-  } catch (_err) {
-    try {
-      // Fallback for subpath environments like /app/ on Zoho Catalyst
-      const appWorkerPath = '/app/workers/dataProfiler.worker.js';
-      sharedWorker = new Worker(appWorkerPath);
-    } catch (innerErr) {
-      console.warn('Web Worker instantiation unavailable; falling back to main-thread processing.', innerErr);
-      return null;
-    }
+  } catch (err) {
+    console.warn('Web Worker instantiation unavailable; falling back to main-thread processing.', err);
+    return null;
   }
 
   if (sharedWorker) {
@@ -78,6 +75,15 @@ function getWorker(): Worker | null {
 
     sharedWorker.onerror = (e) => {
       console.warn('Worker runtime error:', e.message);
+      // Immediately reject all pending callbacks so UI never hangs
+      pendingCallbacks.forEach(({ reject }) => {
+        reject(new Error(e.message || 'Worker script failed to load'));
+      });
+      pendingCallbacks.clear();
+      try {
+        sharedWorker?.terminate();
+      } catch {}
+      sharedWorker = null;
     };
   }
 
@@ -92,8 +98,44 @@ function callWorker<T>(action: string, payload: unknown): Promise<T> {
 
   return new Promise<T>((resolve, reject) => {
     const id = ++messageIdCounter;
-    pendingCallbacks.set(id, { resolve: resolve as (data: unknown) => void, reject });
-    worker.postMessage({ id, action, payload });
+    let settled = false;
+
+    // Safety timeout: if worker takes > 2000ms, fail fast and fallback to in-thread sync processing
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        pendingCallbacks.delete(id);
+        reject(new Error('Worker timeout - falling back to main thread'));
+      }
+    }, 2000);
+
+    pendingCallbacks.set(id, {
+      resolve: (data: unknown) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(data as T);
+        }
+      },
+      reject: (err: Error) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          reject(err);
+        }
+      },
+    });
+
+    try {
+      worker.postMessage({ id, action, payload });
+    } catch (err: any) {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        pendingCallbacks.delete(id);
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
+    }
   });
 }
 
@@ -101,14 +143,50 @@ function callWorker<T>(action: string, payload: unknown): Promise<T> {
  * Synchronous in-thread fallback for SSR or environments without Web Worker support.
  */
 function parseAndProfileSync(text: string, options: ParseProfileOptions = {}): ParseProfileResult {
+  const trimmed = (text || '').trim();
+
+  // 1. Automatic JSON Array / Object detection & intake
+  if (trimmed.startsWith('[') || (trimmed.startsWith('{') && !trimmed.startsWith('{"status"'))) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const arrayData = Array.isArray(parsed) ? parsed : [parsed];
+      const stringifiedRows: Array<Record<string, string>> = arrayData.map((obj) => {
+        const out: Record<string, string> = {};
+        if (typeof obj === 'object' && obj !== null) {
+          for (const [k, v] of Object.entries(obj)) {
+            out[k] = v !== null && v !== undefined ? String(v) : '';
+          }
+        }
+        return out;
+      });
+      const rows = healDatasetRows(stringifiedRows);
+      if (rows.length > 0) {
+        const headers = Array.from(new Set(rows.flatMap((r) => Object.keys(r || {}))));
+        if (headers.length > 0) {
+          const profileRes = profileRowsSync(rows, headers, options);
+          return {
+            headers,
+            rows,
+            rowCount: rows.length,
+            detectedDelimiter: 'json',
+            columns: profileRes.columns,
+            suggestedPrimaryKey: profileRes.suggestedPrimaryKey,
+            suggestedTimestamp: profileRes.suggestedTimestamp,
+          };
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Strict RFC 4180 CSV / TSV Parsing
   const rawGrid = parseCSVStrict(text, options.delimiter);
   if (!rawGrid || rawGrid.length < 2) {
     throw new Error('Dataset must contain at least a header row and one valid data record.');
   }
 
   const rawHeaders = rawGrid[0].map((h, i) => {
-    const trimmed = String(h || '').trim();
-    return trimmed.length > 0 ? trimmed : `col_${i + 1}`;
+    const trimmedHeader = String(h || '').trim();
+    return trimmedHeader.length > 0 ? trimmedHeader : `col_${i + 1}`;
   });
 
   const seenHeaders: Record<string, number> = {};
@@ -155,12 +233,13 @@ function profileRowsSync(
   let suggestedTimestamp = '';
 
   const columns: ColumnProfile[] = headers.map((colName) => {
-    const values = rows.map((r) => r[colName] ?? '');
+    const rawValues = rows.map((r) => r[colName]);
+    const values = rawValues.map((v) => (v !== null && v !== undefined ? String(v) : ''));
     const nullCount = values.filter(
       (v) => v === '' || v.toLowerCase() === 'null' || v.toLowerCase() === 'nan'
     ).length;
 
-    const nonNulls = values.filter((v) => v !== '' && v.toLowerCase() !== 'null');
+    const nonNulls = values.filter((v) => v !== '' && v.toLowerCase() !== 'null' && v.toLowerCase() !== 'undefined');
     const uniqueSet = new Set(nonNulls);
     const uniqueCount = uniqueSet.size;
     const sampleValues = Array.from(uniqueSet).slice(0, 5);
