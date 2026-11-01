@@ -53,6 +53,14 @@ if (fs.existsSync(iconSrc)) {
   console.log('✓ Mirrored icon.svg to out/ and out/app/');
 }
 
+// Mirror workers into out/app/workers
+const workersSrc = path.join(outDir, 'workers');
+const workersDest = path.join(appOutDir, 'workers');
+if (fs.existsSync(workersSrc)) {
+  copyDirRecursive(workersSrc, workersDest);
+  console.log('✓ Mirrored workers to out/app/workers for Catalyst');
+}
+
 // 2. Head injector for Turbopack base chunk resolution
 const catalystHeadInject = '<script>window.TURBOPACK_CHUNK_BASE_PATH = "/app/_next/";</script>';
 const androidHeadInject = '<script>window.TURBOPACK_CHUNK_BASE_PATH = "/_next/";</script>';

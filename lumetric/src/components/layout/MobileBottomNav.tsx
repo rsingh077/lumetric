@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/contexts/AppContext';
 import {
   HomeIcon,
@@ -21,6 +21,7 @@ interface NavTab {
 }
 
 export function MobileBottomNav() {
+  const router = useRouter();
   const { activeView, setActiveView, setMobileMenuOpen } = useApp();
 
   const tabs: NavTab[] = [
@@ -76,7 +77,7 @@ export function MobileBottomNav() {
             return (
               <a
                 key={tab.name}
-                href={`#${tab.view === 'home' ? '' : tab.view}`}
+                href={tab.view === 'home' ? '/' : `/${tab.view}`}
                 onClick={(e) => handleTabClick(tab, e)}
                 className={`relative flex flex-col items-center justify-center py-1 px-3 rounded-full active:scale-90 transition-all duration-150 ${
                   isActive

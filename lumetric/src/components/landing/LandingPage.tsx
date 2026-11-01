@@ -1,11 +1,24 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useApp } from '@/contexts/AppContext';
 import { AuthScreen } from '@/components/auth/AuthScreen';
 import { LumetricAuthService } from '@/lib/auth';
-import { LandingGeoMapDemo } from './LandingGeoMapDemo';
 import { LumetricLogo, LumetricLogoMark } from '@/components/common/LumetricLogo';
+
+const LandingGeoMapDemo = dynamic(
+  () => import('./LandingGeoMapDemo').then((mod) => mod.LandingGeoMapDemo),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-80 flex flex-col items-center justify-center bg-slate-900/40 rounded-2xl border border-slate-800 animate-pulse">
+        <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin mb-3" />
+        <span className="text-xs font-mono uppercase tracking-widest text-slate-400">Loading Geospatial Engine...</span>
+      </div>
+    ),
+  }
+);
 import {
   GlobeIcon,
   FileSpreadsheetIcon,

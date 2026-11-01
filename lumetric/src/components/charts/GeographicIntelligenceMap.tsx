@@ -2,12 +2,11 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { GlobeIcon, MaximizeIcon } from '@/components/icons';
-import { REAL_WORLD_COUNTRIES, WorldCountryEntity } from './worldCountriesData';
-import { OFFICIAL_INDIA_STATES, IndiaStateEntity } from './indiaStatesData';
-import { OFFICIAL_US_STATES, USStateEntity } from './usStatesData';
+import { getGeoDataset, GeoEntity, GeographicGranularity } from './geoDataLoader';
+import { INDIA_STATE_ALIASES, US_STATE_ALIASES, WORLD_COUNTRY_ALIASES } from './geoAliases';
 import { parseNumeric } from '@/lib/csvParser';
 
-export type GeographicGranularity = 'world' | 'us-states' | 'india-states';
+export type { GeographicGranularity };
 
 export interface GeographicIntelligenceMapProps {
   rows: Record<string, string>[];
@@ -22,43 +21,6 @@ export interface GeographicIntelligenceMapProps {
   isExpanded?: boolean;
   onToggleExpand?: () => void;
 }
-
-interface GeoEntity {
-  id: string;
-  code?: string;
-  name: string;
-  label: string;
-  subLabel?: string;
-  d: string;
-  centroid: [number, number];
-  aliases: string[];
-  parentRegion?: string;
-}
-
-// ============================================================================
-// 1. REAL WORLD 176 SOVEREIGN COUNTRIES FROM TOPOLOGICAL ATLAS (1000 x 520)
-// ============================================================================
-const WORLD_ENTITIES: GeoEntity[] = REAL_WORLD_COUNTRIES.map((c: WorldCountryEntity) => ({
-  id: c.code.toLowerCase(),
-  code: c.code,
-  name: c.name,
-  label: c.name,
-  subLabel: `${c.code} • Sovereign Country`,
-  d: c.d,
-  centroid: c.centroid,
-  aliases: c.aliases,
-  parentRegion: 'Global',
-}));
-
-// ============================================================================
-// 2. OFFICIAL SURVEY OF INDIA 37 STATES & UNION TERRITORIES (650 x 750)
-// ============================================================================
-const INDIA_ENTITIES: GeoEntity[] = OFFICIAL_INDIA_STATES;
-
-// ============================================================================
-// 3. OFFICIAL UNITED STATES 50 STATES + DC (900 x 550)
-// ============================================================================
-const US_ENTITIES: GeoEntity[] = OFFICIAL_US_STATES;
 
 // Helper to determine if a value strictly matches an alias
 function matchesAliasStrict(rawVal: string, alias: string): boolean {
@@ -165,22 +127,22 @@ export function GeographicIntelligenceMap({
         const isCountryCol = col.toLowerCase().includes('country') || col.toLowerCase().includes('nation');
         const isStateCol = col.toLowerCase().includes('state') || col.toLowerCase().includes('province');
 
-        // Check World matches
-        WORLD_ENTITIES.forEach((ent) => {
+        // Check World matches via lightweight aliases
+        WORLD_COUNTRY_ALIASES.forEach((ent) => {
           if (ent.aliases.some((alias) => matchesAliasStrict(rawVal, alias))) {
             worldScore += isCountryCol ? 10 : 4;
           }
         });
 
-        // Check India State matches
-        INDIA_ENTITIES.forEach((ent) => {
+        // Check India State matches via lightweight aliases
+        INDIA_STATE_ALIASES.forEach((ent) => {
           if (ent.aliases.some((alias) => matchesAliasStrict(rawVal, alias))) {
             indiaStateScore += isStateCol ? 10 : 4;
           }
         });
 
-        // Check US State matches
-        US_ENTITIES.forEach((ent) => {
+        // Check US State matches via lightweight aliases
+        US_STATE_ALIASES.forEach((ent) => {
           if (ent.aliases.some((alias) => matchesAliasStrict(rawVal, alias))) {
             usStateScore += isStateCol ? 10 : 4;
           }
@@ -212,6 +174,24 @@ export function GeographicIntelligenceMap({
   // Active granularity (User override takes precedence)
   const activeGranularity = userModeOverride || detectedGranularity.mode;
 
+  // Asynchronously loaded vector geometry
+  const [entities, setEntities] = useState<GeoEntity[]>([]);
+  const [isLoadingGeo, setIsLoadingGeo] = useState<boolean>(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingGeo(true);
+    getGeoDataset(activeGranularity).then((data) => {
+      if (isMounted) {
+        setEntities(data);
+        setIsLoadingGeo(false);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [activeGranularity]);
+
   // Current entity registry
   const currentRegistry = useMemo(() => {
     if (activeGranularity === 'india-states') {
@@ -219,7 +199,7 @@ export function GeographicIntelligenceMap({
         viewBox: '0 0 650 750',
         width: 650,
         height: 750,
-        entities: INDIA_ENTITIES,
+        entities,
         mapTitle: 'Survey of India (37 States & Union Territories)',
       };
     }
@@ -228,7 +208,7 @@ export function GeographicIntelligenceMap({
         viewBox: '0 0 900 550',
         width: 900,
         height: 550,
-        entities: US_ENTITIES,
+        entities,
         mapTitle: 'United States (50 States & DC)',
       };
     }
@@ -236,10 +216,10 @@ export function GeographicIntelligenceMap({
       viewBox: '0 0 1000 520',
       width: 1000,
       height: 520,
-      entities: WORLD_ENTITIES,
+      entities,
       mapTitle: 'Real Geographic World Intelligence (176 Sovereign Countries)',
     };
-  }, [activeGranularity]);
+  }, [activeGranularity, entities]);
 
   // Animated Radar Scan Beam
   useEffect(() => {

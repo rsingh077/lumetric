@@ -197,7 +197,7 @@ export function InvestmentPlannerView() {
   }, [projections]);
 
   return (
-    <div className="flex-1 bg-[var(--lm-bg-primary)] p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full select-none animate-in fade-in duration-300">
+    <div className="flex-1 bg-[var(--lm-bg-primary)] p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full animate-in fade-in duration-300">
       
       {/* 1. TOP HEADER & STUDIO IDENTITY */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[var(--lm-border-default)]">

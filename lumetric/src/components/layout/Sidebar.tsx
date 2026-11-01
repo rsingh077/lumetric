@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/contexts/AppContext';
 import {
   LumetricLogoMark,
@@ -67,6 +67,7 @@ const navSections: NavSection[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const {
     activeView,
     setActiveView,
@@ -134,10 +135,11 @@ export function Sidebar() {
         <div className="flex flex-col border-b border-[var(--lm-border-default)] p-3 bg-[var(--lm-bg-primary)]">
           <div className="flex items-center justify-between gap-2 h-10 px-1">
             <a
-              href="#"
+              href="/"
               onClick={(e) => {
                 e.preventDefault();
                 setActiveView('home');
+                setMobileMenuOpen(false);
               }}
               className="flex items-center gap-2.5 overflow-hidden group cursor-pointer"
             >
@@ -286,13 +288,15 @@ export function Sidebar() {
               {sec.items.map((item) => {
                 const isActive = activeView === item.id;
                 const IconComponent = item.icon;
+                const navHref = item.id === 'home' ? '/' : `/${item.id}`;
                 return (
                   <a
                     key={item.id}
-                    href={`#${item.id === 'home' ? '' : item.id}`}
+                    href={navHref}
                     onClick={(e) => {
                       e.preventDefault();
                       setActiveView(item.id);
+                      setMobileMenuOpen(false);
                     }}
                     className={`group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
                       isActive

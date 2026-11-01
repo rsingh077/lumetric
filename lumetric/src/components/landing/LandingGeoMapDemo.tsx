@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { OFFICIAL_INDIA_STATES, IndiaStateEntity } from '@/components/charts/indiaStatesData';
-import { OFFICIAL_US_STATES, USStateEntity } from '@/components/charts/usStatesData';
-import { REAL_WORLD_COUNTRIES, WorldCountryEntity } from '@/components/charts/worldCountriesData';
+import { getGeoDataset, GeoEntity, GeographicGranularity } from '@/components/charts/geoDataLoader';
 
 export type MapMode = 'india' | 'us' | 'world';
 
@@ -60,6 +58,19 @@ export function LandingGeoMapDemo() {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [radarOffset, setRadarOffset] = useState<number>(0);
 
+  const granularity: GeographicGranularity = mode === 'india' ? 'india-states' : mode === 'us' ? 'us-states' : 'world';
+  const [entities, setEntities] = useState<GeoEntity[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    getGeoDataset(granularity).then((data) => {
+      if (isMounted) setEntities(data);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [granularity]);
+
   // Switch default selected territory when mode changes
   useEffect(() => {
     if (mode === 'india') setSelectedId('MH');
@@ -83,13 +94,7 @@ export function LandingGeoMapDemo() {
         title: 'Survey of India (37 States & Union Territories)',
         flag: '🇮🇳',
         currencySymbol: '₹',
-        entities: OFFICIAL_INDIA_STATES.map((s) => ({
-          id: s.id,
-          code: s.code,
-          name: s.name,
-          d: s.d,
-          centroid: s.centroid,
-        })),
+        entities,
         presets: INDIA_MARKET_PRESETS,
       };
     }
@@ -99,13 +104,7 @@ export function LandingGeoMapDemo() {
         title: 'United States Geological Survey (51 States & DC)',
         flag: '🇺🇸',
         currencySymbol: '$',
-        entities: OFFICIAL_US_STATES.map((s) => ({
-          id: s.id,
-          code: s.code,
-          name: s.name,
-          d: s.d,
-          centroid: s.centroid,
-        })),
+        entities,
         presets: US_MARKET_PRESETS,
       };
     }
@@ -114,16 +113,10 @@ export function LandingGeoMapDemo() {
       title: 'Real World Topological Atlas (176 Sovereign Nations)',
       flag: '🌍',
       currencySymbol: '$',
-      entities: REAL_WORLD_COUNTRIES.map((c) => ({
-        id: c.code,
-        code: c.code,
-        name: c.name,
-        d: c.d,
-        centroid: c.centroid,
-      })),
+      entities,
       presets: WORLD_MARKET_PRESETS,
     };
-  }, [mode]);
+  }, [mode, entities]);
 
   // Helper to fetch or dynamically compute territory metrics
   const getEntityMetrics = (id: string, name: string): MarketData => {

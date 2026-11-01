@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Workspace,
   Project,
@@ -935,7 +936,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // 7. Navigation / Shell View State
-  const [activeView, setActiveView] = useState<ActiveView>('home');
+  const router = useRouter();
+  const pathname = usePathname();
+  const [activeView, setActiveViewState] = useState<ActiveView>('home');
+
+  // Keep activeView in sync with the current URL pathname
+  useEffect(() => {
+    const routeToViewMap: Record<string, ActiveView> = {
+      '/': 'home',
+      '/projects': 'projects',
+      '/data': 'data',
+      '/pipelines': 'pipelines',
+      '/analysis': 'analysis',
+      '/models': 'models',
+      '/dashboards': 'dashboards',
+      '/stories': 'stories',
+      '/operations': 'operations',
+      '/settings': 'settings',
+      '/sql': 'sql',
+      '/excel': 'excel',
+      '/investment': 'investment',
+    };
+    if (pathname) {
+      const cleanPath = pathname.endsWith('/') && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
+      const mapped = routeToViewMap[cleanPath];
+      if (mapped) {
+        setActiveViewState(mapped);
+      }
+    }
+  }, [pathname]);
+
+  const setActiveView = (view: ActiveView) => {
+    setActiveViewState(view);
+    const targetPath = view === 'home' ? '/' : `/${view}`;
+    if (pathname !== targetPath) {
+      try {
+        router.push(targetPath);
+      } catch {
+        if (typeof window !== 'undefined') {
+          window.location.href = targetPath;
+        }
+      }
+    }
+  };
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
