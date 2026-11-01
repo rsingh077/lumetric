@@ -1,0 +1,702 @@
+openapi: 3.0.3
+info:
+  title: Lumetric Enterprise Serverless API
+  description: >
+    Production-grade API for Lumetric AI Data & Decision Studio, deployed on Zoho Catalyst Serverless.
+    Features cryptographic SOC-2 audit logging, sliding-window rate limiting, JWT token rotation,
+    multi-tenant workspace persistence, and automated UPI billing settlement.
+  version: 2.3.4
+  contact:
+    name: Lumetric Security Engineering
+    email: security@techexon.app
+servers:
+  - url: https://project-rainfall-60092395179.development.catalystserverless.in/server/lumetric_server
+    description: Zoho Catalyst Production Serverless Gateway
+  - url: http://127.0.0.1:3000
+    description: Local Development Server
+
+security:
+  - BearerAuth: []
+  - CustomTokenHeader: []
+
+paths:
+  /:
+    get:
+      summary: Root Gateway Telemetry Probe
+      description: Returns service identity, cloud provider status, and security compliance standards.
+      responses:
+        '200':
+          description: Gateway online
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GatewayStatus'
+
+  /api/health:
+    get:
+      summary: Health & Runtime Telemetry
+      description: Returns Node.js memory footprint, uptime, active connectors, and audit trail size.
+      responses:
+        '200':
+          description: Health telemetry metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthMetrics'
+
+  /api/status:
+    get:
+      summary: Engine Online Status
+      responses:
+        '200':
+          description: Online status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "online" }
+                  success: { type: boolean, example: true }
+                  code: { type: integer, example: 200 }
+
+  /api/ping:
+    get:
+      summary: Latency Ping Probe
+      responses:
+        '200':
+          description: Ping response
+
+  /api/version:
+    get:
+      summary: Engine Version
+      responses:
+        '200':
+          description: Version metadata
+
+  /api/geo/summary:
+    get:
+      summary: Sovereign Geo Cartography Summary
+      description: Returns supported territorial boundary datasets (Survey of India, US Census, World).
+      responses:
+        '200':
+          description: Geo boundary catalog
+
+  /api/diagnostics/system:
+    get:
+      summary: System & Cloud Compute Diagnostics
+      responses:
+        '200':
+          description: System diagnostic metrics
+
+  /api/datastore/status:
+    get:
+      summary: Zoho Catalyst DataStore Health & Schema Status
+      responses:
+        '200':
+          description: DataStore connectivity and column readiness
+
+  /api/mail/diagnostics:
+    get:
+      summary: Email Transport & Port Diagnostics
+      description: Tests Zoho SMTP configuration, port 587 network connectivity, and sender configuration.
+      responses:
+        '200':
+          description: Diagnostics result
+
+  /api/auth/check-email:
+    post:
+      summary: Real-Time Account Availability & User Type Check
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, example: "analyst@company.com" }
+      responses:
+        '200':
+          description: Email existence status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailCheckResponse'
+        '400':
+          description: Invalid email syntax or disposable domain
+
+  /api/auth/send-otp:
+    post:
+      summary: Dispatch 6-Digit Email Verification Code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                purpose: { type: string, enum: [signup, login, reset-password], default: signup }
+                payload: { type: object }
+      responses:
+        '200':
+          description: OTP dispatched
+        '409':
+          description: User already exists for signup
+        '429':
+          description: Rate limit or cooldown exceeded
+
+  /api/auth/verify-otp:
+    post:
+      summary: Verify 6-Digit OTP and Complete Action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, otp]
+              properties:
+                email: { type: string, format: email }
+                otp: { type: string, pattern: '^[0-9]{6}$' }
+                purpose: { type: string, enum: [signup, login, reset-password] }
+                newPassword: { type: string }
+                payload: { type: object }
+      responses:
+        '200':
+          description: Verification succeeded
+        '201':
+          description: User registered and verified
+        '400':
+          description: Invalid or expired OTP code
+
+  /api/auth/register:
+    post:
+      summary: Create New User Account (Mandatory OTP Verification)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name, otp]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                name: { type: string }
+                organization: { type: string }
+                role: { type: string, enum: [owner, administrator, builder, reviewer, viewer] }
+                otp: { type: string, pattern: '^[0-9]{6}$' }
+      responses:
+        '201':
+          description: Account created successfully
+        '400':
+          description: Validation error or OTP missing
+
+  /api/auth/login:
+    post:
+      summary: Authenticate Credentials and Initiate Anti-Bypass OTP Challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+                totpToken: { type: string }
+      responses:
+        '200':
+          description: Password verified; OTP dispatched for secondary verification
+        '401':
+          description: Invalid password
+        '404':
+          description: User not found
+
+  /api/auth/google:
+    post:
+      summary: Google Sign-In with Anti-Hijack OTP Verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                name: { type: string }
+                avatarUrl: { type: string }
+                otp: { type: string }
+      responses:
+        '200':
+          description: Session established or OTP requested
+
+  /api/auth/2fa/setup:
+    post:
+      summary: Generate TOTP 2FA Key and QR Code
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Secret key and QR code generated
+
+  /api/auth/2fa/verify:
+    post:
+      summary: Verify TOTP Token and Activate 2FA
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, pattern: '^[0-9]{6}$' }
+                secret: { type: string }
+      responses:
+        '200':
+          description: 2FA activated
+
+  /api/auth/2fa/disable:
+    post:
+      summary: Deactivate Two-Factor Authentication
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password: { type: string }
+                token: { type: string }
+      responses:
+        '200':
+          description: 2FA disabled
+
+  /api/auth/forgot-password:
+    post:
+      summary: Request Password Recovery 6-Digit Code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: Recovery email dispatched
+
+  /api/auth/reset-password:
+    post:
+      summary: Reset Password with Verified OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, otp, newPassword]
+              properties:
+                email: { type: string, format: email }
+                otp: { type: string, pattern: '^[0-9]{6}$' }
+                newPassword: { type: string, minLength: 8 }
+      responses:
+        '200':
+          description: Password reset successfully
+
+  /api/auth/logout:
+    post:
+      summary: Terminate Session & Revoke Active Tokens
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: Session revoked successfully
+
+  /api/auth/refresh:
+    post:
+      summary: Rotate Refresh Token & Issue New Token Pair
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: Fresh token pair issued
+        '401':
+          description: Invalid or revoked refresh token
+
+  /api/user/profile:
+    get:
+      summary: Retrieve Authenticated User Profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSafe'
+    patch:
+      summary: Update User Profile Metadata & Settings
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                organization: { type: string }
+                avatarUrl: { type: string }
+                settings: { type: object }
+      responses:
+        '200':
+          description: Profile updated
+
+  /api/user/workspace-data:
+    get:
+      summary: Retrieve Multi-Tenant Workspace & Datasets
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Workspace data
+    post:
+      summary: Persist Multi-Tenant Workspace & Datasets
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workspaceData]
+              properties:
+                workspaceData: { type: object }
+      responses:
+        '200':
+          description: Workspace data saved
+        '403':
+          description: Multi-tenant tenant boundary violation
+
+  /api/user/workspace-data/reset:
+    post:
+      summary: Clear User Workspace Data to Clean Slate
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Workspace reset
+
+  /api/user/change-password:
+    post:
+      summary: Change Account Password
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string, minLength: 8 }
+      responses:
+        '200':
+          description: Password changed
+        '401':
+          description: Incorrect current password
+
+  /api/admin/users:
+    get:
+      summary: List All Workspace Users (Admin/Owner Only)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User list
+        '403':
+          description: Forbidden
+
+  /api/admin/users/{userId}/role:
+    patch:
+      summary: Elevate or Modify User Role (Admin/Owner Only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetEmail, newRole]
+              properties:
+                targetEmail: { type: string, format: email }
+                newRole: { type: string, enum: [owner, administrator, builder, reviewer, viewer] }
+      responses:
+        '200':
+          description: Role updated
+
+  /api/audit/logs:
+    get:
+      summary: Queryable Immutable Audit Logs (SOC-2 Ledger)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 200 }
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: actorEmail
+          in: query
+          schema: { type: string }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Filtered audit log entries
+
+  /api/connectors:
+    get:
+      summary: List Cloud Data Connectors (Snowflake, S3, BigQuery, Postgres)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Connectors list
+
+  /api/connectors/sync/{id}:
+    post:
+      summary: Trigger Data Ingestion Sync for a Connector
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Sync triggered
+
+  /api/data/intelligence/live:
+    get:
+      summary: Live Stream ML Model Benchmarks & Ingestion Telemetry
+      responses:
+        '200':
+          description: Live intelligence stream
+
+  /api/documents/treatment:
+    post:
+      summary: Cryptographic Server-Side NLP & NER PII Masking
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                docId: { type: string }
+                documentName: { type: string }
+                treatmentType: { type: string }
+      responses:
+        '200':
+          description: Document treated and audit signed
+
+  /api/data/records:
+    get:
+      summary: Column-Level RBAC Governed Tabular Records
+      description: Masks financial values for viewers/builders, revealed for admins/owners.
+      responses:
+        '200':
+          description: Records with role-based column masking applied
+
+  /api/billing/plans:
+    get:
+      summary: Catalog of Available Subscription Plans
+      responses:
+        '200':
+          description: Plans catalog (Basic, Pro, Enterprise)
+
+  /api/billing/subscription:
+    get:
+      summary: Current User's Active Subscription Tier & Entitlements
+      parameters:
+        - name: email
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Subscription details
+
+  /api/billing/create-order:
+    post:
+      summary: Initiate Dynamic UPI QR Checkout Order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [planId]
+              properties:
+                planId: { type: string, enum: [pro, enterprise] }
+                billingCycle: { type: string, enum: [monthly, annual], default: monthly }
+                userEmail: { type: string, format: email }
+      responses:
+        '200':
+          description: Order created with NPCI UPI deep link
+
+  /api/billing/order-status/{orderId}:
+    get:
+      summary: Real-Time Payment Polling Status
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Order settlement status
+
+  /api/billing/verify-upi:
+    post:
+      summary: Settle Payment with 12-Digit Bank UTR Number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [utrNumber]
+              properties:
+                orderId: { type: string }
+                utrNumber: { type: string }
+                planId: { type: string }
+                billingCycle: { type: string, enum: [monthly, annual] }
+                userEmail: { type: string, format: email }
+      responses:
+        '200':
+          description: Account upgraded and invoice generated
+
+  /api/billing/webhook/bank-credit:
+    post:
+      summary: Bank / UPI SMS Observer Settlement Webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [secret, amount, utrNumber]
+              properties:
+                secret: { type: string }
+                amount: { type: number }
+                utrNumber: { type: string }
+                orderId: { type: string }
+      responses:
+        '200':
+          description: Webhook received and processed
+
+  /api/billing/invoices:
+    get:
+      summary: Retrieve Billing Tax Invoices
+      parameters:
+        - name: email
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of paid invoices
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    CustomTokenHeader:
+      type: apiKey
+      in: header
+      name: x-auth-token
+
+  schemas:
+    GatewayStatus:
+      type: object
+      properties:
+        status: { type: string }
+        service: { type: string }
+        cloudProvider: { type: string }
+        version: { type: string }
+        uptime: { type: number }
+
+    HealthMetrics:
+      type: object
+      properties:
+        status: { type: string }
+        timestamp: { type: string, format: date-time }
+        uptime: { type: number }
+        totalConnectors: { type: integer }
+        totalAuditEntries: { type: integer }
+        totalRegisteredUsers: { type: integer }
+
+    EmailCheckResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        exists: { type: boolean }
+        userType: { type: string, enum: [old_user, new_user] }
+        isOldUser: { type: boolean }
+        isNewUser: { type: boolean }
+        name: { type: string, nullable: true }
+        email: { type: string }
+        message: { type: string }
+
+    UserSafe:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        name: { type: string }
+        role: { type: string }
+        organization: { type: string }
+        avatarUrl: { type: string }
+        mfaEnabled: { type: boolean }
+        createdAt: { type: string }
+        settings: { type: object }
