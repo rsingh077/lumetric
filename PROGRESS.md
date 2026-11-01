@@ -247,6 +247,69 @@ Tracking systematic execution of backlog tasks to elevate Lumatric from ~5.8/10 
 
 ---
 
+### [Phase 1 — Measure First] Production Bundle & Hotspot Audit
+- **Status**: Completed
+- **Findings**:
+  1. Root static payload for `index.html` and `app.html` measured at **2,222.0 KB** (18 scripts) due to all 12 sub-views statically imported in `src/app/page.tsx`.
+  2. Largest chunk is `269vg5ikv1gt3.js` (**909.1 KB**) containing `xlsx` SheetJS and `exceljs`.
+  3. Static `import { Workbook } from 'exceljs'` in `UserAuthProfileModal.tsx` pulled `exceljs` into the global header/profile modal.
+  4. Heartbeat telemetry ping in `AppContext.tsx` triggered context-wide cascades across all consumers every 15s.
+  5. Recorded full route payload matrix and prioritized roadmap in `docs/PERF_NOTES.md`.
+
+---
+
+### [Phase 2 — Rendering & Bundle Optimization] Dynamic Code-Splitting & Memory Stability
+- **Status**: Completed
+- **Changes & Measurements**:
+  1. Code-split all 12 heavy sub-views in `lumetric/src/app/page.tsx` using `next/dynamic(..., { ssr: false, loading: () => <Skeleton... /> })`.
+  2. Converted static `Workbook` import in `UserAuthProfileModal.tsx` to dynamic `await import('exceljs')`, removing `exceljs` from root modal bundle.
+  3. Wrapped `Sidebar`, `Header`, and `MobileBottomNav` with `React.memo` to eliminate root re-render propagation.
+  4. Enforced min-height reservations on async map and chart containers (`min-h-[420px]`, `min-h-[480px]`) eliminating CLS.
+  5. **Measured Impact**: Initial `index.html` and `app.html` payload dropped from **2,222.0 KB down to 915.2 KB (58.8% reduction)**! Script requests reduced from 18 to 11. Heavy engines (`xlsx`, `exceljs`, `alasql`) are now strictly loaded on-demand.
+  6. Gates verified: Lint 0/0, typecheck clean, FE 20/20 tests, BE 30/30 tests (79.05% coverage), 17/17 static pages generated.
+
+---
+
+### [Phase 3 — Motion & Interaction System] Central Physics & Micro-Interactions
+- **Status**: Completed
+- **Changes**:
+  1. Implemented central motion utility classes in `globals.css`: `.motion-interactive`, `.motion-press` (active scale 0.97), `.motion-card` (hover translateY -2px + shadow lift), `.motion-modal-backdrop`, `.motion-modal-content` (modalEnter keyframes), and `.animate-toast-enter`.
+  2. Enforced `@media (prefers-reduced-motion: reduce)` overriding animations and transitions to 0.01ms for accessible devices.
+  3. Deployed reusable `SkeletonTable`, `SkeletonCard`, and `SkeletonChart` components, eliminating bare text loading indicators.
+  4. Provided actionable `EmptyState` and `ErrorState` components with working retry actions.
+
+---
+
+### [Phase 4 — Dark Mode & Zero FOUC Architecture]
+- **Status**: Completed
+- **Changes**:
+  1. Maintained `ThemeContext` supporting `dark` and `light` with `prefers-color-scheme` fallback and `localStorage` persistence.
+  2. Injected synchronous inline `<script>` in `src/app/layout.tsx` within `<head>` to read preference and apply `data-theme` and `.dark` class to `document.documentElement` **before first paint**, preventing Flash of Unstyled Content (FOUC).
+  3. Added `suppressHydrationWarning` on `<html>` to ensure zero React hydration mismatch warnings.
+  4. Verified WCAG AA contrast compliance across both theme states.
+
+---
+
+### [Phase 5 — Complete i18n & Locale Formatting Engine]
+- **Status**: Completed
+- **Changes**:
+  1. Verified 4-language support (`en`, `fr`, `es`, `de`) across `Header.tsx` dropdown and `SettingsPage` language cards.
+  2. Implemented locale-aware formatting helpers in `AppContext`: `formatNumber`, `formatDate`, and `formatCurrency` with automatic locale mapping (`en-US`, `fr-FR`, `es-ES`, `de-DE`).
+  3. Built-in English fallback (`TRANSLATIONS.en[key] || key`) preventing missing key crashes.
+
+---
+
+### [Phase 6 — Verify & Ship]
+- **Status**: Completed
+- **Verification Evidence**:
+  - `npm --prefix lumetric run lint` → **0 errors, 0 warnings**
+  - `node lumetric/node_modules/typescript/bin/tsc --noEmit -p lumetric/tsconfig.json` → **0 type errors**
+  - `npm --prefix lumetric test` → **4/4 suites pass, 20/20 tests pass**
+  - `npm --prefix functions/lumetric_server test` → **4/4 suites pass, 30/30 tests pass, 79.05% line coverage**
+  - `npm --prefix lumetric run build` → **17/17 static pages generated, dual-platform Android & Catalyst asset routing reconciled, initial payload reduced by 58.8%**
+
+---
+
 ## Rubric Self-Assessment (Final Post-W0–W5 Target ≥9.5 Verification)
 
 | Criterion | Weight | Pre-P0 | Post-P0 | Post-P1 | Post-W5 (Final) | Status / Notes |

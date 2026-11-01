@@ -463,7 +463,7 @@ export function GeographicIntelligenceMap({
   return (
     <div
       ref={containerRef}
-      className={`relative flex flex-col justify-between select-none ${className}`}
+      className={`relative flex flex-col justify-between select-none min-h-[420px] ${className}`}
     >
       {/* 1. MAP HEADER & COMPACT RESPONSIVE CONTROLS */}
       <div className="pb-3 mb-2.5 border-b border-[var(--lm-border-default)]">

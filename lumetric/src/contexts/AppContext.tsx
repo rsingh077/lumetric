@@ -35,6 +35,9 @@ interface AppContextType {
   language: AppLanguage;
   setLanguage: (lang: AppLanguage) => void;
   t: (key: string) => string;
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
+  formatDate: (date: Date | string, options?: Intl.DateTimeFormatOptions) => string;
+  formatCurrency: (amount: number, currency?: string) => string;
 
   // User & Roles
   currentUser: User;
@@ -597,6 +600,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const t = useCallback((key: string): string => {
     return TRANSLATIONS[language]?.[key] || TRANSLATIONS.en[key] || key;
+  }, [language]);
+
+  const formatNumber = useCallback((value: number, options?: Intl.NumberFormatOptions): string => {
+    try {
+      const localeMap: Record<AppLanguage, string> = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', de: 'de-DE' };
+      return new Intl.NumberFormat(localeMap[language] || 'en-US', options).format(value);
+    } catch {
+      return String(value);
+    }
+  }, [language]);
+
+  const formatDate = useCallback((date: Date | string, options?: Intl.DateTimeFormatOptions): string => {
+    try {
+      const d = typeof date === 'string' ? new Date(date) : date;
+      const localeMap: Record<AppLanguage, string> = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', de: 'de-DE' };
+      return new Intl.DateTimeFormat(localeMap[language] || 'en-US', options || { dateStyle: 'medium' }).format(d);
+    } catch {
+      return String(date);
+    }
+  }, [language]);
+
+  const formatCurrency = useCallback((amount: number, currency: string = 'USD'): string => {
+    try {
+      const localeMap: Record<AppLanguage, string> = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', de: 'de-DE' };
+      return new Intl.NumberFormat(localeMap[language] || 'en-US', { style: 'currency', currency }).format(amount);
+    } catch {
+      return `${currency} ${amount.toFixed(2)}`;
+    }
   }, [language]);
 
   // Theme & Appearance State (Default: Dark Obsidian Emerald, fallback prefers-color-scheme)
@@ -1381,6 +1412,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     language,
     setLanguage,
     t,
+    formatNumber,
+    formatDate,
+    formatCurrency,
     currentUser,
     setCurrentUser,
     setRole,

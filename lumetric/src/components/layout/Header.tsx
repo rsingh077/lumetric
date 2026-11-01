@@ -27,7 +27,7 @@ interface SearchResultItem {
   action?: () => void;
 }
 
-export function Header() {
+export const Header = React.memo(function Header() {
   const {
     activeView,
     setActiveView,
@@ -666,4 +666,4 @@ export function Header() {
       />
     </>
   );
-}
+});

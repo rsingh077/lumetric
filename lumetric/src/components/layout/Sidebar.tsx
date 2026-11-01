@@ -63,7 +63,7 @@ const navSections: NavSection[] = [
   },
 ];
 
-export function Sidebar() {
+export const Sidebar = React.memo(function Sidebar() {
   const isCatalyst = typeof window !== 'undefined' && window.location.pathname.startsWith('/app');
   const homeHref = isCatalyst ? '/app/index.html' : '/';
   const {
@@ -523,4 +523,4 @@ export function Sidebar() {
       )}
     </>
   );
-}
+});

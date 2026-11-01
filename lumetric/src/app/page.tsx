@@ -10,19 +10,152 @@ import { HomeMetricsStrip } from '@/components/home/HomeMetricsStrip';
 import { HomeDatasetDocumentCards } from '@/components/home/HomeDatasetDocumentCards';
 import { HomeChartsAudit } from '@/components/home/HomeChartsAudit';
 
-// Sub-page imports for routing between application tabs
-import ProjectsPage from './projects/page';
-import DataWorkspacePage from './data/page';
-import PipelinesPage from './pipelines/page';
-import AnalysisStudioPage from './analysis/page';
-import ModelsPage from './models/page';
-import DashboardsPage from './dashboards/page';
-import StoriesPage from './stories/page';
-import OperationsPage from './operations/page';
-import SettingsPage from './settings/page';
-import SQLStudioPage from './sql/page';
-import ExcelAutomatorPage from './excel/page';
-import InvestmentPlannerPage from './investment/page';
+import dynamic from 'next/dynamic';
+import { SkeletonCard, SkeletonChart, SkeletonTable } from '@/components/ui';
+
+// Sub-page imports code-split dynamically to minimize initial bundle payload
+const ProjectsPage = dynamic(() => import('./projects/page'), {
+  ssr: false,
+  loading: () => (
+    <div className="p-6 space-y-6">
+      <SkeletonCard lines={2} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <SkeletonCard lines={3} />
+        <SkeletonCard lines={3} />
+        <SkeletonCard lines={3} />
+      </div>
+    </div>
+  ),
+});
+
+const DataWorkspacePage = dynamic(() => import('./data/page'), {
+  ssr: false,
+  loading: () => (
+    <div className="p-6 space-y-6">
+      <SkeletonCard lines={2} />
+      <SkeletonTable rows={8} />
+    </div>
+  ),
+});
+
+const PipelinesPage = dynamic(() => import('./pipelines/page'), {
+  ssr: false,
+  loading: () => (
+    <div className="p-6 space-y-6">
+      <SkeletonCard lines={3} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <SkeletonCard lines={4} />
+        <SkeletonCard lines={4} />
+      </div>
+    </div>
+  ),
+});
+
+const AnalysisStudioPage = dynamic(() => import('./analysis/page'), {
+  ssr: false,
+  loading: () => (
+    <div className="p-6 space-y-6">
+      <SkeletonChart height="h-72" />
+      <SkeletonTable rows={6} />
+    </div>
+  ),
+});
+
+const ModelsPage = dynamic(() => import('./models/page'), {
+  ssr: false,
+  loading: () => (
+    <div className="p-6 space-y-6">
+      <SkeletonCard lines={3} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <SkeletonCard lines={4} />
+        <SkeletonCard lines={4} />
+      </div>
+    </div>
+  ),
+});
+
+const DashboardsPage = dynamic(() => import('./dashboards/page'), {
+  ssr: false,
+  loading: () => (
+    <div className="p-6 space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <SkeletonCard lines={2} />
+        <SkeletonCard lines={2} />
+        <SkeletonCard lines={2} />
+        <SkeletonCard lines={2} />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SkeletonChart height="h-80" />
+        <SkeletonChart height="h-80" />
+      </div>
+    </div>
+  ),
+});
+
+const StoriesPage = dynamic(() => import('./stories/page'), {
+  ssr: false,
+  loading: () => (
+    <div className="p-6 space-y-6">
+      <SkeletonCard lines={2} />
+      <SkeletonChart height="h-96" />
+    </div>
+  ),
+});
+
+const OperationsPage = dynamic(() => import('./operations/page'), {
+  ssr: false,
+  loading: () => (
+    <div className="p-6 space-y-6">
+      <SkeletonCard lines={3} />
+      <SkeletonTable rows={5} />
+    </div>
+  ),
+});
+
+const SettingsPage = dynamic(() => import('./settings/page'), {
+  ssr: false,
+  loading: () => (
+    <div className="p-6 space-y-6">
+      <SkeletonCard lines={4} />
+      <SkeletonCard lines={6} />
+    </div>
+  ),
+});
+
+const SQLStudioPage = dynamic(() => import('./sql/page'), {
+  ssr: false,
+  loading: () => (
+    <div className="p-6 space-y-6">
+      <SkeletonCard lines={4} />
+      <SkeletonTable rows={6} />
+    </div>
+  ),
+});
+
+const ExcelAutomatorPage = dynamic(() => import('./excel/page'), {
+  ssr: false,
+  loading: () => (
+    <div className="p-6 space-y-6">
+      <SkeletonCard lines={3} />
+      <SkeletonTable rows={8} />
+    </div>
+  ),
+});
+
+const InvestmentPlannerPage = dynamic(() => import('./investment/page'), {
+  ssr: false,
+  loading: () => (
+    <div className="p-6 space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <SkeletonCard lines={2} />
+        <SkeletonCard lines={2} />
+        <SkeletonCard lines={2} />
+        <SkeletonCard lines={2} />
+      </div>
+      <SkeletonChart height="h-80" />
+    </div>
+  ),
+});
 
 function HomeView() {
   const {

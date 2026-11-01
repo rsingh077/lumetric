@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Workbook } from 'exceljs';
 import { StatusBadge, Button, Input } from '@/components/ui';
 import { LumetricAuthService, AuthUser, validateEmailAuthenticity } from '@/lib/auth';
 import { useApp } from '@/contexts/AppContext';
@@ -354,7 +353,8 @@ export function UserAuthProfileModal({
   const handleExportExcel = async () => {
     try {
       const emailToUse = authUser?.email || currentUser.email || 'user';
-      const wb = new Workbook();
+      const ExcelJS = await import('exceljs');
+      const wb = new ExcelJS.Workbook();
       wb.creator = `${currentUser?.name || 'Lumetric User'} [Lumetric Enterprise]`;
       wb.created = new Date();
 

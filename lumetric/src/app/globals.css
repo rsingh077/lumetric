@@ -551,6 +551,67 @@ html, body {
   }
 }
 
+/* ==========================================================================
+   Central Motion System & Micro-Interactions (Phase 3)
+   150–250ms ease-out tokens for hover/focus/active, card hover, modal physics
+   ========================================================================== */
+.motion-interactive {
+  transition: all var(--lm-transition-fast);
+}
+
+.motion-press {
+  transition: transform 140ms var(--lm-ease-apple);
+}
+.motion-press:active {
+  transform: scale(0.97);
+}
+
+.motion-card {
+  transition: transform var(--lm-transition-fast), box-shadow var(--lm-transition-fast), border-color var(--lm-transition-fast);
+}
+.motion-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--lm-shadow-md);
+}
+
+.motion-modal-backdrop {
+  transition: opacity var(--lm-transition-fast);
+}
+
+.motion-modal-content {
+  transition: transform var(--lm-transition-base), opacity var(--lm-transition-base);
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-enter {
+  animation: modalEnter 220ms var(--lm-ease-apple) forwards;
+}
+
+@keyframes toastSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-toast-enter {
+  animation: toastSlideUp 200ms var(--lm-ease-apple) forwards;
+}
+
 /* Accessibility: Respect Reduced Motion Preference (W3) */
 @media (prefers-reduced-motion: reduce) {
   *,

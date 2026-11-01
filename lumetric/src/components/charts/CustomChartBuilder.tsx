@@ -197,7 +197,7 @@ export function CustomChartBuilder() {
   };
 
   return (
-    <div className="bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-3xl p-6 sm:p-8 shadow-xs space-y-6 max-w-full overflow-hidden">
+    <div className="bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-3xl p-6 sm:p-8 shadow-xs space-y-6 max-w-full overflow-hidden min-h-[480px]">
       {/* 1. Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

@@ -19,7 +19,7 @@ interface NavTab {
   isMenuToggle?: boolean;
 }
 
-export function MobileBottomNav() {
+export const MobileBottomNav = React.memo(function MobileBottomNav() {
   const { activeView, setActiveView, setMobileMenuOpen } = useApp();
 
   const tabs: NavTab[] = [
@@ -111,4 +111,4 @@ export function MobileBottomNav() {
       </div>
     </nav>
   );
-}
+});
