@@ -28,7 +28,8 @@ interface NotificationItem {
 interface AppContextType {
   // Theme & Appearance
   theme: 'light' | 'dark';
-  setTheme: (theme: 'light' | 'dark') => void;
+  themeMode: 'light' | 'dark' | 'system';
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
   toggleTheme: () => void;
 
   // Localization & Language
@@ -631,47 +632,64 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [language]);
 
   // Theme & Appearance State (Default: Dark Obsidian Emerald, fallback prefers-color-scheme)
+  const [themeMode, setThemeModeState] = useState<'light' | 'dark' | 'system'>('dark');
   const [theme, setThemeState] = useState<'light' | 'dark'>('dark');
+
+  const applyThemeMode = useCallback((mode: 'light' | 'dark' | 'system') => {
+    let effective: 'light' | 'dark' = 'dark';
+    if (mode === 'light' || mode === 'dark') {
+      effective = mode;
+    } else if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      effective = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    setThemeState(effective);
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', effective);
+      document.documentElement.classList.toggle('dark', effective === 'dark');
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const storedTheme = localStorage.getItem('lumetric_theme') as 'light' | 'dark' | null;
-      let effectiveTheme: 'light' | 'dark' = 'dark';
-      if (storedTheme === 'light' || storedTheme === 'dark') {
-        effectiveTheme = storedTheme;
-      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-        effectiveTheme = 'light';
-      }
-      setThemeState(effectiveTheme);
-      document.documentElement.setAttribute('data-theme', effectiveTheme);
-      document.documentElement.classList.toggle('dark', effectiveTheme === 'dark');
-    }
-  }, []);
+      const storedTheme = localStorage.getItem('lumetric_theme') as 'light' | 'dark' | 'system' | null;
+      const initialMode: 'light' | 'dark' | 'system' =
+        storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system'
+          ? storedTheme
+          : 'dark';
+      setThemeModeState(initialMode);
+      applyThemeMode(initialMode);
 
-  const setTheme = useCallback((newTheme: 'light' | 'dark') => {
-    setThemeState(newTheme);
+      if (typeof window.matchMedia === 'function') {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleSystemChange = () => {
+          const currentStored = localStorage.getItem('lumetric_theme') as 'light' | 'dark' | 'system' | null;
+          if (currentStored === 'system' || !currentStored) {
+            applyThemeMode('system');
+          }
+        };
+
+        if (mediaQuery.addEventListener) {
+          mediaQuery.addEventListener('change', handleSystemChange);
+          return () => mediaQuery.removeEventListener('change', handleSystemChange);
+        }
+      }
+    }
+  }, [applyThemeMode]);
+
+  const setTheme = useCallback((newTheme: 'light' | 'dark' | 'system') => {
+    setThemeModeState(newTheme);
+    applyThemeMode(newTheme);
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('lumetric_theme', newTheme);
-        document.documentElement.setAttribute('data-theme', newTheme);
-        document.documentElement.classList.toggle('dark', newTheme === 'dark');
       } catch {}
     }
-  }, []);
+  }, [applyThemeMode]);
 
   const toggleTheme = useCallback(() => {
-    setThemeState((prev) => {
-      const nextTheme = prev === 'dark' ? 'light' : 'dark';
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('lumetric_theme', nextTheme);
-          document.documentElement.setAttribute('data-theme', nextTheme);
-          document.documentElement.classList.toggle('dark', nextTheme === 'dark');
-        } catch {}
-      }
-      return nextTheme;
-    });
-  }, []);
+    const nextTheme: 'light' | 'dark' = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+  }, [theme, setTheme]);
 
   // 2. Splash & Authentication Life Cycle
   const [isSplashLoading, setIsSplashLoading] = useState<boolean>(true);
@@ -1407,6 +1425,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const contextValue = useMemo<AppContextType>(() => ({
     theme,
+    themeMode,
     setTheme,
     toggleTheme,
     language,
@@ -1479,6 +1498,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [
     theme,
+    themeMode,
     language,
     currentUser,
     isAuthenticated,
@@ -1522,3 +1542,6 @@ export function useApp() {
   }
   return context;
 }
+
+export * from './ThemeContext';
+export * from './LanguageContext';

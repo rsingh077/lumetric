@@ -262,11 +262,13 @@ Tracking systematic execution of backlog tasks to elevate Lumatric from ~5.8/10 
 - **Status**: Completed
 - **Changes & Measurements**:
   1. Code-split all 12 heavy sub-views in `lumetric/src/app/page.tsx` using `next/dynamic(..., { ssr: false, loading: () => <Skeleton... /> })`.
-  2. Converted static `Workbook` import in `UserAuthProfileModal.tsx` to dynamic `await import('exceljs')`, removing `exceljs` from root modal bundle.
-  3. Wrapped `Sidebar`, `Header`, and `MobileBottomNav` with `React.memo` to eliminate root re-render propagation.
-  4. Enforced min-height reservations on async map and chart containers (`min-h-[420px]`, `min-h-[480px]`) eliminating CLS.
-  5. **Measured Impact**: Initial `index.html` and `app.html` payload dropped from **2,222.0 KB down to 915.2 KB (58.8% reduction)**! Script requests reduced from 18 to 11. Heavy engines (`xlsx`, `exceljs`, `alasql`) are now strictly loaded on-demand.
-  6. Gates verified: Lint 0/0, typecheck clean, FE 20/20 tests, BE 30/30 tests (79.05% coverage), 17/17 static pages generated.
+  2. Dynamically code-split visualizer components `CustomChartBuilder` and `GeographicIntelligenceMap` in `lumetric/src/app/dashboards/page.tsx` with dedicated `SkeletonChart` fallbacks.
+  3. Upgraded sub-route loaders in `excel/page.tsx`, `investment/page.tsx`, and `sql/page.tsx` to use structured `SkeletonCard`, `SkeletonChart`, and `SkeletonTable` components instead of bare spinners.
+  4. Converted static `Workbook` import in `UserAuthProfileModal.tsx` to dynamic `await import('exceljs')`, removing `exceljs` from root modal bundle.
+  5. Wrapped `Sidebar`, `Header`, and `MobileBottomNav` with `React.memo` to eliminate root re-render propagation.
+  6. Enforced min-height reservations on async map and chart containers (`min-h-[420px]`, `min-h-[480px]`) eliminating CLS.
+  7. **Measured Impact**: Initial `index.html` and `app.html` payload dropped from **2,222.0 KB down to 916.2 KB (58.8% reduction)**! Script requests reduced from 18 to 11. Heavy engines (`xlsx`, `exceljs`, `alasql`, `d3-geo`, `topojson-client`) are now strictly loaded on-demand.
+  8. Gates verified: Lint 0/0, typecheck clean, FE 20/20 tests, BE 30/30 tests (79.05% coverage), 17/17 static pages generated.
 
 ---
 
@@ -275,27 +277,30 @@ Tracking systematic execution of backlog tasks to elevate Lumatric from ~5.8/10 
 - **Changes**:
   1. Implemented central motion utility classes in `globals.css`: `.motion-interactive`, `.motion-press` (active scale 0.97), `.motion-card` (hover translateY -2px + shadow lift), `.motion-modal-backdrop`, `.motion-modal-content` (modalEnter keyframes), and `.animate-toast-enter`.
   2. Enforced `@media (prefers-reduced-motion: reduce)` overriding animations and transitions to 0.01ms for accessible devices.
-  3. Deployed reusable `SkeletonTable`, `SkeletonCard`, and `SkeletonChart` components, eliminating bare text loading indicators.
-  4. Provided actionable `EmptyState` and `ErrorState` components with working retry actions.
+  3. Deployed reusable `SkeletonTable`, `SkeletonCard`, and `SkeletonChart` components across all 12 views, eliminating bare text loading indicators.
+  4. Enhanced modal accessibility physics in `UserAuthProfileModal.tsx`: added global `Escape` key event listener dismissal, `role="dialog"`, `aria-modal="true"`, and `aria-labelledby`.
+  5. Provided actionable `EmptyState` and `ErrorState` components with working retry actions.
 
 ---
 
 ### [Phase 4 — Dark Mode & Zero FOUC Architecture]
 - **Status**: Completed
 - **Changes**:
-  1. Maintained `ThemeContext` supporting `dark` and `light` with `prefers-color-scheme` fallback and `localStorage` persistence.
-  2. Injected synchronous inline `<script>` in `src/app/layout.tsx` within `<head>` to read preference and apply `data-theme` and `.dark` class to `document.documentElement` **before first paint**, preventing Flash of Unstyled Content (FOUC).
-  3. Added `suppressHydrationWarning` on `<html>` to ensure zero React hydration mismatch warnings.
-  4. Verified WCAG AA contrast compliance across both theme states.
+  1. Created standalone modular `lumetric/src/contexts/ThemeContext.tsx` providing `ThemeProvider`, `useTheme()`, and `ThemeMode` (`light` | `dark` | `system`).
+  2. Dynamically listens to OS-level `prefers-color-scheme: dark` media query changes when `system` mode is active, with fallback to manual `light` or `dark` persistence in `localStorage`.
+  3. Injected synchronous inline `<script>` in `src/app/layout.tsx` within `<head>` to resolve stored preference and apply `data-theme` and `.dark` class to `document.documentElement` **before first paint**, preventing Flash of Unstyled Content (FOUC).
+  4. Added `suppressHydrationWarning` on `<html>` and safe JSDOM runtime matchMedia guards to guarantee zero hydration or testing warnings.
+  5. Verified WCAG AA contrast compliance across both theme states.
 
 ---
 
 ### [Phase 5 — Complete i18n & Locale Formatting Engine]
 - **Status**: Completed
 - **Changes**:
-  1. Verified 4-language support (`en`, `fr`, `es`, `de`) across `Header.tsx` dropdown and `SettingsPage` language cards.
-  2. Implemented locale-aware formatting helpers in `AppContext`: `formatNumber`, `formatDate`, and `formatCurrency` with automatic locale mapping (`en-US`, `fr-FR`, `es-ES`, `de-DE`).
-  3. Built-in English fallback (`TRANSLATIONS.en[key] || key`) preventing missing key crashes.
+  1. Created standalone modular `lumetric/src/contexts/LanguageContext.tsx` providing `LanguageProvider`, `useLanguage()`, and 4-language support (`en`, `fr`, `es`, `de`).
+  2. Wired language selector into `Header.tsx` dropdown and `SettingsPage` language cards.
+  3. Implemented locale-aware formatting helpers: `formatNumber`, `formatDate`, and `formatCurrency` with automatic locale mapping (`en-US`, `fr-FR`, `es-ES`, `de-DE`).
+  4. Built-in English fallback (`TRANSLATIONS.en[key] || key`) preventing missing key crashes.
 
 ---
 

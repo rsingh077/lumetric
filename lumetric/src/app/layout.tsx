@@ -28,7 +28,7 @@ const themeScript = `
 (function() {
   try {
     var stored = localStorage.getItem('lumetric_theme');
-    var isDark = stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    var isDark = stored === 'dark' || ((!stored || stored === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches);
     var theme = isDark ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', theme);
     if (isDark) {

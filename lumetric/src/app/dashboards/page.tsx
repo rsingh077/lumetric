@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui';
+import { SkeletonChart } from '@/components/ui/Skeleton';
 import {
   DownloadIcon,
   PrinterIcon,
@@ -20,9 +22,23 @@ import {
   FileSpreadsheetIcon,
 } from '@/components/icons';
 import { DatasetProfile } from '@/types';
-import { CustomChartBuilder } from '@/components/charts/CustomChartBuilder';
-import { GeographicIntelligenceMap } from '@/components/charts/GeographicIntelligenceMap';
 import { parseNumeric } from '@/lib/csvParser';
+
+const CustomChartBuilder = dynamic(
+  () => import('@/components/charts/CustomChartBuilder').then((mod) => mod.CustomChartBuilder),
+  {
+    ssr: false,
+    loading: () => <SkeletonChart height="480px" />,
+  }
+);
+
+const GeographicIntelligenceMap = dynamic(
+  () => import('@/components/charts/GeographicIntelligenceMap').then((mod) => mod.GeographicIntelligenceMap),
+  {
+    ssr: false,
+    loading: () => <SkeletonChart height="420px" />,
+  }
+);
 
 // Theme presets inspired directly by user's reference images
 type ThemePreset = 'modern' | 'cyberpunk' | 'enterprise';
