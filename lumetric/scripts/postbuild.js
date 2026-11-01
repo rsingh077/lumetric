@@ -108,13 +108,56 @@ fs.writeFileSync(
     '404': '404.html'
   }, null, 2)
 );
-console.log(`✓ Generated client-package.json (v${pkgInfo.version || '2.3.4'})`);
+console.log(`✓ Generated client-package.json (homepage: index.html, 404: 404.html, v${pkgInfo.version || '2.3.4'})`);
 
-// Ensure out/app.html exists as a direct fallback
+// Ensure master universal SPA index.html is mirrored across all routes and fallbacks
 const indexPath = path.join(outDir, 'index.html');
 if (fs.existsSync(indexPath)) {
-  fs.copyFileSync(indexPath, path.join(outDir, 'app.html'));
-  console.log('✓ Created out/app.html fallback');
+  const indexHtml = fs.readFileSync(indexPath, 'utf8');
+
+  // Overwrite fallbacks with full SPA
+  fs.writeFileSync(path.join(outDir, '404.html'), indexHtml, 'utf8');
+  fs.writeFileSync(path.join(appOutDir, '404.html'), indexHtml, 'utf8');
+  fs.writeFileSync(path.join(outDir, 'app.html'), indexHtml, 'utf8');
+  fs.writeFileSync(path.join(appOutDir, 'index.html'), indexHtml, 'utf8');
+  fs.writeFileSync(path.join(appOutDir, 'app.html'), indexHtml, 'utf8');
+
+  // Mirror universal SPA across all 12 routes
+  const appRoutes = [
+    'projects',
+    'data',
+    'pipelines',
+    'analysis',
+    'models',
+    'dashboards',
+    'stories',
+    'operations',
+    'settings',
+    'sql',
+    'excel',
+    'investment'
+  ];
+
+  for (const r of appRoutes) {
+    // 1. Root route directories: out/r/index.html
+    const routeDir = path.join(outDir, r);
+    if (!fs.existsSync(routeDir)) {
+      fs.mkdirSync(routeDir, { recursive: true });
+    }
+    fs.writeFileSync(path.join(routeDir, 'index.html'), indexHtml, 'utf8');
+
+    // 2. Catalyst app route directories: out/app/r/index.html
+    const appRouteDir = path.join(appOutDir, r);
+    if (!fs.existsSync(appRouteDir)) {
+      fs.mkdirSync(appRouteDir, { recursive: true });
+    }
+    fs.writeFileSync(path.join(appRouteDir, 'index.html'), indexHtml, 'utf8');
+
+    // 3. Static html files: out/r.html and out/app/r.html
+    fs.writeFileSync(path.join(outDir, `${r}.html`), indexHtml, 'utf8');
+    fs.writeFileSync(path.join(appOutDir, `${r}.html`), indexHtml, 'utf8');
+  }
+  console.log('✓ Mirrored universal SPA across all 12 application routes and 404 recovery fallbacks in out/ and out/app/');
 }
 
 // 5. If Android assets directory exists, enforce clean /_next/ paths so Android WebView hydrates without errors

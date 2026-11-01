@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { useApp } from '@/contexts/AppContext';
 
 const InvestmentPlannerView = dynamic(
   () => import('@/components/investment/InvestmentPlannerView').then((mod) => mod.InvestmentPlannerView),
@@ -19,5 +20,14 @@ const InvestmentPlannerView = dynamic(
 );
 
 export default function InvestmentPlannerPage() {
+  const { activeView, setActiveView } = useApp();
+
+  useEffect(() => {
+    // Ensure activeView is synchronized if this component is mounted directly
+    if (activeView !== 'investment') {
+      setActiveView('investment');
+    }
+  }, []);
+
   return <InvestmentPlannerView />;
 }

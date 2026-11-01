@@ -67,7 +67,8 @@ const navSections: NavSection[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
+  const isCatalyst = typeof window !== 'undefined' && window.location.pathname.startsWith('/app');
+  const homeHref = isCatalyst ? '/app/index.html' : '/';
   const {
     activeView,
     setActiveView,
@@ -135,7 +136,7 @@ export function Sidebar() {
         <div className="flex flex-col border-b border-[var(--lm-border-default)] p-3 bg-[var(--lm-bg-primary)]">
           <div className="flex items-center justify-between gap-2 h-10 px-1">
             <a
-              href="/"
+              href={homeHref}
               onClick={(e) => {
                 e.preventDefault();
                 setActiveView('home');
@@ -288,7 +289,9 @@ export function Sidebar() {
               {sec.items.map((item) => {
                 const isActive = activeView === item.id;
                 const IconComponent = item.icon;
-                const navHref = item.id === 'home' ? '/' : `/${item.id}`;
+                const navHref = isCatalyst
+                  ? (item.id === 'home' ? '/app/index.html' : `/app/${item.id}.html`)
+                  : (item.id === 'home' ? '/' : `/${item.id}`);
                 return (
                   <a
                     key={item.id}

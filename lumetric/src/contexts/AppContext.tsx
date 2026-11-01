@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
 import {
   Workspace,
   Project,
@@ -935,46 +934,86 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return result;
   };
 
-  // 7. Navigation / Shell View State
-  const router = useRouter();
-  const pathname = usePathname();
+  // 7. Navigation / Shell View State (Universal Dual-Platform SPA Engine)
   const [activeView, setActiveViewState] = useState<ActiveView>('home');
 
-  // Keep activeView in sync with the current URL pathname
-  useEffect(() => {
-    const routeToViewMap: Record<string, ActiveView> = {
-      '/': 'home',
-      '/projects': 'projects',
-      '/data': 'data',
-      '/pipelines': 'pipelines',
-      '/analysis': 'analysis',
-      '/models': 'models',
-      '/dashboards': 'dashboards',
-      '/stories': 'stories',
-      '/operations': 'operations',
-      '/settings': 'settings',
-      '/sql': 'sql',
-      '/excel': 'excel',
-      '/investment': 'investment',
-    };
-    if (pathname) {
-      const cleanPath = pathname.endsWith('/') && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
-      const mapped = routeToViewMap[cleanPath];
-      if (mapped) {
-        setActiveViewState(mapped);
-      }
+  // Detect view cleanly from any URL format (/app/investment, /investment.html, etc.)
+  const detectViewFromLocation = (): ActiveView => {
+    if (typeof window === 'undefined') return 'home';
+    let path = window.location.pathname || '/';
+    // Strip leading '/app' or '/app/'
+    if (path.startsWith('/app/')) {
+      path = path.slice(4);
+    } else if (path === '/app') {
+      path = '/';
     }
-  }, [pathname]);
+    // Strip trailing .html
+    path = path.replace(/\.html$/, '');
+    // Strip trailing slashes
+    path = path.replace(/\/+$/, '');
+    const slug = path.replace(/^\/+/, '');
+
+    const validViews: ActiveView[] = [
+      'home',
+      'projects',
+      'data',
+      'pipelines',
+      'analysis',
+      'models',
+      'dashboards',
+      'stories',
+      'operations',
+      'settings',
+      'sql',
+      'excel',
+      'investment',
+    ];
+
+    if (!slug || slug === 'index') return 'home';
+    if (validViews.includes(slug as ActiveView)) {
+      return slug as ActiveView;
+    }
+    return 'home';
+  };
+
+  // Synchronize view on mount and handle browser back/forward buttons (popstate)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Initialize view from URL if user entered or reloaded on a specific subpath
+    const initialView = detectViewFromLocation();
+    if (initialView !== 'home') {
+      setActiveViewState(initialView);
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.view) {
+        setActiveViewState(event.state.view);
+      } else {
+        const detected = detectViewFromLocation();
+        setActiveViewState(detected);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   const setActiveView = (view: ActiveView) => {
     setActiveViewState(view);
-    const targetPath = view === 'home' ? '/' : `/${view}`;
-    if (pathname !== targetPath) {
-      try {
-        router.push(targetPath);
-      } catch {
-        if (typeof window !== 'undefined') {
-          window.location.href = targetPath;
+    if (typeof window !== 'undefined') {
+      const isCatalyst = window.location.pathname.startsWith('/app');
+      const base = isCatalyst ? '/app' : '';
+      const targetPath = view === 'home'
+        ? (isCatalyst ? '/app/index.html' : '/')
+        : (isCatalyst ? `/app/${view}.html` : `/${view}`);
+      if (window.location.pathname !== targetPath) {
+        try {
+          window.history.pushState({ view }, '', targetPath);
+        } catch {
+          // PushState fallback in restricted iframe/webviews
         }
       }
     }
