@@ -8,7 +8,6 @@
 			"SMTP_PORT": "587",
 			"SMTP_SECURE": "false",
 			"SMTP_USER": "security@techexon.app",
-			"SMTP_PASS": "Lassilodu@122",
 			"SMTP_FROM_NAME": "Lumetric",
 			"SENDER_EMAIL": "security@techexon.app"
 		}

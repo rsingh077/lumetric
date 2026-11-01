@@ -1262,9 +1262,13 @@ async function sendOtpEmail(req, recipientEmail, otpCode, purpose, userName) {
   // 1. Attempt Zoho SMTP Relay (Primary: Verified domain security@techexon.app)
   const smtpHost = process.env.SMTP_HOST || 'smtp.zoho.in';
   const smtpUser = process.env.SMTP_USER || 'security@techexon.app';
-  const smtpPass = process.env.SMTP_PASS || 'Lassilodu@122';
+  const smtpPass = process.env.SMTP_PASS;
   const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
   const smtpFromName = process.env.SMTP_FROM_NAME || 'Lumetric';
+
+  if (!smtpPass) {
+    console.warn('[SECURITY] Zoho SMTP notice: SMTP_PASS environment variable is not configured.');
+  }
 
   if (smtpHost && smtpUser && smtpPass) {
     try {
