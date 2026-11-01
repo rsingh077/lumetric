@@ -27,6 +27,7 @@ try {
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { authenticator } = require('otplib');
@@ -36,6 +37,33 @@ const catalyst = require('zcatalyst-sdk-node');
 const app = express();
 
 app.use(cors({ origin: true, credentials: true }));
+
+// -----------------------------------------------------------------------------
+// Security Headers via Helmet (CSP, HSTS, X-Content-Type-Options, Referrer-Policy)
+// -----------------------------------------------------------------------------
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      connectSrc: ["'self'", "*"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      fontSrc: ["'self'", "data:", "https:"],
+      frameAncestors: ["'self'"]
+    }
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  },
+  xContentTypeOptions: true,
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" }
+}));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -57,17 +85,74 @@ app.use((req, res, next) => {
   next();
 });
 
-// Security Headers & Response Hardening Middleware
+// Cache control for sensitive authentication and user profile data
 app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   if (req.url.startsWith('/api/auth') || req.url.startsWith('/api/user')) {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.setHeader('Pragma', 'no-cache');
   }
   next();
+});
+
+// -----------------------------------------------------------------------------
+// IP Sliding-Window Rate Limiter & Global Fallback
+// -----------------------------------------------------------------------------
+const rateLimitMap = new Map();
+function rateLimiter(options = { windowMs: 60 * 1000, max: 200, message: 'Too many requests, please try again later.' }) {
+  return (req, res, next) => {
+    const rawIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'global-client';
+    const emailKey = req.body && req.body.email ? String(req.body.email).toLowerCase().trim() : '';
+    const ip = `${rawIp}:${emailKey}`;
+    const now = Date.now();
+    let clientRecord = rateLimitMap.get(ip);
+
+    if (!clientRecord) {
+      clientRecord = { count: 1, startTime: now };
+      rateLimitMap.set(ip, clientRecord);
+    } else {
+      if (now - clientRecord.startTime > options.windowMs) {
+        clientRecord.count = 1;
+        clientRecord.startTime = now;
+      } else {
+        clientRecord.count++;
+        if (clientRecord.count > options.max) {
+          const retryAfter = Math.ceil((options.windowMs - (now - clientRecord.startTime)) / 1000);
+          res.setHeader('Retry-After', retryAfter);
+          return res.status(429).json({
+            success: false,
+            error: options.message,
+            retryAfterSeconds: retryAfter
+          });
+        }
+      }
+    }
+
+    res.setHeader('X-RateLimit-Limit', options.max);
+    res.setHeader('X-RateLimit-Remaining', Math.max(0, options.max - clientRecord.count));
+    next();
+  };
+}
+
+// Global rate limiter fallback (150 req/min/IP with telemetry bypass)
+const globalLimiter = rateLimiter({
+  windowMs: 60 * 1000,
+  max: 150,
+  message: 'Global rate limit reached: Max 150 requests per minute per IP. Please slow down.'
+});
+
+app.use((req, res, next) => {
+  if (
+    req.path === '/api/health' ||
+    req.path === '/api/ping' ||
+    req.path === '/' ||
+    req.path === '/api/status' ||
+    req.path === '/api/version' ||
+    req.path === '/api/mail/diagnostics' ||
+    req.path === '/api/datastore/status'
+  ) {
+    return next();
+  }
+  return globalLimiter(req, res, next);
 });
 
 function validatePasswordStrength(password) {
@@ -219,41 +304,73 @@ const JWT_SECRET = process.env.LUMETRIC_JWT_SECRET || 'lumetric-production-hyper
 const JWT_EXPIRES_IN = '7d';
 
 // -----------------------------------------------------------------------------
-// 1. IP SLIDING-WINDOW RATE LIMITER WITH AUDIT REPORTING
+// 1. JWT REVOCATION LIST & REFRESH-TOKEN ROTATION REGISTRY
 // -----------------------------------------------------------------------------
-const rateLimitMap = new Map();
-function rateLimiter(options = { windowMs: 60 * 1000, max: 200, message: 'Too many requests, please try again later.' }) {
-  return (req, res, next) => {
-    const rawIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'global-client';
-    const emailKey = req.body && req.body.email ? String(req.body.email).toLowerCase().trim() : '';
-    const ip = `${rawIp}:${emailKey}`;
-    const now = Date.now();
-    let clientRecord = rateLimitMap.get(ip);
+const tokenRevocationList = new Map(); // token / jti -> expiresAt
+const refreshTokenRegistry = new Map(); // refreshJti -> { userId, email, familyId, expiresAt, isRevoked }
 
-    if (!clientRecord) {
-      clientRecord = { count: 1, startTime: now };
-      rateLimitMap.set(ip, clientRecord);
-    } else {
-      if (now - clientRecord.startTime > options.windowMs) {
-        clientRecord.count = 1;
-        clientRecord.startTime = now;
-      } else {
-        clientRecord.count++;
-        if (clientRecord.count > options.max) {
-          const retryAfter = Math.ceil((options.windowMs - (now - clientRecord.startTime)) / 1000);
-          res.setHeader('Retry-After', retryAfter);
-          return res.status(429).json({
-            success: false,
-            error: options.message,
-            retryAfterSeconds: retryAfter
-          });
-        }
-      }
-    }
+function revokeToken(tokenOrJti, expiresAt) {
+  if (!tokenOrJti) return;
+  const exp = expiresAt || Date.now() + 7 * 24 * 60 * 60 * 1000;
+  tokenRevocationList.set(tokenOrJti, exp);
+}
 
-    res.setHeader('X-RateLimit-Limit', options.max);
-    res.setHeader('X-RateLimit-Remaining', Math.max(0, options.max - clientRecord.count));
-    next();
+function isTokenRevoked(tokenOrJti) {
+  if (!tokenOrJti) return false;
+  const exp = tokenRevocationList.get(tokenOrJti);
+  if (!exp) return false;
+  if (Date.now() > exp) {
+    tokenRevocationList.delete(tokenOrJti);
+    return false;
+  }
+  return true;
+}
+
+function issueTokenPair(user, existingFamilyId = null) {
+  const jti = `acc_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+  const refreshJti = `ref_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+  const familyId = existingFamilyId || `fam_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+
+  // Access token: 1 hour (enhanced security window)
+  const accessToken = jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      organization: user.organization,
+      jti
+    },
+    JWT_SECRET,
+    { expiresIn: '1h' }
+  );
+
+  // Refresh token: 7 days
+  const refreshToken = jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      jti: refreshJti,
+      familyId,
+      type: 'refresh'
+    },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  refreshTokenRegistry.set(refreshJti, {
+    userId: user.id,
+    email: user.email,
+    familyId,
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    isRevoked: false
+  });
+
+  return {
+    token: accessToken, // for backward-compatible frontend consumers
+    accessToken,
+    refreshToken,
+    expiresIn: 3600
   };
 }
 
@@ -836,11 +953,27 @@ async function authenticateToken(req, res, next) {
     });
   }
 
+  // Check if raw token is on the revocation list
+  if (isTokenRevoked(token)) {
+    return res.status(401).json({
+      success: false,
+      error: 'Authentication token has been revoked. Please sign in again.'
+    });
+  }
+
   jwt.verify(token, JWT_SECRET, async (err, decoded) => {
     if (err) {
       return res.status(403).json({
         success: false,
         error: 'Invalid or expired authentication session'
+      });
+    }
+
+    // Check if token ID or family ID has been revoked
+    if (decoded && ((decoded.jti && isTokenRevoked(decoded.jti)) || (decoded.familyId && isTokenRevoked(decoded.familyId)))) {
+      return res.status(401).json({
+        success: false,
+        error: 'Session token has been revoked. Please sign in again.'
       });
     }
 
@@ -866,7 +999,7 @@ async function authenticateToken(req, res, next) {
       }
     }
 
-    req.user = user;
+    req.user = { ...user, jti: decoded ? decoded.jti : null, familyId: decoded ? decoded.familyId : null, tokenExp: decoded ? decoded.exp : null };
     req.token = token;
     next();
   });
@@ -1708,17 +1841,16 @@ app.post('/api/auth/verify-otp', rateLimiter({ windowMs: 15 * 60 * 1000, max: 40
       otpVerificationStore.delete(normalizedEmail);
       logAuditEvent(normalizedEmail, 'USER_VERIFIED_REGISTER', 'Authentication', `New verified account created with role: ${newUser.role}`);
 
-      const token = jwt.sign(
-        { id: newUser.id, email: newUser.email, role: newUser.role, name: newUser.name },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
-      );
+      const tokenPair = issueTokenPair(newUser);
 
       const { passwordHash: _, mfaSecret: __, tempMfaSecret: ___, ...userSafe } = newUser;
       return res.status(201).json({
         success: true,
         message: 'Email verified and account created successfully! Welcome to Lumetric Studio.',
-        token,
+        token: tokenPair.token,
+        accessToken: tokenPair.accessToken,
+        refreshToken: tokenPair.refreshToken,
+        expiresIn: tokenPair.expiresIn,
         user: userSafe,
         persistedToCloudStore: saveResult.persistedToCloudStore
       });
@@ -1739,17 +1871,16 @@ app.post('/api/auth/verify-otp', rateLimiter({ windowMs: 15 * 60 * 1000, max: 40
 
       logAuditEvent(normalizedEmail, 'USER_OTP_LOGIN_SUCCESS', 'Authentication', 'Session established via password + anti-bypass 6-digit OTP verification');
 
-      const token = jwt.sign(
-        { id: existingUser.id, email: existingUser.email, role: existingUser.role, name: existingUser.name, amr: ['pwd', 'otp'] },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
-      );
+      const tokenPair = issueTokenPair(existingUser);
 
       const { passwordHash: _, mfaSecret: __, tempMfaSecret: ___, ...userSafe } = existingUser;
       return res.json({
         success: true,
         message: 'Security code verified successfully! Welcome back to Lumetric Studio.',
-        token,
+        token: tokenPair.token,
+        accessToken: tokenPair.accessToken,
+        refreshToken: tokenPair.refreshToken,
+        expiresIn: tokenPair.expiresIn,
         user: userSafe
       });
     } else if (targetPurpose === 'reset-password') {
@@ -1772,17 +1903,16 @@ app.post('/api/auth/verify-otp', rateLimiter({ windowMs: 15 * 60 * 1000, max: 40
 
         logAuditEvent(normalizedEmail, 'PASSWORD_RESET_SUCCESS', 'Security', 'Password updated and session issued');
 
-        const token = jwt.sign(
-          { id: existingUser.id, email: existingUser.email, role: existingUser.role, name: existingUser.name },
-          JWT_SECRET,
-          { expiresIn: JWT_EXPIRES_IN }
-        );
+        const tokenPair = issueTokenPair(existingUser);
 
         const { passwordHash: _, mfaSecret: __, tempMfaSecret: ___, ...userSafe } = existingUser;
         return res.json({
           success: true,
           message: 'Password reset successfully! Session established.',
-          token,
+          token: tokenPair.token,
+          accessToken: tokenPair.accessToken,
+          refreshToken: tokenPair.refreshToken,
+          expiresIn: tokenPair.expiresIn,
           user: userSafe
         });
       }
@@ -1919,18 +2049,17 @@ app.post('/api/auth/register', rateLimiter({ windowMs: 15 * 60 * 1000, max: 20, 
     otpVerificationStore.delete(normalizedEmail);
     logAuditEvent(normalizedEmail, 'USER_REGISTERED', 'Authentication', `New account verified and registered with role: ${newUser.role}`);
 
-    const token = jwt.sign(
-      { id: newUser.id, email: newUser.email, role: newUser.role, name: newUser.name },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
+    const tokenPair = issueTokenPair(newUser);
 
     const { passwordHash: _, mfaSecret: __, tempMfaSecret: ___, ...userSafe } = newUser;
 
     return res.status(201).json({
       success: true,
       message: 'Account successfully registered and email verified.',
-      token,
+      token: tokenPair.token,
+      accessToken: tokenPair.accessToken,
+      refreshToken: tokenPair.refreshToken,
+      expiresIn: tokenPair.expiresIn,
       user: userSafe,
       persistedToCloudStore: saveResult.persistedToCloudStore,
       dataStoreError: saveResult.dataStoreError
@@ -2210,18 +2339,17 @@ app.post('/api/auth/google', rateLimiter({ windowMs: 5 * 60 * 1000, max: 30 }), 
       logAuditEvent(normalizedEmail, 'GOOGLE_LOGIN_SUCCESS', 'Authentication', `Logged in via verified Google Auth: ${normalizedEmail}`);
     }
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, name: user.name },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
+    const tokenPair = issueTokenPair(user);
 
     const { passwordHash: _, mfaSecret: __, tempMfaSecret: ___, ...userSafe } = user;
 
     return res.json({
       success: true,
       message: 'Google authentication verified and session established.',
-      token,
+      token: tokenPair.token,
+      accessToken: tokenPair.accessToken,
+      refreshToken: tokenPair.refreshToken,
+      expiresIn: tokenPair.expiresIn,
       user: userSafe
     });
   } catch (err) {
@@ -2495,7 +2623,7 @@ app.post('/api/connectors/sync/:id', authenticateToken, (req, res) => {
   });
 });
 
-// 7. Cryptographic Audit Trail: Read Ledger (SOC-2 Compliance)
+// 7. Cryptographic Audit Trail: Read Ledger (SOC-2 Compliance & Queryable Filters)
 app.get('/api/audit/logs', authenticateToken, (req, res) => {
   if (req.user.role !== 'owner' && req.user.role !== 'administrator' && req.user.role !== 'reviewer') {
     return res.status(403).json({
@@ -2504,10 +2632,32 @@ app.get('/api/audit/logs', authenticateToken, (req, res) => {
     });
   }
 
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+  const category = req.query.category ? String(req.query.category).toLowerCase().trim() : null;
+  const actorEmail = req.query.actorEmail ? String(req.query.actorEmail).toLowerCase().trim() : null;
+  const search = req.query.search ? String(req.query.search).toLowerCase().trim() : null;
+
+  let filtered = auditTrailLedger;
+
+  if (category) {
+    filtered = filtered.filter(l => (l.category || '').toLowerCase() === category);
+  }
+  if (actorEmail) {
+    filtered = filtered.filter(l => (l.actorEmail || '').toLowerCase().includes(actorEmail));
+  }
+  if (search) {
+    filtered = filtered.filter(l =>
+      (l.action || '').toLowerCase().includes(search) ||
+      (l.details || '').toLowerCase().includes(search) ||
+      (l.actorEmail || '').toLowerCase().includes(search)
+    );
+  }
+
   return res.json({
     success: true,
-    totalLogs: auditTrailLedger.length,
-    logs: auditTrailLedger.slice(0, 50)
+    totalLogs: filtered.length,
+    limit,
+    logs: filtered.slice(0, limit)
   });
 });
 
@@ -2740,21 +2890,122 @@ app.post('/api/user/change-password', authenticateToken, rateLimiter({ windowMs:
   }
 });
 
-// 12. Authentication: Token Refresh
-app.post('/api/auth/refresh', authenticateToken, (req, res) => {
-  const token = jwt.sign(
-    { id: req.user.id, email: req.user.email, role: req.user.role },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
+// 12a. Authentication: Session Logout & Token Revocation
+app.post('/api/auth/logout', authenticateToken, (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && (authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader);
+  if (token) {
+    revokeToken(token, req.user && req.user.tokenExp ? req.user.tokenExp * 1000 : null);
+  }
+  if (req.user && req.user.jti) {
+    revokeToken(req.user.jti);
+  }
+  const { refreshToken } = req.body || {};
+  if (refreshToken) {
+    try {
+      const decodedRef = jwt.verify(refreshToken, JWT_SECRET);
+      if (decodedRef && decodedRef.jti) {
+        revokeToken(decodedRef.jti);
+        if (decodedRef.familyId) {
+          revokeToken(decodedRef.familyId);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  logAuditEvent(req.user.email, 'USER_LOGOUT', 'Authentication', 'Session revoked and terminated');
   return res.json({
     success: true,
-    token,
+    message: 'Session revoked and logged out successfully.'
+  });
+});
+
+// 12b. Authentication: Token Refresh & Single-Use Rotation
+app.post('/api/auth/refresh', async (req, res) => {
+  const { refreshToken } = req.body || {};
+  let targetUser = null;
+  let familyId = null;
+
+  if (refreshToken) {
+    try {
+      const decodedRef = jwt.verify(refreshToken, JWT_SECRET);
+      if (decodedRef.type !== 'refresh' || !decodedRef.jti) {
+        return res.status(400).json({ success: false, error: 'Invalid refresh token structure' });
+      }
+
+      // Check for token reuse (compromise detection)
+      if (isTokenRevoked(decodedRef.jti)) {
+        if (decodedRef.familyId) {
+          revokeToken(decodedRef.familyId);
+        }
+        logAuditEvent(decodedRef.email, 'REFRESH_TOKEN_REUSE_DETECTED', 'Security', 'Revoked refresh token re-submitted. Terminated session family.');
+        return res.status(401).json({
+          success: false,
+          error: 'Refresh token reuse detected. All sessions terminated for security.'
+        });
+      }
+
+      // Check if family is revoked
+      if (decodedRef.familyId && isTokenRevoked(decodedRef.familyId)) {
+        return res.status(401).json({ success: false, error: 'Session family revoked.' });
+      }
+
+      // Invalidate the old refresh token (ROTATION)
+      revokeToken(decodedRef.jti, decodedRef.exp ? decodedRef.exp * 1000 : null);
+      familyId = decodedRef.familyId;
+
+      targetUser = await getUserFromStore(req, decodedRef.email);
+      if (!targetUser) {
+        targetUser = { id: decodedRef.id, email: decodedRef.email, role: 'builder' };
+      }
+    } catch (err) {
+      return res.status(401).json({ success: false, error: 'Expired or invalid refresh token' });
+    }
+  } else {
+    // Fallback: Refresh using active Bearer token
+    let token = req.headers['x-auth-token'] || req.headers['x-access-token'] || req.headers['x-lumetric-token'];
+    if (!token) {
+      const authHeader = req.headers['authorization'];
+      token = authHeader && (authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader);
+    }
+    if (!token) {
+      return res.status(401).json({ success: false, error: 'Refresh token or active session required' });
+    }
+    if (isTokenRevoked(token)) {
+      return res.status(401).json({ success: false, error: 'Session token has been revoked' });
+    }
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded.jti && isTokenRevoked(decoded.jti)) {
+        return res.status(401).json({ success: false, error: 'Session token has been revoked' });
+      }
+      targetUser = await getUserFromStore(req, decoded.email);
+      if (!targetUser) {
+        targetUser = { id: decoded.id, email: decoded.email, role: decoded.role || 'builder' };
+      }
+      // Revoke the old access token upon refresh
+      revokeToken(token, decoded.exp ? decoded.exp * 1000 : null);
+    } catch (err) {
+      return res.status(401).json({ success: false, error: 'Session expired. Please sign in again.' });
+    }
+  }
+
+  // Issue brand-new rotated token pair
+  const tokens = issueTokenPair(targetUser, familyId);
+  logAuditEvent(targetUser.email, 'TOKEN_REFRESH_ROTATED', 'Authentication', 'Token pair rotated successfully');
+
+  return res.json({
+    success: true,
+    token: tokens.token,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    expiresIn: tokens.expiresIn,
     user: {
-      id: req.user.id,
-      email: req.user.email,
-      name: req.user.name,
-      role: req.user.role
+      id: targetUser.id,
+      email: targetUser.email,
+      name: targetUser.name,
+      role: targetUser.role
     }
   });
 });
@@ -3302,12 +3553,7 @@ app.post('/api/billing/verify-upi', async (req, res) => {
   await saveUserToStore(req, user);
   logAuditEvent(user.email, 'SUBSCRIPTION_ACTIVATED_UPI', 'Billing', `Account automatically upgraded to ${plan.name} via UPI UTR ${cleanUtr}`);
 
-  // Generate fresh JWT token so client can immediately persist authenticated login
-  const sessionToken = jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
+  const tokenPair = issueTokenPair(user);
 
   const { passwordHash: _, mfaSecret: __, ...userSafe } = user;
 
@@ -3316,7 +3562,10 @@ app.post('/api/billing/verify-upi', async (req, res) => {
     message: `Payment confirmed! Your account has been automatically upgraded to ${plan.name}.`,
     subscription: user.settings.subscription,
     invoice: user.settings.invoices[0],
-    token: sessionToken,
+    token: tokenPair.token,
+    accessToken: tokenPair.accessToken,
+    refreshToken: tokenPair.refreshToken,
+    expiresIn: tokenPair.expiresIn,
     user: userSafe
   });
 });
@@ -3489,4 +3738,7 @@ app.use((err, req, res, next) => {
 });
 
 // Catalyst Entry Export
+app.issueTokenPair = issueTokenPair;
+app.revokeToken = revokeToken;
+app.isTokenRevoked = isTokenRevoked;
 module.exports = app;
