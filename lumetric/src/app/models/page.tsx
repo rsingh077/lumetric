@@ -62,7 +62,7 @@ const INITIAL_MODELS: ModelEntry[] = [
 ];
 
 export default function ModelsPage() {
-  const { activeDataset, datasets, currentUser, currentWorkspace, setActiveView, loadSampleDataIntoProfile } = useApp();
+  const { activeDataset, datasets, currentWorkspace, setActiveView, loadSampleDataIntoProfile } = useApp();
   const [models, setModels] = useState<ModelEntry[]>(INITIAL_MODELS);
   const [selectedModel, setSelectedModel] = useState<ModelEntry>(INITIAL_MODELS[0]);
   const [trainModalOpen, setTrainModalOpen] = useState(false);

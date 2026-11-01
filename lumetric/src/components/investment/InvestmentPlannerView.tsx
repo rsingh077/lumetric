@@ -41,7 +41,7 @@ type ActiveTab =
   | 'survival';
 
 export function InvestmentPlannerView() {
-  const { currentWorkspace } = useApp();
+  const { currentWorkspace: _currentWorkspace } = useApp();
 
   // Active Blueprint & State
   const [activeBlueprintId, setActiveBlueprintId] = useState<IndustryBlueprintId>('saas');
@@ -105,7 +105,7 @@ export function InvestmentPlannerView() {
   }, [modelState, projections.runwayMonths, currentDscr]);
 
   // Sensitivity Tornado
-  const sensitivityTornado = useMemo(() => {
+  const _sensitivityTornado = useMemo(() => {
     return calculateSensitivityTornado(modelState);
   }, [modelState]);
 

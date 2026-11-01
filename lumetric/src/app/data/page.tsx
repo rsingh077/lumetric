@@ -142,8 +142,9 @@ export default function DataWorkspacePage() {
         const ws = wb.Sheets[initialSheet];
         const csvContent = XLSX.utils.sheet_to_csv(ws);
         await handleIntakeContent(csvContent, `${file.name} [${initialSheet}]`, file.size);
-      } catch (err: any) {
-        setParseError(`Failed to parse Excel file: ${err.message || 'Corrupted spreadsheet'}`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Corrupted spreadsheet';
+        setParseError(`Failed to parse Excel file: ${msg}`);
         setIsProcessing(false);
       }
       return;
@@ -173,8 +174,9 @@ export default function DataWorkspacePage() {
         addDocumentFile(doc);
         setPublishedNotice(`Document "${file.name}" ingested into secure document vault!`);
         setTimeout(() => setPublishedNotice(null), 5000);
-      } catch (err: any) {
-        setParseError(`Failed to ingest document: ${err.message}`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Error processing document';
+        setParseError(`Failed to ingest document: ${msg}`);
       } finally {
         setIsProcessing(false);
       }
@@ -212,8 +214,9 @@ export default function DataWorkspacePage() {
       const csvContent = XLSX.utils.sheet_to_csv(ws);
       const baseName = fileName.includes(' [') ? fileName.split(' [')[0] : fileName;
       await handleIntakeContent(csvContent, `${baseName} [${sheetName}]`, fileSize);
-    } catch (err: any) {
-      setParseError(`Failed to switch sheet: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error switching sheet';
+      setParseError(`Failed to switch sheet: ${msg}`);
       setIsProcessing(false);
     }
   };

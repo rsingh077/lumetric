@@ -27,7 +27,7 @@ export default function InvestmentPlannerPage() {
     if (activeView !== 'investment') {
       setActiveView('investment');
     }
-  }, []);
+  }, [activeView, setActiveView]);
 
   return <InvestmentPlannerView />;
 }

@@ -6,3 +6,4 @@ export { LoadingState } from './LoadingState';
 export { ErrorState } from './ErrorState';
 export { Input } from './Input';
 export { TextArea } from './TextArea';
+export { Skeleton, SkeletonCard, SkeletonChart, SkeletonTable } from './Skeleton';

@@ -24,17 +24,12 @@ import {
   FileSpreadsheetIcon,
   BrainIcon,
   DatabaseIcon,
-  SparklesIcon,
-  BarChart3Icon,
   ShieldIcon,
-  MaximizeIcon,
-  ActivityIcon,
   TrendingUpIcon,
-  LandmarkIcon,
 } from '@/components/icons';
 
 export function LandingPage() {
-  const { serverStatus, serverLatency } = useApp();
+  const { serverStatus: _serverStatus, serverLatency: _serverLatency } = useApp();
 
   // Auth Modal State
   const [authModalOpen, setAuthModalOpen] = useState(false);

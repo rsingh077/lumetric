@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardHeader, CardTitle, StatusBadge, Button, Input } from '@/components/ui';
 import { UserRole } from '@/types';
@@ -474,7 +474,7 @@ export default function SettingsPage() {
                 <div
                   key={item.id}
                   onClick={() => {
-                    setLanguage(item.id as any);
+                    setLanguage(item.id as 'en' | 'fr' | 'es' | 'de');
                     setRoleNotice(`✓ Language updated to "${item.title}". Studio preference saved to device.`);
                     setTimeout(() => setRoleNotice(null), 4000);
                   }}

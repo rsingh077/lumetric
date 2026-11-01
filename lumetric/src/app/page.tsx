@@ -234,7 +234,7 @@ function HomeView() {
         ].map((f) => (
           <button
             key={f.id}
-            onClick={() => setActiveFilter(f.id as any)}
+            onClick={() => setActiveFilter(f.id as 'all' | 'tabular' | 'ai' | 'documents' | 'pipelines' | 'models')}
             className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
               activeFilter === f.id
                 ? 'bg-[#059669] text-[#FAF8F5] shadow-sm shadow-emerald-900/30'

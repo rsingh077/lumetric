@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Workspace,
   Project,
@@ -151,7 +151,7 @@ const initialWorkspaces: Workspace[] = [
   }
 ];
 
-const initialProjects: Project[] = [
+const _initialProjects: Project[] = [
   {
     id: 'prj-gov-audit',
     workspaceId: 'ws-prod-alpha',
@@ -348,11 +348,30 @@ const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     'nav.stories': 'Data Stories',
     'nav.operations': 'Engine Operations',
     'nav.settings': 'Settings',
+    'nav.sql': 'SQL Studio',
+    'nav.excel': 'Excel Automator',
+    'nav.investment': 'Investment & Venture Planner',
     'common.welcome': 'Welcome back',
     'common.serverOnline': 'Cloud Connected',
     'common.serverOffline': 'Offline Mode',
     'common.latency': 'ms latency',
     'common.instantAccess': 'Instant Access',
+    'common.search': 'Search studio...',
+    'common.save': 'Save',
+    'common.cancel': 'Cancel',
+    'common.delete': 'Delete',
+    'common.upload': 'Upload',
+    'common.export': 'Export',
+    'common.loading': 'Loading...',
+    'common.retry': 'Retry',
+    'common.close': 'Close',
+    'data.intake': 'Data Intake',
+    'data.wizard': 'Schema Wizard',
+    'data.catalog': 'Dataset Catalog',
+    'data.inspect': 'Data Inspector',
+    'auth.signIn': 'Sign In',
+    'auth.signUp': 'Sign Up',
+    'auth.signOut': 'Sign Out',
   },
   fr: {
     'app.title': 'Lumetric • Studio IA Données & Documents',
@@ -367,11 +386,30 @@ const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     'nav.stories': 'Stories & Rapports',
     'nav.operations': 'Opérations Moteur',
     'nav.settings': 'Paramètres',
+    'nav.sql': 'Studio SQL',
+    'nav.excel': 'Automate Excel',
+    'nav.investment': 'Planificateur Investissement & Venture',
     'common.welcome': 'Bienvenue',
     'common.serverOnline': 'Cloud Connecté',
     'common.serverOffline': 'Mode Hors-ligne',
     'common.latency': 'ms de latence',
     'common.instantAccess': 'Accès Immédiat',
+    'common.search': 'Rechercher dans le studio...',
+    'common.save': 'Enregistrer',
+    'common.cancel': 'Annuler',
+    'common.delete': 'Supprimer',
+    'common.upload': 'Téléverser',
+    'common.export': 'Exporter',
+    'common.loading': 'Chargement...',
+    'common.retry': 'Réessayer',
+    'common.close': 'Fermer',
+    'data.intake': 'Réception des Données',
+    'data.wizard': 'Assistant de Schéma',
+    'data.catalog': 'Catalogue de Données',
+    'data.inspect': 'Inspecteur de Données',
+    'auth.signIn': 'Se connecter',
+    'auth.signUp': 'Créer un compte',
+    'auth.signOut': 'Se déconnecter',
   },
   es: {
     'app.title': 'Lumetric • Estudio de Datos y Documentos IA',
@@ -386,11 +424,30 @@ const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     'nav.stories': 'Historias de Datos',
     'nav.operations': 'Operaciones del Motor',
     'nav.settings': 'Ajustes',
+    'nav.sql': 'Estudio SQL',
+    'nav.excel': 'Automatizador Excel',
+    'nav.investment': 'Planificador de Inversión y Venture',
     'common.welcome': 'Bienvenido de nuevo',
     'common.serverOnline': 'Nube Conectada',
     'common.serverOffline': 'Modo Desconectado',
     'common.latency': 'ms de latencia',
     'common.instantAccess': 'Acceso Inmediato',
+    'common.search': 'Buscar en el estudio...',
+    'common.save': 'Guardar',
+    'common.cancel': 'Cancelar',
+    'common.delete': 'Eliminar',
+    'common.upload': 'Subir',
+    'common.export': 'Exportar',
+    'common.loading': 'Cargando...',
+    'common.retry': 'Reintentar',
+    'common.close': 'Cerrar',
+    'data.intake': 'Entrada de Datos',
+    'data.wizard': 'Asistente de Esquema',
+    'data.catalog': 'Catálogo de Datos',
+    'data.inspect': 'Inspector de Datos',
+    'auth.signIn': 'Iniciar Sesión',
+    'auth.signUp': 'Registrarse',
+    'auth.signOut': 'Cerrar Sesión',
   },
   de: {
     'app.title': 'Lumetric • KI Daten- & Dokumentenstudio',
@@ -405,16 +462,35 @@ const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     'nav.stories': 'Daten-Storys',
     'nav.operations': 'Betrieb & Audit',
     'nav.settings': 'Einstellungen',
+    'nav.sql': 'SQL-Studio',
+    'nav.excel': 'Excel-Automatisierung',
+    'nav.investment': 'Investment- & Venture-Planer',
     'common.welcome': 'Willkommen zurück',
     'common.serverOnline': 'Cloud Verbunden',
     'common.serverOffline': 'Offline-Modus',
     'common.latency': 'ms Latenz',
     'common.instantAccess': 'Sofortzugriff',
+    'common.search': 'Studio durchsuchen...',
+    'common.save': 'Speichern',
+    'common.cancel': 'Abbrechen',
+    'common.delete': 'Löschen',
+    'common.upload': 'Hochladen',
+    'common.export': 'Exportieren',
+    'common.loading': 'Laden...',
+    'common.retry': 'Wiederholen',
+    'common.close': 'Schließen',
+    'data.intake': 'Datenaufnahme',
+    'data.wizard': 'Schema-Assistent',
+    'data.catalog': 'Datenkatalog',
+    'data.inspect': 'Dateninspektor',
+    'auth.signIn': 'Anmelden',
+    'auth.signUp': 'Registrieren',
+    'auth.signOut': 'Abmelden',
   }
 };
 
 // ========== Per-User Profile Storage & Data Separation Helpers ==========
-function getUserStorageKey(email?: string): string {
+function _getUserStorageKey(email?: string): string {
   const clean = (email || 'guest').trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '_');
   return `lumetric_profile_db_${clean}`;
 }
@@ -510,32 +586,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return 'en';
   });
 
-  const setLanguage = (lang: AppLanguage) => {
+  const setLanguage = useCallback((lang: AppLanguage) => {
     setLanguageState(lang);
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('lumetric_language', lang);
       } catch {}
     }
-  };
+  }, []);
 
-  const t = (key: string): string => {
+  const t = useCallback((key: string): string => {
     return TRANSLATIONS[language]?.[key] || TRANSLATIONS.en[key] || key;
-  };
+  }, [language]);
 
-  // Theme & Appearance State (Default: Dark Obsidian Emerald)
+  // Theme & Appearance State (Default: Dark Obsidian Emerald, fallback prefers-color-scheme)
   const [theme, setThemeState] = useState<'light' | 'dark'>('dark');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const storedTheme = (localStorage.getItem('lumetric_theme') as 'light' | 'dark') || 'dark';
-      setThemeState(storedTheme);
-      document.documentElement.setAttribute('data-theme', storedTheme);
-      document.documentElement.classList.toggle('dark', storedTheme === 'dark');
+      const storedTheme = localStorage.getItem('lumetric_theme') as 'light' | 'dark' | null;
+      let effectiveTheme: 'light' | 'dark' = 'dark';
+      if (storedTheme === 'light' || storedTheme === 'dark') {
+        effectiveTheme = storedTheme;
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        effectiveTheme = 'light';
+      }
+      setThemeState(effectiveTheme);
+      document.documentElement.setAttribute('data-theme', effectiveTheme);
+      document.documentElement.classList.toggle('dark', effectiveTheme === 'dark');
     }
   }, []);
 
-  const setTheme = (newTheme: 'light' | 'dark') => {
+  const setTheme = useCallback((newTheme: 'light' | 'dark') => {
     setThemeState(newTheme);
     if (typeof window !== 'undefined') {
       try {
@@ -544,11 +626,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         document.documentElement.classList.toggle('dark', newTheme === 'dark');
       } catch {}
     }
-  };
+  }, []);
 
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => {
+      const nextTheme = prev === 'dark' ? 'light' : 'dark';
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('lumetric_theme', nextTheme);
+          document.documentElement.setAttribute('data-theme', nextTheme);
+          document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+        } catch {}
+      }
+      return nextTheme;
+    });
+  }, []);
 
   // 2. Splash & Authentication Life Cycle
   const [isSplashLoading, setIsSplashLoading] = useState<boolean>(true);
@@ -819,7 +911,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, [currentUser.email]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser.email, currentUser.id]);
 
   // Load Sample Benchmark Data into THIS user's personal profile
   const loadSampleDataIntoProfile = () => {
@@ -1281,78 +1374,108 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 
+  const contextValue = useMemo<AppContextType>(() => ({
+    theme,
+    setTheme,
+    toggleTheme,
+    language,
+    setLanguage,
+    t,
+    currentUser,
+    setCurrentUser,
+    setRole,
+    isAuthenticated,
+    setIsAuthenticated,
+    isSplashLoading,
+    setIsSplashLoading,
+    workspaces,
+    currentWorkspace,
+    switchWorkspace,
+    createWorkspace,
+    updateWorkspace,
+    deleteWorkspace,
+    workspaceModalOpen,
+    setWorkspaceModalOpen,
+    openWorkspaceModal,
+    projects,
+    currentProject,
+    selectProject,
+    createProject,
+    updateProject,
+    updateUserProfile,
+    datasets,
+    activeDataset,
+    activeRows,
+    datasetRowsMap,
+    setActiveDataset,
+    addDataset,
+    deleteDataset,
+    documentFiles,
+    activeDocument,
+    setActiveDocument,
+    addDocumentFile,
+    deleteDocumentFile,
+    runDocumentTreatment,
+    activeView,
+    setActiveView,
+    sidebarCollapsed,
+    setSidebarCollapsed,
+    toggleSidebar,
+    mobileMenuOpen,
+    setMobileMenuOpen,
+    notifications,
+    markNotificationRead,
+    serverStatus,
+    serverLatency,
+    lastServerSync,
+    serverDetails,
+    reconnectServer,
+    authModalOpen,
+    setAuthModalOpen,
+    authModalMode,
+    openAuthModal,
+    closeAuthModal,
+    logout,
+    storageFootprintBytes,
+    isProfileDbLoading,
+    flushMemoryState,
+    applyProfileDatabase,
+    loadSampleDataIntoProfile,
+    clearProfileData,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [
+    theme,
+    language,
+    currentUser,
+    isAuthenticated,
+    isSplashLoading,
+    workspaces,
+    currentWorkspace,
+    workspaceModalOpen,
+    projects,
+    currentProject,
+    datasets,
+    activeDataset,
+    activeRows,
+    datasetRowsMap,
+    documentFiles,
+    activeDocument,
+    activeView,
+    sidebarCollapsed,
+    mobileMenuOpen,
+    notifications,
+    serverStatus,
+    serverLatency,
+    lastServerSync,
+    serverDetails,
+    authModalOpen,
+    authModalMode,
+    storageFootprintBytes,
+    isProfileDbLoading,
+  ]);
+
   return (
-    <AppContext.Provider
-      value={{
-        theme,
-        setTheme,
-        toggleTheme,
-        language,
-        setLanguage,
-        t,
-        currentUser,
-        setCurrentUser,
-        setRole,
-        isAuthenticated,
-        setIsAuthenticated,
-        isSplashLoading,
-        setIsSplashLoading,
-        workspaces,
-        currentWorkspace,
-        switchWorkspace,
-        createWorkspace,
-        updateWorkspace,
-        deleteWorkspace,
-        workspaceModalOpen,
-        setWorkspaceModalOpen,
-        openWorkspaceModal,
-        projects,
-        currentProject,
-        selectProject,
-        createProject,
-        updateProject,
-        updateUserProfile,
-        datasets,
-        activeDataset,
-        activeRows,
-        datasetRowsMap,
-        setActiveDataset,
-        addDataset,
-        deleteDataset,
-        documentFiles,
-        activeDocument,
-        setActiveDocument,
-        addDocumentFile,
-        deleteDocumentFile,
-        runDocumentTreatment,
-        activeView,
-        setActiveView,
-        sidebarCollapsed,
-        setSidebarCollapsed,
-        toggleSidebar,
-        mobileMenuOpen,
-        setMobileMenuOpen,
-        notifications,
-        markNotificationRead,
-        serverStatus,
-        serverLatency,
-        lastServerSync,
-        serverDetails,
-        reconnectServer,
-        authModalOpen,
-        setAuthModalOpen,
-        authModalMode,
-        openAuthModal,
-        closeAuthModal,
-        logout,
-        storageFootprintBytes,
-        isProfileDbLoading,
-        flushMemoryState,
-        applyProfileDatabase,
-        loadSampleDataIntoProfile,
-        clearProfileData,
-      }}
-    >
+    <AppContext.Provider value={contextValue}>
       {children}
     </AppContext.Provider>
   );

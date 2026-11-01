@@ -1,21 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { Card, Button, StatusBadge, Input, TextArea } from '@/components/ui';
+import { StatusBadge } from '@/components/ui';
 import {
   SparklesIcon,
   MaximizeIcon,
   DownloadIcon,
   PrinterIcon,
-  BarChart3Icon,
-  PieChartIcon,
-  TrendingUpIcon,
   DatabaseIcon,
-  GaugeIcon,
-  UserIcon,
   PlusIcon,
-  XIcon,
   RefreshCwIcon,
 } from '@/components/icons';
 import { parseNumeric } from '@/lib/csvParser';
@@ -536,9 +530,10 @@ export default function StoriesPage() {
       await pres.writeFile({ fileName: `lumetric_presentation_${audience.toLowerCase()}_${Date.now()}.pptx` });
       setRenderNotice('✨ Native PowerPoint presentation (.pptx) downloaded successfully with speaker notes.');
       setTimeout(() => setRenderNotice(null), 4000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('PowerPoint Export Error:', err);
-      setRenderNotice(`PowerPoint export failed: ${err.message || 'Error generating slides'}`);
+      const msg = err instanceof Error ? err.message : 'Error generating slides';
+      setRenderNotice(`PowerPoint export failed: ${msg}`);
     } finally {
       setIsExportingPPTX(false);
     }

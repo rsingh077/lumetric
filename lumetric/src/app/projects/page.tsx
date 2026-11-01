@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { useApp } from '@/contexts/AppContext';
 import { Card, Button, StatusBadge, Input, TextArea } from '@/components/ui';
 import { FolderIcon, PlusIcon } from '@/components/icons';

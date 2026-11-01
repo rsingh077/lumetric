@@ -92,10 +92,9 @@ export function parseCSVStrict(text: string, customDelimiter?: string): string[]
  * Heals row datasets that might have been fragmented by naive newline splitters.
  * Filters out orphaned fragments that lack primary identifiers or have < 30% populated columns.
  */
-export function healDatasetRows(rows: Array<Record<string, any>>): Array<Record<string, any>> {
+export function healDatasetRows<T extends Record<string, any> = Record<string, any>>(rows: T[]): T[] {
   if (!rows || rows.length === 0) return [];
 
-  const sample = rows.slice(0, 50);
   const totalCols = Object.keys(rows[0] || {}).length;
   if (totalCols <= 3) return rows;
 
@@ -126,7 +125,7 @@ export function healDatasetRows(rows: Array<Record<string, any>>): Array<Record<
  * - Percentages: 15% -> 0.15
  * - Standard missing value placeholders: 'NA', 'N/A', 'null', 'None', '-', '--' -> null
  */
-export function parseNumeric(raw: any): number | null {
+export function parseNumeric(raw: unknown): number | null {
   if (raw === null || raw === undefined) return null;
   if (typeof raw === 'number') return isNaN(raw) ? null : raw;
   const str = String(raw).trim();
@@ -165,7 +164,7 @@ export function escapeFormulaString(str: string): string {
  * Genuinely identifies numeric columns by sampling row values,
  * guaranteeing categorical strings like "Retail", "Online", "US" are never treated as metrics.
  */
-export function findGenuinelyNumericCols(rows: Array<Record<string, any>>, columns: string[]): string[] {
+export function findGenuinelyNumericCols(rows: Array<Record<string, unknown>>, columns: string[]): string[] {
   if (!rows || rows.length === 0 || !columns || columns.length === 0) return [];
 
   const sample = rows.slice(0, 100);

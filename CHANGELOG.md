@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+## [2.3.5] - 2026-11-01
+
+### Added
+- **UI Smoothness & Performance Audit (Workstream W0)**:
+  - Authored `docs/PERF_NOTES.md` documenting re-render hotspots in `AppContext.tsx`, `Header.tsx`, `Sidebar.tsx`, and `dashboards/page.tsx`.
+  - Identified and prioritized remediation for Cumulative Layout Shift (CLS) on charts and map containers.
+- **Enterprise Multi-Format File Ingestion & Profiling**:
+  - Restored Web Worker worker profiling path (`/app/workers/dataProfiler.worker.js`) for Zoho Catalyst deployment with 2000ms synchronous fallback.
+  - Added native multi-format support for CSV, TSV, JSON objects/arrays, and multi-sheet Excel files (`.xlsx`, `.xls`).
+  - Added robust drag-and-drop file ingestion handlers to `DataIntakeSection.tsx`.
+- **Dual-Platform Catalyst SPA Routing**:
+  - Implemented clean query parameter routing (`/app/?view=...`) with popstate navigation to eliminate Next.js hydration mismatch on static hosting.
+  - Added instant `<head>` route redirects in `scripts/postbuild.js` for mirrored HTML route files.
+- **Dark Mode CSS Custom Property Unification**:
+  - Replaced hardcoded Tailwind light classes across data components with semantic CSS variable tokens (`var(--lm-bg-primary)`, `var(--lm-bg-elevated)`, `var(--lm-border-default)`, `var(--lm-text-primary)`).
+  - Added automatic fallback to system preference `prefers-color-scheme` in `AppContext.tsx`.
+- **Internationalization (i18n) Expanded Language Support**:
+  - Expanded translation dictionaries in `AppContext.tsx` to support English (`en`), French (`fr`), Spanish (`es`), and German (`de`).
+  - Added interactive language switcher in `Header.tsx`.
+
+### Changed
+- Memoized root provider value in `AppContext.tsx` to eliminate re-render cascades across consumer components.
+- Stabilized `Header.tsx` search index calculation by wrapping `workspaceProjects` in `useMemo`.
+- Hoisted empty state fallbacks in `dashboards/page.tsx` to prevent redundant statistical chart re-computations.
+
 ## [2.3.4] - 2026-11-01
 
 ### Added

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import Link from 'next/link';
 import { useApp } from '@/contexts/AppContext';
 import { Card, Button, StatusBadge } from '@/components/ui';
 import {
@@ -77,7 +76,7 @@ export default function AnalysisStudioPage() {
   const [copiedNotice, setCopiedNotice] = useState<boolean>(false);
   const [downloadSuccess, setDownloadSuccess] = useState<boolean>(false);
   const [isProcessingDoc, setIsProcessingDoc] = useState<boolean>(false);
-  const [treatmentFilter, setTreatmentFilter] = useState<'all' | 'entities' | 'pii' | 'summary'>('all');
+  const [_treatmentFilter, _setTreatmentFilter] = useState<'all' | 'entities' | 'pii' | 'summary'>('all');
 
   const handleExportDocumentDossier = () => {
     if (!activeDocument) return;
@@ -408,7 +407,7 @@ export default function AnalysisStudioPage() {
                         const ws = wb.Sheets[initialSheet];
                         const csvContent = XLSX.utils.sheet_to_csv(ws);
                         handleDirectIntake(csvContent, `${file.name} [${initialSheet}]`, file.size);
-                      } catch (err: any) {
+                      } catch (err: unknown) {
                         console.warn('Failed to parse Excel file:', err);
                       }
                       return;

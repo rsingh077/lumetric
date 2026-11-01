@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/contexts/AppContext';
 import { ActiveView } from '@/types';
 import { UserAuthProfileModal } from '@/components/auth/UserAuthProfileModal';
@@ -29,8 +28,6 @@ interface SearchResultItem {
 }
 
 export function Header() {
-  const pathname = usePathname();
-  const router = useRouter();
   const {
     activeView,
     setActiveView,
@@ -47,10 +44,6 @@ export function Header() {
     notifications,
     markNotificationRead,
     datasets,
-    serverStatus,
-    serverLatency,
-    lastServerSync,
-    reconnectServer,
     authModalOpen,
     setAuthModalOpen,
     authModalMode,
@@ -63,8 +56,7 @@ export function Header() {
 
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [serverModalOpen, setServerModalOpen] = useState(false);
-  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
   const [newProjectModalOpen, setNewProjectModalOpen] = useState(false);
   const [newPrjName, setNewPrjName] = useState('');
   const [newPrjObjective, setNewPrjObjective] = useState('');
@@ -82,13 +74,10 @@ export function Header() {
     return () => unsub();
   }, []);
 
-  const handleManualReconnect = async () => {
-    setIsReconnecting(true);
-    await reconnectServer();
-    setIsReconnecting(false);
-  };
-
-  const workspaceProjects = projects.filter((p) => p.workspaceId === currentWorkspace.id);
+  const workspaceProjects = useMemo(
+    () => projects.filter((p) => p.workspaceId === currentWorkspace.id),
+    [projects, currentWorkspace.id]
+  );
 
   // Global Keyboard Shortcut: ⌘K or Ctrl+K to toggle Search Dialog
   useEffect(() => {
@@ -101,6 +90,7 @@ export function Header() {
         setSearchOpen(false);
         setProjectDropdownOpen(false);
         setNotificationOpen(false);
+        setLanguageDropdownOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -359,16 +349,53 @@ export function Header() {
             </kbd>
           </button>
 
-          {/* Language Selector Pill */}
-          <button
-            type="button"
-            onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-            className="px-2 py-1 rounded-xl text-[11px] font-mono font-bold bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] hover:border-[var(--lm-border-strong)] text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] transition-all apple-pressable cursor-pointer"
-            title={language === 'en' ? 'Passer au Français' : 'Switch to English'}
-            aria-label="Toggle language"
-          >
-            {language.toUpperCase()}
-          </button>
+          {/* Language Selector Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setLanguageDropdownOpen((prev) => !prev)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] hover:border-[var(--lm-border-strong)] text-[var(--lm-text-secondary)] hover:text-[var(--lm-text-primary)] transition-all apple-pressable cursor-pointer"
+              title="Select application language"
+              aria-label="Select language"
+              aria-expanded={languageDropdownOpen}
+            >
+              <span>{language.toUpperCase()}</span>
+              <ChevronDownIcon className="w-3 h-3 opacity-60" />
+            </button>
+
+            {languageDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-36 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] rounded-2xl shadow-[var(--lm-shadow-lg)] py-1.5 z-50 animate-fade-in text-xs">
+                {(
+                  [
+                    { code: 'en', label: 'English', flag: '🇬🇧' },
+                    { code: 'fr', label: 'Français', flag: '🇫🇷' },
+                    { code: 'es', label: 'Español', flag: '🇪🇸' },
+                    { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+                  ] as const
+                ).map((lang) => (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    onClick={() => {
+                      setLanguage(lang.code);
+                      setLanguageDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-[var(--lm-bg-tertiary)] transition-colors ${
+                      language === lang.code
+                        ? 'text-[#059669] dark:text-[#34D399] font-bold bg-[#059669]/10'
+                        : 'text-[var(--lm-text-primary)]'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span>{lang.flag}</span>
+                      <span>{lang.label}</span>
+                    </span>
+                    {language === lang.code && <span className="text-[10px] font-mono">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Dark / Light Mode Toggle */}
           <button

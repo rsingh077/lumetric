@@ -26,7 +26,7 @@ for (let m = 1; m <= 36; m++) {
   const opex = baseOpex * Math.pow(1.008, m - 1) + (incrementalRev * 0.18);
   const treasuryYield = (Math.max(0, cash) * 0.7 * treasuryApy) / 12;
   const netBurn = (opex + loanPayment) - (grossProfit + treasuryYield);
-  const netEbitda = grossProfit - opex;
+  const _netEbitda = grossProfit - opex;
 
   cash -= netBurn;
 

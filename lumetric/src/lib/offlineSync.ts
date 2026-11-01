@@ -7,7 +7,7 @@
 export interface OfflineAction {
   id: string;
   type: 'parcel_scan' | 'status_update' | 'driver_note' | 'dispatch_ack' | 'alert_logged';
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   timestamp: string;
   retries: number;
 }
@@ -51,7 +51,7 @@ export class OfflineSyncManager {
     return this.getQueue().length;
   }
 
-  public static enqueue(type: OfflineAction['type'], payload: Record<string, any>): OfflineAction {
+  public static enqueue(type: OfflineAction['type'], payload: Record<string, unknown>): OfflineAction {
     const queue = this.getQueue();
     const action: OfflineAction = {
       id: `act_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,

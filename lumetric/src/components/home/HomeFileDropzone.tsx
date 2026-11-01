@@ -6,7 +6,7 @@ import { useApp } from '@/contexts/AppContext';
 import { UploadIcon } from '@/components/icons';
 import { StatusBadge } from '@/components/ui';
 import { DatasetProfile, DocumentFileProfile } from '@/types';
-import { parseCSVStrict, healDatasetRows, parseNumeric } from '@/lib/csvParser';
+import { parseCSVStrict, healDatasetRows } from '@/lib/csvParser';
 
 interface HomeFileDropzoneProps {
   onSuccess?: () => void;
@@ -45,7 +45,7 @@ export function HomeFileDropzone({ onSuccess }: HomeFileDropzoneProps) {
             const sheetName = wb.SheetNames[0] || 'Sheet1';
             const ws = wb.Sheets[sheetName];
             if (!ws) throw new Error('No worksheets found in Excel file');
-            const jsonRows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
+            const jsonRows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: '' });
             if (jsonRows.length === 0) throw new Error('Excel sheet contains no data records');
             rows = healDatasetRows(jsonRows);
             headers = Object.keys(rows[0] || {});
@@ -111,7 +111,7 @@ export function HomeFileDropzone({ onSuccess }: HomeFileDropzoneProps) {
           const text = await file.text();
           if (ext === 'json') {
             const parsed = JSON.parse(text);
-            const arrayData = Array.isArray(parsed) ? parsed : [parsed];
+            const arrayData: Record<string, string>[] = Array.isArray(parsed) ? parsed : [parsed];
             const rows = healDatasetRows(arrayData);
             const cols = Object.keys(rows[0] || {});
             const ds: DatasetProfile = {
@@ -128,7 +128,7 @@ export function HomeFileDropzone({ onSuccess }: HomeFileDropzoneProps) {
                 totalCount: rows.length,
                 nullCount: 0,
                 uniqueCount: rows.length,
-                sampleValues: rows.slice(0, 3).map((r) => r[c] || ''),
+                sampleValues: rows.slice(0, 3).map((r) => String(r[c] ?? '')),
               })),
               requirements: {
                 businessGrain: 'One row per record',
@@ -174,7 +174,7 @@ export function HomeFileDropzone({ onSuccess }: HomeFileDropzoneProps) {
                 totalCount: healed.length,
                 nullCount: 0,
                 uniqueCount: healed.length,
-                sampleValues: healed.slice(0, 3).map((r) => r[h] || ''),
+                sampleValues: healed.slice(0, 3).map((r) => String(r[h] ?? '')),
               })),
               requirements: {
                 businessGrain: 'One row per record',

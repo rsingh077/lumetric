@@ -9,7 +9,7 @@ interface SplashScreenProps {
   serverLatency?: number | null;
 }
 
-export function SplashScreen({ onComplete, serverStatus = 'connecting', serverLatency }: SplashScreenProps) {
+export function SplashScreen({ onComplete, serverStatus: _serverStatus = 'connecting', serverLatency: _serverLatency }: SplashScreenProps) {
   const [progress, setProgress] = useState(25);
   const [phaseText, setPhaseText] = useState('Initializing Lumetric Data & Document Studio...');
   const [showBypass, setShowBypass] = useState(false);

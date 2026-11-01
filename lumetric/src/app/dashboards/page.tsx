@@ -7,7 +7,6 @@ import {
   DownloadIcon,
   PrinterIcon,
   FilterIcon,
-  GlobeIcon,
   TrendingUpIcon,
   PieChartIcon,
   GaugeIcon,
@@ -28,8 +27,36 @@ import { parseNumeric } from '@/lib/csvParser';
 // Theme presets inspired directly by user's reference images
 type ThemePreset = 'modern' | 'cyberpunk' | 'enterprise';
 
+const EMPTY_DATASET: DatasetProfile = {
+  id: 'empty',
+  fileName: 'workspace.csv',
+  fileSize: 0,
+  rowCount: 0,
+  columnCount: 0,
+  columns: [],
+  uploadedAt: '',
+  parseWarnings: [],
+  status: 'complete',
+  version: '1.0.0',
+  quarantinedRowsCount: 0,
+  sha256: '0000000000',
+  requirements: {
+    businessGrain: 'Transactional record',
+    primaryKey: 'id',
+    timestampColumn: 'None',
+    currency: 'USD ($)',
+    unitScale: '1.0',
+    periodicity: 'Dynamic',
+    dataClassification: 'Internal',
+    intendedDecision: 'Analytics',
+  },
+  qualityChecks: [],
+};
+
+const EMPTY_ROWS: Record<string, string>[] = [];
+
 export default function DashboardsPage() {
-  const { currentUser, activeDataset, activeRows, setActiveDataset, setActiveView } = useApp();
+  const { currentUser, activeDataset, activeRows, setActiveView } = useApp();
 
   // Visual Theme & Presentation State
   const [theme, setTheme] = useState<ThemePreset>('modern');
@@ -75,32 +102,8 @@ export default function DashboardsPage() {
 
   // User active data evaluation (clean slate with zero mock data)
   const hasUserActiveData = Boolean(activeDataset && activeRows && activeRows.length > 0);
-  const currentDataset: DatasetProfile = activeDataset || {
-    id: 'empty',
-    fileName: 'workspace.csv',
-    fileSize: 0,
-    rowCount: 0,
-    columnCount: 0,
-    columns: [],
-    uploadedAt: '',
-    parseWarnings: [],
-    status: 'complete',
-    version: '1.0.0',
-    quarantinedRowsCount: 0,
-    sha256: '0000000000',
-    requirements: {
-      businessGrain: 'Transactional record',
-      primaryKey: 'id',
-      timestampColumn: 'None',
-      currency: 'USD ($)',
-      unitScale: '1.0',
-      periodicity: 'Dynamic',
-      dataClassification: 'Internal',
-      intendedDecision: 'Analytics',
-    },
-    qualityChecks: [],
-  };
-  const rawRows = activeRows || [];
+  const currentDataset = useMemo<DatasetProfile>(() => activeDataset || EMPTY_DATASET, [activeDataset]);
+  const rawRows = useMemo<Record<string, string>[]>(() => activeRows || EMPTY_ROWS, [activeRows]);
 
   // Available Column Types
   const numericColumns = useMemo(
@@ -2399,7 +2402,7 @@ ${categoryBreakdown.slice(0, 5).map((c, i) => `  ${i + 1}. **${c.name}**: ${form
         <div
           className={`${
             mapExpanded ? 'lg:col-span-12 order-first' : 'lg:col-span-4'
-          } rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] flex flex-col justify-between transition-all duration-300`}
+          } min-h-[380px] rounded-3xl p-6 bg-[var(--lm-bg-elevated)] backdrop-blur-2xl border border-[var(--lm-border-default)] shadow-[var(--lm-shadow-md)] flex flex-col justify-between transition-all duration-300`}
         >
           <GeographicIntelligenceMap
             rows={filteredRows}

@@ -1,11 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/contexts/AppContext';
 import {
   LumetricLogoMark,
-  BrandMascotIcon,
   HomeIcon,
   FolderIcon,
   DatabaseIcon,
@@ -66,7 +64,6 @@ const navSections: NavSection[] = [
 ];
 
 export function Sidebar() {
-  const pathname = usePathname();
   const isCatalyst = typeof window !== 'undefined' && window.location.pathname.startsWith('/app');
   const homeHref = isCatalyst ? '/app/index.html' : '/';
   const {
@@ -77,7 +74,6 @@ export function Sidebar() {
     workspaces,
     currentWorkspace,
     openWorkspaceModal,
-    openAuthModal,
     switchWorkspace,
     createWorkspace,
     currentUser,
@@ -85,9 +81,6 @@ export function Sidebar() {
     logout,
     mobileMenuOpen,
     setMobileMenuOpen,
-    serverStatus,
-    serverLatency,
-    reconnectServer,
     activeRows,
     documentFiles,
     activeDocument,

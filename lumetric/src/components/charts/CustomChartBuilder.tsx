@@ -2,22 +2,18 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { StatusBadge, Button } from '@/components/ui';
+import { StatusBadge } from '@/components/ui';
 import {
   BarChart3Icon,
-  PieChartIcon,
-  TrendingUpIcon,
   DownloadIcon,
-  SparklesIcon,
-  RefreshCwIcon,
-  TableIcon,
-  XIcon,
 } from '@/components/icons';
 import { parseNumeric } from '@/lib/csvParser';
 
 export type AggregationType = 'sum' | 'avg' | 'count' | 'max' | 'min';
 export type ChartType = 'vertical_bar' | 'horizontal_bar' | 'line' | 'donut' | 'scatter';
 export type ColorPalette = 'indigo' | 'rose' | 'emerald' | 'amber' | 'cyan';
+
+const EMPTY_CHART_ROWS: Record<string, string>[] = [];
 
 export interface PinnedWidget {
   id: string;
@@ -38,8 +34,8 @@ export function CustomChartBuilder() {
     return `lumetric_pinned_charts_${email}`;
   }, [currentUser?.email]);
 
-  const rows = activeRows || [];
-  const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+  const rows = useMemo(() => activeRows || EMPTY_CHART_ROWS, [activeRows]);
+  const columns = useMemo(() => (rows.length > 0 ? Object.keys(rows[0]) : []), [rows]);
 
   // Identify numeric columns
   const numericColumns = useMemo(() => {
@@ -78,7 +74,7 @@ export function CustomChartBuilder() {
     if (numericColumns.length > 0 && !numericColumns.includes(metricCol)) {
       setMetricCol(numericColumns[0]);
     }
-  }, [categoricalColumns, numericColumns]);
+  }, [categoricalColumns, numericColumns, dimensionCol, metricCol]);
 
   // Load pinned widgets from user-isolated storage
   useEffect(() => {

@@ -27,8 +27,6 @@ export function AuthScreen({
     setIsAuthenticated,
     flushMemoryState,
     serverStatus,
-    serverLatency,
-    reconnectServer,
   } = useApp();
 
   const [mode, setMode] = useState<AuthMode>(initialMode);
@@ -76,7 +74,7 @@ export function AuthScreen({
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [otpPurpose, setOtpPurpose] = useState<'signup' | 'login' | 'reset-password'>('signup');
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [deliveryChannel, setDeliveryChannel] = useState<string | null>(null);
+  const [_deliveryChannel, setDeliveryChannel] = useState<string | null>(null);
   const [verificationPreview, setVerificationPreview] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -160,6 +158,7 @@ export function AuthScreen({
     }, 250);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email, mode]);
 
   useEffect(() => {
@@ -225,7 +224,7 @@ export function AuthScreen({
     }
   };
 
-  const autoFillPreviewCode = () => {
+  const _autoFillPreviewCode = () => {
     if (!verificationPreview || verificationPreview.length !== 6) return;
     const digits = verificationPreview.split('');
     setOtpDigits(digits);

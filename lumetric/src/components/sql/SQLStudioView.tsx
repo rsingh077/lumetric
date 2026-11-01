@@ -7,12 +7,9 @@ import {
   TerminalIcon,
   SparklesIcon,
   DatabaseIcon,
-  SearchIcon,
   BarChart3Icon,
   DownloadIcon,
   PlusIcon,
-  LayersIcon,
-  ActivityIcon,
   TableIcon,
 } from '@/components/icons';
 import { DatasetProfile } from '@/types';
@@ -123,7 +120,6 @@ export function SQLStudioView() {
     datasetRowsMap,
     addDataset,
     setActiveDataset,
-    currentUser,
   } = useApp();
 
   const [sqlQuery, setSqlQuery] = useState<string>(SQL_TEMPLATES[0].sql);
@@ -134,7 +130,7 @@ export function SQLStudioView() {
   const [queryError, setQueryError] = useState<string | null>(null);
   const [executionTimeMs, setExecutionTimeMs] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'results' | 'chart' | 'schema'>('results');
-  const [pageSize, setPageSize] = useState<number>(20);
+  const [pageSize] = useState<number>(20);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [chartType, setChartType] = useState<'bar' | 'line' | 'donut'>('bar');
   const [chartLabelCol, setChartLabelCol] = useState<string>('');
@@ -246,6 +242,7 @@ export function SQLStudioView() {
     } catch (err) {
       console.warn('AlaSQL table initialization error:', err);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRows, datasets, datasetRowsMap]);
 
   // Keyboard shortcut: Ctrl+Enter or Cmd+Enter to execute query

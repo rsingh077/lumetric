@@ -176,7 +176,7 @@ export function GeographicIntelligenceMap({
 
   // Asynchronously loaded vector geometry
   const [entities, setEntities] = useState<GeoEntity[]>([]);
-  const [isLoadingGeo, setIsLoadingGeo] = useState<boolean>(true);
+  const [_isLoadingGeo, setIsLoadingGeo] = useState<boolean>(true);
 
   useEffect(() => {
     let isMounted = true;

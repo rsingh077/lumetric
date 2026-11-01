@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
 import { useApp } from '@/contexts/AppContext';
 import {
   HomeIcon,
@@ -21,7 +20,6 @@ interface NavTab {
 }
 
 export function MobileBottomNav() {
-  const router = useRouter();
   const { activeView, setActiveView, setMobileMenuOpen } = useApp();
 
   const tabs: NavTab[] = [

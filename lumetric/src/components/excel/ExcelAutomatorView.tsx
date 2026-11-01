@@ -17,10 +17,6 @@ import {
   SparklesIcon,
   DatabaseIcon,
   TableIcon,
-  TrendingUpIcon,
-  LayersIcon,
-  PieChartIcon,
-  ActivityIcon,
   SettingsIcon,
   RefreshCwIcon,
   TerminalIcon,
@@ -575,7 +571,7 @@ export function ExcelAutomatorView() {
 
   // Dynamic Opportunity Recommendations ("What Can We Build With This File?")
   const recommendations = useMemo(() => {
-    const { metrics, dimensions, riskCols, completenessScore, untrimmedCount, nullCells } = schemaAnalysis;
+    const { metrics, dimensions, riskCols, completenessScore: _completenessScore, untrimmedCount, nullCells } = schemaAnalysis;
     const metricNames = metrics.map((m) => m.name);
     const dimNames = dimensions.map((d) => d.name);
 
@@ -1395,7 +1391,7 @@ export function ExcelAutomatorView() {
             result: 0.43,
           });
         }
-        const marginRowNum = wsFin.rowCount + 1;
+        const _marginRowNum = wsFin.rowCount + 1;
         marginCells.push({ formula: `O${ebitdaRowNum}/O${revRow}`, result: 0.43 });
         const marginR = wsFin.addRow(marginCells);
         marginR.height = 20;
@@ -1926,7 +1922,7 @@ export function ExcelAutomatorView() {
         // Percentiles for IQR & quintile thresholds
         const sortedVals = [...metricVals].sort((a, b) => a - b);
         const q1Val = sortedVals[Math.floor(sortedVals.length * 0.25)] ?? meanVal;
-        const medianVal = sortedVals[Math.floor(sortedVals.length * 0.5)] ?? meanVal;
+        const _medianVal = sortedVals[Math.floor(sortedVals.length * 0.5)] ?? meanVal;
         const q3Val = sortedVals[Math.floor(sortedVals.length * 0.75)] ?? meanVal;
         const p80Val = sortedVals[Math.floor(sortedVals.length * 0.8)] ?? (meanVal + stdDevVal);
         const p20Val = sortedVals[Math.floor(sortedVals.length * 0.2)] ?? (meanVal - stdDevVal);

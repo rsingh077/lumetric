@@ -520,6 +520,16 @@ export function evaluateStartupFailureModes(
       playbookMitigation: 'Utilize non-dilutive Bank Term Loans or Venture Debt for next 12 months rather than issuing discounted equity.',
     },
     {
+      id: 'fail_inverted_cac',
+      name: 'Inverted Unit Economics (CAC Overhang)',
+      severity: ltvCacRatio < 1.5 ? 'critical' : ltvCacRatio < 3.0 ? 'high' : 'low',
+      isTriggered: ltvCacRatio < 3.0,
+      metricObserved: `${ltvCacRatio.toFixed(1)}x LTV/CAC Ratio`,
+      threshold: 'Minimum 3.0x Benchmark',
+      rootCause: 'Blended acquisition cost exceeds lifetime customer value generation horizon.',
+      playbookMitigation: 'Refocus sales pipeline on high-intent inbound enterprise tiers and optimize conversion funnels.',
+    },
+    {
       id: 'fail_working_capital_trap',
       name: 'Working Capital Cash Lockup Trap',
       severity: state.logistics.cashConversionCycleDays > 60 ? 'high' : 'low',

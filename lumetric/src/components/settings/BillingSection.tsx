@@ -685,6 +685,7 @@ export function BillingSection() {
                     {/* QR Code Container */}
                     <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
                       {qrDataUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img src={qrDataUrl} alt="UPI Dynamic QR Code" className="w-52 h-52 rounded-xl shadow-xs" />
                       ) : (
                         <div className="w-52 h-52 rounded-xl bg-slate-100 flex items-center justify-center text-xs text-slate-400">

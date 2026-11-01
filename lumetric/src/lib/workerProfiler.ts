@@ -128,7 +128,7 @@ function callWorker<T>(action: string, payload: unknown): Promise<T> {
 
     try {
       worker.postMessage({ id, action, payload });
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (!settled) {
         settled = true;
         clearTimeout(timer);

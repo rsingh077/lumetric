@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { getGeoDataset, GeoEntity, GeographicGranularity } from '@/components/charts/geoDataLoader';
 
 export type MapMode = 'india' | 'us' | 'world';
@@ -119,7 +119,7 @@ export function LandingGeoMapDemo() {
   }, [mode, entities]);
 
   // Helper to fetch or dynamically compute territory metrics
-  const getEntityMetrics = (id: string, name: string): MarketData => {
+  const getEntityMetrics = useCallback((id: string, name: string): MarketData => {
     const upperId = id.toUpperCase();
     if (currentRegistry.presets[upperId]) {
       return currentRegistry.presets[upperId];
@@ -136,7 +136,7 @@ export function LandingGeoMapDemo() {
       hub: `${name} Regional Sector`,
       tier: 'Active Data Market',
     };
-  };
+  }, [currentRegistry.presets, mode]);
 
   const activeEntity = useMemo(() => {
     if (!currentRegistry.entities || currentRegistry.entities.length === 0) {
@@ -161,7 +161,7 @@ export function LandingGeoMapDemo() {
       };
     }
     return getEntityMetrics(activeEntity.id, activeEntity.name);
-  }, [activeEntity, mode]);
+  }, [activeEntity, mode, getEntityMetrics]);
 
   const hoveredEntity = useMemo(() => {
     if (!hoveredId) return null;
@@ -171,7 +171,7 @@ export function LandingGeoMapDemo() {
   const hoveredMetrics = useMemo(() => {
     if (!hoveredEntity) return null;
     return getEntityMetrics(hoveredEntity.id, hoveredEntity.name);
-  }, [hoveredEntity, mode]);
+  }, [hoveredEntity, getEntityMetrics]);
 
   return (
     <div className="bg-[#0C1A29] p-4 sm:p-6 rounded-2xl border border-slate-700/80 relative overflow-hidden shadow-2xl flex flex-col justify-between min-h-[460px]">
@@ -261,7 +261,7 @@ export function LandingGeoMapDemo() {
       </div>
 
       {/* 3. AUTHENTIC SVG GEOGRAPHICAL MAP CANVAS */}
-      <div className="relative my-4 w-full h-[260px] sm:h-[300px] flex items-center justify-center overflow-hidden rounded-xl bg-[#091420] border border-slate-800 shadow-inner">
+      <div className="relative my-4 w-full h-[260px] sm:h-[300px] min-h-[260px] sm:min-h-[300px] flex items-center justify-center overflow-hidden rounded-xl bg-[#091420] border border-slate-800 shadow-inner">
         {/* Real-time Hover Tooltip */}
         {hoveredEntity && hoveredMetrics && (
           <div className="absolute top-2 left-2 z-30 pointer-events-none px-3 py-1.5 rounded-xl bg-slate-900/95 backdrop-blur-md border border-emerald-500/40 text-white text-xs shadow-xl animate-in fade-in">

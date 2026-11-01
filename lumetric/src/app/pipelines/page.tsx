@@ -64,7 +64,7 @@ const getInitialNodes = (datasetName?: string, rowCount?: number, hash?: string)
 ];
 
 export default function PipelinesPage() {
-  const { activeDataset, activeRows, currentUser, currentWorkspace, datasets, setActiveView, loadSampleDataIntoProfile } = useApp();
+  const { activeDataset, activeRows, currentWorkspace, datasets, setActiveView, loadSampleDataIntoProfile } = useApp();
   const [nodes, setNodes] = useState<PipelineNode[]>(() =>
     getInitialNodes(activeDataset?.fileName, activeDataset?.rowCount, activeDataset?.sha256)
   );

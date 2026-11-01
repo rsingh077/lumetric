@@ -17,9 +17,6 @@ export function UserAuthProfileModal({
 }) {
   const {
     setRole,
-    serverStatus,
-    serverLatency,
-    reconnectServer,
     logout,
     flushMemoryState,
     setCurrentUser,
@@ -58,7 +55,7 @@ export function UserAuthProfileModal({
   // Registration OTP state
   const [regStep, setRegStep] = useState<1 | 2>(1);
   const [regOtp, setRegOtp] = useState('');
-  const [regPreviewOtp, setRegPreviewOtp] = useState<string | null>(null);
+  const [_regPreviewOtp, setRegPreviewOtp] = useState<string | null>(null);
 
   // Change Password state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -101,9 +98,10 @@ export function UserAuthProfileModal({
   // Audit Logs State
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
+  const [auditPage, setAuditPage] = useState<number>(1);
 
   // Live DataStore verification state
-  const [dataStoreStatus, setDataStoreStatus] = useState<{
+  const [_dataStoreStatus, setDataStoreStatus] = useState<{
     loaded: boolean;
     tableExists: boolean;
     error?: string;
@@ -454,7 +452,7 @@ export function UserAuthProfileModal({
       downloadAnchor.remove();
       setFeedback({ type: 'success', message: 'Profile database backup exported as JSON.' });
       setTimeout(() => setFeedback(null), 3000);
-    } catch (e) {
+    } catch (_e) {
       setFeedback({ type: 'error', message: 'Failed to export backup.' });
     }
   };
@@ -926,6 +924,7 @@ export function UserAuthProfileModal({
                   <form onSubmit={handleConfirm2FA} className="pt-2 border-t border-blue-500/10 space-y-3 animate-fade-in">
                     <div className="flex flex-col sm:flex-row items-center gap-3">
                       {mfaSetupData.qrCodeDataUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img src={mfaSetupData.qrCodeDataUrl} alt="2FA QR Code" className="w-28 h-28 rounded-xl border border-[var(--lm-border-default)] bg-white p-1" />
                       )}
                       <div className="space-y-1.5 text-xs flex-1">
@@ -1456,19 +1455,63 @@ export function UserAuthProfileModal({
               </div>
 
               {loadingAudit ? (
-                <div className="text-center py-6 text-xs text-[var(--lm-text-secondary)]">Loading audit ledger...</div>
+                <div className="space-y-2">
+                  <div className="h-16 rounded-2xl bg-[var(--lm-bg-secondary)]/80 animate-pulse border border-[var(--lm-border-default)]" />
+                  <div className="h-16 rounded-2xl bg-[var(--lm-bg-secondary)]/80 animate-pulse border border-[var(--lm-border-default)]" />
+                  <div className="h-16 rounded-2xl bg-[var(--lm-bg-secondary)]/80 animate-pulse border border-[var(--lm-border-default)]" />
+                </div>
               ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {auditLogs.map((log) => (
-                    <div key={log.id} className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-[var(--lm-text-primary)]">{log.action}</span>
-                        <span className="text-[10px] font-mono text-[var(--lm-text-tertiary)]">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                      </div>
-                      <div className="text-[11px] text-[var(--lm-text-secondary)]">{log.details}</div>
-                      <div className="text-[9px] font-mono text-[var(--lm-text-tertiary)] truncate">SHA-256: {log.sha256Hash}</div>
+                <div className="space-y-2">
+                  {auditLogs.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-[var(--lm-text-tertiary)]">
+                      No audit records found in the current log window.
                     </div>
-                  ))}
+                  ) : (
+                    <>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {auditLogs
+                          .slice((auditPage - 1) * 5, auditPage * 5)
+                          .map((log) => (
+                            <div key={log.id} className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-1">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-bold text-[var(--lm-text-primary)]">{log.action}</span>
+                                <span className="text-[10px] font-mono text-[var(--lm-text-tertiary)]">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                              </div>
+                              <div className="text-[11px] text-[var(--lm-text-secondary)]">{log.details}</div>
+                              <div className="text-[9px] font-mono text-[var(--lm-text-tertiary)] truncate">SHA-256: {log.sha256Hash}</div>
+                            </div>
+                          ))}
+                      </div>
+                      {auditLogs.length > 5 && (
+                        <div className="flex items-center justify-between pt-2 text-xs">
+                          <span className="text-[var(--lm-text-tertiary)] font-mono text-[11px]">
+                            Showing {((auditPage - 1) * 5) + 1}–{Math.min(auditPage * 5, auditLogs.length)} of {auditLogs.length} entries
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              disabled={auditPage <= 1}
+                              onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                              className="px-2.5 py-1 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] font-semibold text-[11px] disabled:opacity-40 cursor-pointer text-[var(--lm-text-primary)]"
+                            >
+                              ← Prev
+                            </button>
+                            <span className="px-2 font-mono text-[11px] text-[var(--lm-text-primary)]">
+                              {auditPage} / {Math.ceil(auditLogs.length / 5)}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={auditPage >= Math.ceil(auditLogs.length / 5)}
+                              onClick={() => setAuditPage((p) => Math.min(Math.ceil(auditLogs.length / 5), p + 1))}
+                              className="px-2.5 py-1 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] font-semibold text-[11px] disabled:opacity-40 cursor-pointer text-[var(--lm-text-primary)]"
+                            >
+                              Next →
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </div>

@@ -9,12 +9,13 @@ import { LumetricAuthService, AuthUser } from './auth';
 export const CATALYST_SERVER_URL =
   'https://project-rainfall-60092395179.development.catalystserverless.in/server/lumetric_server';
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   message?: string;
   error?: string;
   code?: string;
-  [key: string]: any;
+  data?: T;
+  [key: string]: unknown;
 }
 
 export interface GatewayStatusResponse {

@@ -95,7 +95,7 @@ export function DataIntakeSection({
             <h3 className="text-lg font-semibold tracking-tight text-[var(--lm-text-primary)]">
               Upload or Connect Your Dataset
             </h3>
-            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            <p className="text-xs text-[var(--lm-text-secondary)] mt-1 leading-relaxed">
               Upload your CSV, Excel, or JSON file to immediately profile columns, evaluate data health, and start analyzing.
             </p>
           </div>
@@ -109,7 +109,7 @@ export function DataIntakeSection({
                 className="hidden"
                 disabled={isProcessing}
               />
-              <span className="inline-flex items-center justify-center font-bold rounded-xl px-5 py-2.5 text-xs gap-2 bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all hover:scale-105">
+              <span className="inline-flex items-center justify-center font-bold rounded-xl px-5 py-2.5 text-xs gap-2 bg-[#059669] hover:bg-[#047857] text-white shadow-sm transition-all hover:scale-105 cursor-pointer">
                 {isProcessing ? 'Verifying Content...' : 'Choose File (.xlsx, .csv, .json)'}
               </span>
             </label>
@@ -124,8 +124,8 @@ export function DataIntakeSection({
           </div>
 
           {pasteMode && (
-            <div className="mt-4 p-4 rounded-2xl bg-white border border-slate-200 text-left space-y-3 animate-fade-in shadow-xs">
-              <label className="block text-xs font-bold text-slate-800">
+            <div className="mt-4 p-4 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] text-left space-y-3 animate-fade-in shadow-xs">
+              <label className="block text-xs font-bold text-[var(--lm-text-primary)]">
                 Paste Raw CSV or JSON Records:
               </label>
               <textarea
@@ -133,7 +133,7 @@ export function DataIntakeSection({
                 value={pastedText}
                 onChange={(e) => onSetPastedText(e.target.value)}
                 placeholder="paste raw CSV headers and rows here..."
-                className="w-full p-3 font-mono text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600"
+                className="w-full p-3 font-mono text-xs bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)] rounded-xl text-[var(--lm-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#059669]"
               />
               <div className="flex justify-end">
                 <Button
@@ -143,7 +143,7 @@ export function DataIntakeSection({
                     const name = `pasted_dataset_${new Date().toISOString().slice(0, 10)}.csv`;
                     onIntakeContent(pastedText.trim(), name, pastedText.length);
                   }}
-                  className="rounded-xl font-bold"
+                  className="rounded-xl font-bold bg-[#059669] hover:bg-[#047857] text-white"
                 >
                   Process &amp; Begin Requirements Wizard →
                 </Button>
@@ -152,7 +152,7 @@ export function DataIntakeSection({
           )}
 
           {parseError && (
-            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs text-left font-medium">
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs text-left font-medium">
               <span className="font-bold">Intake Halt:</span> {parseError}
             </div>
           )}
@@ -161,44 +161,44 @@ export function DataIntakeSection({
 
       {/* Ingestion Security Checklist */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card padding="md" className="rounded-2xl border-slate-200">
+        <Card padding="md" className="rounded-2xl border-[var(--lm-border-default)] bg-[var(--lm-bg-elevated)]">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
               1
             </div>
-            <span className="text-xs font-bold text-slate-900">
+            <span className="text-xs font-bold text-[var(--lm-text-primary)]">
               Cryptographic Hashing
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
+          <p className="text-[11px] text-[var(--lm-text-secondary)] leading-relaxed">
             Computes immutable SHA-256 hash. Ensures source lineage cannot be silently replaced or altered.
           </p>
         </Card>
 
-        <Card padding="md" className="rounded-2xl border-slate-200">
+        <Card padding="md" className="rounded-2xl border-[var(--lm-border-default)] bg-[var(--lm-bg-elevated)]">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
+            <div className="w-7 h-7 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
               2
             </div>
-            <span className="text-xs font-bold text-slate-900">
+            <span className="text-xs font-bold text-[var(--lm-text-primary)]">
               Grain &amp; Contract Elicitation
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
+          <p className="text-[11px] text-[var(--lm-text-secondary)] leading-relaxed">
             Asks for observation grain, primary keys, units, and currency conventions before generating models.
           </p>
         </Card>
 
-        <Card padding="md" className="rounded-2xl border-slate-200">
+        <Card padding="md" className="rounded-2xl border-[var(--lm-border-default)] bg-[var(--lm-bg-elevated)]">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs">
+            <div className="w-7 h-7 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs">
               3
             </div>
-            <span className="text-xs font-bold text-slate-900">
+            <span className="text-xs font-bold text-[var(--lm-text-primary)]">
               Pre-Flight Quality Gates
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
+          <p className="text-[11px] text-[var(--lm-text-secondary)] leading-relaxed">
             Evaluates uniqueness, null bounds, and cadence. Flags or quarantines malformed records explicitly.
           </p>
         </Card>
