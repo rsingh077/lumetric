@@ -6,6 +6,18 @@
       "sourceType": "github",
       "skillPath": "skills/gravitas/SKILL.md",
       "computedHash": "5d80d2ba5e74b151cff1ce9b4d1409019b22939154d82a938ad280554c447695"
+    },
+    "gravitas-highstakes": {
+      "source": "udaysharmadev/Gravitas",
+      "sourceType": "github",
+      "skillPath": "skills/gravitas-highstakes/SKILL.md",
+      "computedHash": "94ea59d71477d16161025a62edca475e835b5ba965cc10cc64c2f9b715a9e16b"
+    },
+    "gravitas-typescript": {
+      "source": "udaysharmadev/Gravitas",
+      "sourceType": "github",
+      "skillPath": "skills/gravitas-typescript/SKILL.md",
+      "computedHash": "302176c065ff4d57462d811df24a7e2ec4a4b42bd070a75fa8ad1063cd1c4bcf"
     }
   }
 }
