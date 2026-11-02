@@ -7,6 +7,7 @@
 
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -47,15 +48,17 @@ router.post('/api/auth/forgot-password', rateLimiter({ windowMs: 15 * 60 * 1000,
       return res.status(404).json({ success: false, error: 'No account registered with this email address.' });
     }
 
-    const resetOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetOtp = crypto.randomInt(100000, 1000000).toString();
     const resetOtpExpires = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
     user.settings = user.settings || {};
     user.settings.security = user.settings.security || {};
     user.settings.security.resetOtp = resetOtp;
     user.settings.security.resetOtpExpires = resetOtpExpires;
+    user.settings.security.resetOtpAttempts = 0;
     user.resetOtp = resetOtp;
     user.resetOtpExpires = resetOtpExpires;
+    user.resetOtpAttempts = 0;
 
     const emailResult = await sendOtpEmail(req, normalizedEmail, resetOtp, 'reset-password', user.name);
     await saveUserToStore(req, user);
@@ -114,9 +117,41 @@ router.post('/api/auth/reset-password', rateLimiter({ windowMs: 15 * 60 * 1000, 
       return res.status(400).json({ success: false, error: 'Verification code has expired. Please request a new code.' });
     }
 
-    if (String(activeOtp).trim() !== String(otp).trim()) {
-      logAuditEvent(normalizedEmail, 'PASSWORD_RESET_OTP_MISMATCH', 'Security', 'Invalid OTP submitted for password reset');
-      return res.status(400).json({ success: false, error: 'Invalid 6-digit verification code.' });
+    const currentAttempts = (security.resetOtpAttempts || user.resetOtpAttempts || 0) + 1;
+    const expectedBuf = Buffer.from(String(activeOtp).trim().padEnd(6, ' '));
+    const submittedBuf = Buffer.from(String(otp).trim().padEnd(6, ' '));
+    const isMatch = crypto.timingSafeEqual(expectedBuf, submittedBuf);
+
+    if (!isMatch) {
+      if (currentAttempts >= 3) {
+        delete user.resetOtp;
+        delete user.resetOtpExpires;
+        delete user.resetOtpAttempts;
+        if (user.settings?.security) {
+          delete user.settings.security.resetOtp;
+          delete user.settings.security.resetOtpExpires;
+          delete user.settings.security.resetOtpAttempts;
+        }
+        await saveUserToStore(req, user);
+        logAuditEvent(normalizedEmail, 'PASSWORD_RESET_OTP_LOCKOUT', 'Security', 'Password reset recovery code terminated after 3 failed attempts');
+        return res.status(429).json({
+          success: false,
+          code: 'OTP_LOCKOUT',
+          error: 'Too many incorrect verification attempts. For your security, this recovery code has been terminated. Please request a new code.'
+        });
+      }
+
+      user.resetOtpAttempts = currentAttempts;
+      user.settings = user.settings || {};
+      user.settings.security = user.settings.security || {};
+      user.settings.security.resetOtpAttempts = currentAttempts;
+      await saveUserToStore(req, user);
+
+      logAuditEvent(normalizedEmail, 'PASSWORD_RESET_OTP_MISMATCH', 'Security', `Invalid OTP submitted for password reset (attempt ${currentAttempts}/3)`);
+      return res.status(400).json({
+        success: false,
+        error: `Invalid 6-digit verification code. (${3 - currentAttempts} attempts remaining)`
+      });
     }
 
     const pwCheck = validatePasswordStrength(newPassword);
@@ -128,9 +163,11 @@ router.post('/api/auth/reset-password', rateLimiter({ windowMs: 15 * 60 * 1000, 
     user.passwordHash = await bcrypt.hash(newPassword, salt);
     delete user.resetOtp;
     delete user.resetOtpExpires;
+    delete user.resetOtpAttempts;
     if (user.settings?.security) {
       delete user.settings.security.resetOtp;
       delete user.settings.security.resetOtpExpires;
+      delete user.settings.security.resetOtpAttempts;
     }
     await saveUserToStore(req, user);
 

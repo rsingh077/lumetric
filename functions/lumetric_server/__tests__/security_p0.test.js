@@ -96,4 +96,101 @@ describe('P0 Security & Secrets Enforcement', () => {
     expect(auditRes.body.success).toBe(true);
     expect(Array.isArray(auditRes.body.logs)).toBe(true);
   });
+
+  test('generateOtp produces uniform 6-digit numeric CSPRNG strings', () => {
+    const { generateOtp } = require('../services/auth.service');
+    const seen = new Set();
+    for (let i = 0; i < 50; i++) {
+      const code = generateOtp();
+      expect(typeof code).toBe('string');
+      expect(code).toMatch(/^\d{6}$/);
+      const num = parseInt(code, 10);
+      expect(num).toBeGreaterThanOrEqual(100000);
+      expect(num).toBeLessThan(1000000);
+      seen.add(code);
+    }
+    // CSPRNG across 50 iterations should produce unique codes with high probability
+    expect(seen.size).toBeGreaterThan(45);
+  });
+
+  test('Google OAuth OTP flow terminates with HTTP 429 lockout after 3 incorrect attempts', async () => {
+    const testEmail = 'google_lockout_test@lumetric.dev';
+    // 1. Request Google OTP
+    const reqRes = await request(app)
+      .post('/api/auth/google')
+      .send({ email: testEmail, name: 'Lockout Tester' });
+    expect(reqRes.status).toBe(200);
+    expect(reqRes.body.requiresOtp).toBe(true);
+
+    // 2. Submit wrong OTP attempt 1 -> 400
+    const fail1 = await request(app)
+      .post('/api/auth/google')
+      .send({ email: testEmail, otp: '111111' });
+    expect(fail1.status).toBe(400);
+    expect(fail1.body.error).toContain('2 attempts remaining');
+
+    // 3. Submit wrong OTP attempt 2 -> 400
+    const fail2 = await request(app)
+      .post('/api/auth/google')
+      .send({ email: testEmail, otp: '222222' });
+    expect(fail2.status).toBe(400);
+    expect(fail2.body.error).toContain('1 attempts remaining');
+
+    // 4. Submit wrong OTP attempt 3 -> 400
+    const fail3 = await request(app)
+      .post('/api/auth/google')
+      .send({ email: testEmail, otp: '333333' });
+    expect(fail3.status).toBe(400);
+    expect(fail3.body.error).toContain('0 attempts remaining');
+
+    // 5. Submit wrong OTP attempt 4 -> 429 OTP_LOCKOUT
+    const fail4 = await request(app)
+      .post('/api/auth/google')
+      .send({ email: testEmail, otp: '444444' });
+    expect(fail4.status).toBe(429);
+    expect(fail4.body.code).toBe('OTP_LOCKOUT');
+  });
+
+  test('Password Reset flow terminates with HTTP 429 lockout after 3 incorrect attempts', async () => {
+    const { saveUserToStore } = require('../services/datastore.service');
+    const resetEmail = 'reset_lockout_test@lumetric.dev';
+
+    await saveUserToStore(null, {
+      id: 'usr_reset_lockout_01',
+      email: resetEmail,
+      name: 'Reset Lockout Tester',
+      role: 'builder',
+      resetOtp: '849201',
+      resetOtpExpires: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      resetOtpAttempts: 0,
+      settings: {
+        security: {
+          resetOtp: '849201',
+          resetOtpExpires: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+          resetOtpAttempts: 0
+        }
+      }
+    });
+
+    // Attempt 1 -> 400
+    const fail1 = await request(app)
+      .post('/api/auth/reset-password')
+      .send({ email: resetEmail, otp: '000001', newPassword: 'NewSecurePassword123!' });
+    expect(fail1.status).toBe(400);
+    expect(fail1.body.error).toContain('2 attempts remaining');
+
+    // Attempt 2 -> 400
+    const fail2 = await request(app)
+      .post('/api/auth/reset-password')
+      .send({ email: resetEmail, otp: '000002', newPassword: 'NewSecurePassword123!' });
+    expect(fail2.status).toBe(400);
+    expect(fail2.body.error).toContain('1 attempts remaining');
+
+    // Attempt 3 -> 429 lockout (at attempt 3)
+    const fail3 = await request(app)
+      .post('/api/auth/reset-password')
+      .send({ email: resetEmail, otp: '000003', newPassword: 'NewSecurePassword123!' });
+    expect(fail3.status).toBe(429);
+    expect(fail3.body.code).toBe('OTP_LOCKOUT');
+  });
 });

@@ -52,13 +52,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           }
         };
 
-        if (mediaQuery.addEventListener) {
+        if (typeof mediaQuery.addEventListener === 'function') {
           mediaQuery.addEventListener('change', handleSystemChange);
           return () => mediaQuery.removeEventListener('change', handleSystemChange);
-        } else if ('addListener' in mediaQuery) {
-          // Fallback for older WebKit / WebView environments
-          (mediaQuery as any).addListener(handleSystemChange);
-          return () => (mediaQuery as any).removeListener(handleSystemChange);
+        } else {
+          const legacyMq = mediaQuery as MediaQueryList & {
+            addListener?: (fn: () => void) => void;
+            removeListener?: (fn: () => void) => void;
+          };
+          if (typeof legacyMq.addListener === 'function') {
+            legacyMq.addListener(handleSystemChange);
+            return () => legacyMq.removeListener?.(handleSystemChange);
+          }
         }
       }
     } catch {}

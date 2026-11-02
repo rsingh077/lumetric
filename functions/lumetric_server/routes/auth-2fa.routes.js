@@ -47,9 +47,36 @@ router.post('/api/auth/google', rateLimiter({ windowMs: 5 * 60 * 1000, max: 30 }
     let isVerified = false;
     if (otp) {
       const entry = googleOtpStore.get(normalizedEmail);
-      if (entry && entry.otp === String(otp).trim() && Date.now() <= entry.expiresAt) {
+      if (!entry) {
+        return res.status(400).json({ success: false, error: 'No active Google verification challenge found. Please sign in again.' });
+      }
+      if (Date.now() > entry.expiresAt) {
+        googleOtpStore.delete(normalizedEmail);
+        return res.status(400).json({ success: false, error: 'Verification code has expired. Please sign in again.' });
+      }
+
+      entry.attempts = (entry.attempts || 0) + 1;
+      if (entry.attempts > 3) {
+        googleOtpStore.delete(normalizedEmail);
+        logAuditEvent(normalizedEmail, 'OTP_BRUTE_FORCE_LOCKOUT', 'Security', 'Google sign-in OTP challenge terminated after 3 failed attempts');
+        return res.status(429).json({
+          success: false,
+          code: 'OTP_LOCKOUT',
+          error: 'Too many incorrect verification attempts. For your security, this verification code has been terminated. Please authenticate again.'
+        });
+      }
+
+      const expectedBuf = Buffer.from(String(entry.otp).padEnd(6, ' '));
+      const submittedBuf = Buffer.from(String(otp).trim().padEnd(6, ' '));
+      if (crypto.timingSafeEqual(expectedBuf, submittedBuf)) {
         isVerified = true;
         googleOtpStore.delete(normalizedEmail);
+      } else {
+        logAuditEvent(normalizedEmail, 'GOOGLE_OTP_MISMATCH', 'Security', `Invalid OTP submitted for Google sign-in (attempt ${entry.attempts}/3)`);
+        return res.status(400).json({
+          success: false,
+          error: `Invalid 6-digit verification code. (${3 - entry.attempts} attempts remaining)`
+        });
       }
     }
 

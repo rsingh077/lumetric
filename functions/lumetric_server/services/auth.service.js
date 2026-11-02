@@ -8,6 +8,7 @@
 
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { authenticator } = require('otplib');
 const qrcode = require('qrcode');
 
@@ -97,7 +98,7 @@ async function verifyPassword(plainPassword, hashedPassword) {
 }
 
 function generateOtp() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 module.exports = {
