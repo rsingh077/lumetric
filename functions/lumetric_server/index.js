@@ -97,9 +97,13 @@ app.use((req, res, next) => {
 // Initialize Catalyst SDK per request
 app.use((req, res, next) => {
   try {
-    res.locals.catalyst = catalyst.initialize(req);
+    res.locals.catalyst = catalyst.initialize(req, { scope: 'admin' });
   } catch {
-    res.locals.catalyst = null;
+    try {
+      res.locals.catalyst = catalyst.initialize(req);
+    } catch {
+      res.locals.catalyst = null;
+    }
   }
   next();
 });

@@ -109,9 +109,13 @@ async function initCatalystApp(req) {
   }
   if (!catalyst) return null;
   try {
-    return catalyst.initialize(req);
+    return catalyst.initialize(req, { scope: 'admin' });
   } catch {
-    return null;
+    try {
+      return catalyst.initialize(req);
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -141,6 +145,52 @@ async function resolveUserTableName(catApp) {
   return 'Lumi';
 }
 
+function buildUserObject(u, normEmail, preSeeded) {
+  if (!u) return null;
+  let dsSettings = {};
+  if (u.settings) {
+    if (typeof u.settings === 'object') {
+      dsSettings = u.settings;
+    } else if (typeof u.settings === 'string') {
+      try {
+        dsSettings = JSON.parse(u.settings);
+      } catch (err) {
+        console.warn('Recovered from truncated/malformed settings JSON for user', normEmail, err.message);
+        dsSettings = {};
+      }
+    }
+  }
+
+  if (preSeeded && preSeeded.settings && preSeeded.settings.subscription && !dsSettings.subscription) {
+    dsSettings.subscription = preSeeded.settings.subscription;
+    dsSettings.invoices = preSeeded.settings.invoices || dsSettings.invoices;
+  }
+  const finalPasswordHash =
+    u.passwordHash ||
+    u.passwordhash ||
+    u.PASSWORDHASH ||
+    u.password_hash ||
+    u.PASSWORD_HASH ||
+    (preSeeded && preSeeded.passwordHash);
+
+  return {
+    rowid: u.ROWID ? String(u.ROWID) : (u.rowid ? String(u.rowid) : undefined),
+    id: u.ROWID ? String(u.ROWID) : (u.id || `usr_${normEmail.replace(/[^a-zA-Z0-9]/g, '_')}`),
+    email: u.email || u.EMAIL || normEmail,
+    passwordHash: finalPasswordHash,
+    name: u.name || u.NAME || normEmail.split('@')[0],
+    role: u.role || u.ROLE || 'builder',
+    organization: u.organization || u.ORGANIZATION || '',
+    avatarUrl: u.avatarUrl || u.AVATARURL || '',
+    emailVerified: u.emailVerified === 'true' || u.emailVerified === true || u.EMAILVERIFIED === 'true' || true,
+    mfaEnabled: u.mfaEnabled === 'true' || u.mfaEnabled === true || u.MFAENABLED === 'true',
+    mfaSecret: u.mfaSecret || u.MFASECRET || '',
+    createdAt: u.CREATEDTIME || u.createdAt || new Date().toISOString(),
+    lastLoginAt: u.lastLoginAt || u.lasttLoginAt || u.LASTLOGINAT || new Date().toISOString(),
+    settings: dsSettings
+  };
+}
+
 /**
  * Authoritatively retrieves user from DataStore, falling back to cache if DataStore is unavailable.
  */
@@ -158,81 +208,90 @@ async function getUserFromStore(req, email, forceFresh = false) {
 
   const preSeeded = cached ? cached.user : null;
   const catApp = await initCatalystApp(req);
-  if (catApp && catApp.zcql) {
+  if (catApp) {
     try {
       const tableName = await resolveUserTableName(catApp);
-      const safeEmail = String(normEmail).replace(/\\/g, '').replace(/'/g, "''").replace(/;/g, '').replace(/--/g, '');
-      const zcqlRes = await catApp.zcql().executeZCQLQuery(
-        `SELECT * FROM ${tableName} WHERE email = '${safeEmail}'`
-      );
-      if (zcqlRes && zcqlRes.length > 0) {
-        const u = extractRowData(zcqlRes[0], tableName);
-        if (u && (u.email || u.EMAIL)) {
-          let dsSettings = typeof u.settings === 'string' ? JSON.parse(u.settings || '{}') : (u.settings || {});
-          if (preSeeded && preSeeded.settings && preSeeded.settings.subscription && !dsSettings.subscription) {
-            dsSettings.subscription = preSeeded.settings.subscription;
-            dsSettings.invoices = preSeeded.settings.invoices || dsSettings.invoices;
+
+      // Strategy 1: DataStore native getPagedRows / getAllRows (most reliable in serverless advancedio)
+      if (catApp.datastore) {
+        try {
+          const table = catApp.datastore().table(tableName);
+          let nextToken = undefined;
+          let keepPaging = true;
+          let pageCount = 0;
+          while (keepPaging && pageCount < 5) {
+            pageCount++;
+            const paged = await table.getPagedRows({ maxRows: 100, nextToken });
+            const rows = paged && Array.isArray(paged.data) ? paged.data : (Array.isArray(paged) ? paged : []);
+            const matched = rows.find(r => {
+              const item = extractRowData(r, tableName);
+              const itemEmail = item && (item.email || item.EMAIL);
+              return itemEmail && itemEmail.toLowerCase().trim() === normEmail;
+            });
+            if (matched) {
+              const u = extractRowData(matched, tableName);
+              const userObj = buildUserObject(u, normEmail, preSeeded);
+              if (userObj) {
+                memoryCache.set(normEmail, { user: userObj, cachedAt: now });
+                return userObj;
+              }
+            }
+            if (paged && paged.next_token) {
+              nextToken = paged.next_token;
+            } else {
+              keepPaging = false;
+            }
           }
-          const finalPasswordHash = u.passwordHash || u.passwordhash || u.PASSWORDHASH || u.password_hash || u.PASSWORD_HASH || (preSeeded && preSeeded.passwordHash);
-          const userObj = {
-            rowid: u.ROWID ? String(u.ROWID) : (u.rowid ? String(u.rowid) : undefined),
-            id: u.ROWID ? String(u.ROWID) : (u.id || `usr_${normEmail.replace(/[^a-zA-Z0-9]/g, '_')}`),
-            email: u.email || u.EMAIL || normEmail,
-            passwordHash: finalPasswordHash,
-            name: u.name || u.NAME || normEmail.split('@')[0],
-            role: u.role || u.ROLE || 'builder',
-            organization: u.organization || u.ORGANIZATION || '',
-            avatarUrl: u.avatarUrl || u.AVATARURL || '',
-            emailVerified: u.emailVerified === 'true' || u.emailVerified === true || u.EMAILVERIFIED === 'true' || true,
-            mfaEnabled: u.mfaEnabled === 'true' || u.mfaEnabled === true || u.MFAENABLED === 'true',
-            mfaSecret: u.mfaSecret || u.MFASECRET || '',
-            createdAt: u.CREATEDTIME || u.createdAt || new Date().toISOString(),
-            lastLoginAt: u.lastLoginAt || u.lasttLoginAt || u.LASTLOGINAT || new Date().toISOString(),
-            settings: dsSettings
-          };
-          memoryCache.set(normEmail, { user: userObj, cachedAt: now });
-          return userObj;
+        } catch (dsErr) {
+          console.warn('DataStore table getPagedRows error:', dsErr.message);
         }
       }
 
-      // Case-insensitive fallback scan across DataStore table
-      const scanRes = await catApp.zcql().executeZCQLQuery(`SELECT * FROM ${tableName}`);
-      if (scanRes && scanRes.length > 0) {
-        const matched = scanRes.find(r => {
-          const item = extractRowData(r, tableName);
-          const itemEmail = item && (item.email || item.EMAIL);
-          return itemEmail && itemEmail.toLowerCase().trim() === normEmail;
-        });
-        if (matched) {
-          const u = extractRowData(matched, tableName);
-          let dsSettings = typeof u.settings === 'string' ? JSON.parse(u.settings || '{}') : (u.settings || {});
-          if (preSeeded && preSeeded.settings && preSeeded.settings.subscription && !dsSettings.subscription) {
-            dsSettings.subscription = preSeeded.settings.subscription;
-            dsSettings.invoices = preSeeded.settings.invoices || dsSettings.invoices;
+      // Strategy 2: ZCQL indexed query
+      if (catApp.zcql) {
+        try {
+          const safeEmail = String(normEmail).replace(/\\/g, '').replace(/'/g, "''").replace(/;/g, '').replace(/--/g, '');
+          const zcqlRes = await catApp.zcql().executeZCQLQuery(
+            `SELECT * FROM ${tableName} WHERE email = '${safeEmail}'`
+          );
+          if (zcqlRes && zcqlRes.length > 0) {
+            const u = extractRowData(zcqlRes[0], tableName);
+            if (u && (u.email || u.EMAIL)) {
+              const userObj = buildUserObject(u, normEmail, preSeeded);
+              if (userObj) {
+                memoryCache.set(normEmail, { user: userObj, cachedAt: now });
+                return userObj;
+              }
+            }
           }
-          const finalPasswordHash = u.passwordHash || u.passwordhash || u.PASSWORDHASH || u.password_hash || u.PASSWORD_HASH || (preSeeded && preSeeded.passwordHash);
-          const userObj = {
-            rowid: u.ROWID ? String(u.ROWID) : (u.rowid ? String(u.rowid) : undefined),
-            id: u.ROWID ? String(u.ROWID) : (u.id || `usr_${normEmail.replace(/[^a-zA-Z0-9]/g, '_')}`),
-            email: u.email || u.EMAIL || normEmail,
-            passwordHash: finalPasswordHash,
-            name: u.name || u.NAME || normEmail.split('@')[0],
-            role: u.role || u.ROLE || 'builder',
-            organization: u.organization || u.ORGANIZATION || '',
-            avatarUrl: u.avatarUrl || u.AVATARURL || '',
-            emailVerified: u.emailVerified === 'true' || u.emailVerified === true || u.EMAILVERIFIED === 'true' || true,
-            mfaEnabled: u.mfaEnabled === 'true' || u.mfaEnabled === true || u.MFAENABLED === 'true',
-            mfaSecret: u.mfaSecret || u.MFASECRET || '',
-            createdAt: u.CREATEDTIME || u.createdAt || new Date().toISOString(),
-            lastLoginAt: u.lastLoginAt || u.lasttLoginAt || u.LASTLOGINAT || new Date().toISOString(),
-            settings: dsSettings
-          };
-          memoryCache.set(normEmail, { user: userObj, cachedAt: now });
-          return userObj;
+        } catch (zcqlErr) {
+          console.warn('Catalyst ZCQL WHERE query error:', zcqlErr.message);
+        }
+
+        // Strategy 3: ZCQL scan fallback
+        try {
+          const scanRes = await catApp.zcql().executeZCQLQuery(`SELECT * FROM ${tableName}`);
+          if (scanRes && scanRes.length > 0) {
+            const matched = scanRes.find(r => {
+              const item = extractRowData(r, tableName);
+              const itemEmail = item && (item.email || item.EMAIL);
+              return itemEmail && itemEmail.toLowerCase().trim() === normEmail;
+            });
+            if (matched) {
+              const u = extractRowData(matched, tableName);
+              const userObj = buildUserObject(u, normEmail, preSeeded);
+              if (userObj) {
+                memoryCache.set(normEmail, { user: userObj, cachedAt: now });
+                return userObj;
+              }
+            }
+          }
+        } catch (scanErr) {
+          console.warn('Catalyst ZCQL scan error:', scanErr.message);
         }
       }
     } catch (e) {
-      console.warn('Catalyst ZCQL getUser error:', e.message);
+      console.warn('getUserFromStore general error:', e.message);
     }
   }
 
@@ -283,6 +342,25 @@ async function saveUserToStore(req, user) {
         } catch (zcqlErr) {
           dataStoreError = zcqlErr.message;
         }
+      }
+
+      if (!targetRowId && catApp.datastore) {
+        try {
+          const paged = await table.getPagedRows({ maxRows: 100 });
+          const rows = paged && Array.isArray(paged.data) ? paged.data : (Array.isArray(paged) ? paged : []);
+          const matched = rows.find(r => {
+            const item = extractRowData(r, tableName);
+            const itemEmail = item && (item.email || item.EMAIL);
+            return itemEmail && itemEmail.toLowerCase().trim() === normEmail;
+          });
+          if (matched) {
+            const rowDataRes = extractRowData(matched, tableName);
+            if (rowDataRes && (rowDataRes.ROWID || rowDataRes.rowid)) {
+              targetRowId = String(rowDataRes.ROWID || rowDataRes.rowid);
+              user.rowid = targetRowId;
+            }
+          }
+        } catch {}
       }
 
       let serializedSettings = JSON.stringify(user.settings || {});
@@ -375,28 +453,59 @@ async function saveUserToStore(req, user) {
 
 async function getAllUsersFromStore(req) {
   const catApp = await initCatalystApp(req);
-  if (catApp && catApp.zcql) {
-    try {
-      const tableName = await resolveUserTableName(catApp);
-      const zcqlRes = await catApp.zcql().executeZCQLQuery(`SELECT * FROM ${tableName}`);
-      if (zcqlRes && zcqlRes.length > 0) {
-        return zcqlRes.map(r => {
-          const u = r[tableName] || r.Users || r.Lumi || r;
-          return {
-            id: u.ROWID ? String(u.ROWID) : u.id,
-            email: u.email,
-            name: u.name,
-            role: u.role,
-            organization: u.organization,
-            avatarUrl: u.avatarUrl || '',
-            mfaEnabled: u.mfaEnabled === 'true' || u.mfaEnabled === true,
-            createdAt: u.CREATEDTIME || u.createdAt,
-            lastLoginAt: u.lastLoginAt
-          };
-        });
+  if (catApp) {
+    // Strategy 1: DataStore native getPagedRows (most reliable in serverless)
+    if (catApp.datastore) {
+      try {
+        const tableName = await resolveUserTableName(catApp);
+        const table = catApp.datastore().table(tableName);
+        const paged = await table.getPagedRows({ maxRows: 100 });
+        const rows = paged && Array.isArray(paged.data) ? paged.data : (Array.isArray(paged) ? paged : []);
+        if (rows.length > 0) {
+          return rows.map(r => {
+            const u = extractRowData(r, tableName);
+            return {
+              id: u.ROWID ? String(u.ROWID) : u.id,
+              email: u.email || u.EMAIL,
+              name: u.name || u.NAME,
+              role: u.role || u.ROLE || 'builder',
+              organization: u.organization || u.ORGANIZATION || '',
+              avatarUrl: u.avatarUrl || u.AVATARURL || '',
+              mfaEnabled: u.mfaEnabled === 'true' || u.mfaEnabled === true,
+              createdAt: u.CREATEDTIME || u.createdAt,
+              lastLoginAt: u.lastLoginAt || u.lasttLoginAt
+            };
+          });
+        }
+      } catch (dsErr) {
+        console.warn('getAllUsersFromStore DataStore error:', dsErr.message);
       }
-    } catch (e) {
-      console.warn('getAllUsersFromStore error:', e.message);
+    }
+
+    // Strategy 2: ZCQL scan fallback
+    if (catApp.zcql) {
+      try {
+        const tableName = await resolveUserTableName(catApp);
+        const zcqlRes = await catApp.zcql().executeZCQLQuery(`SELECT * FROM ${tableName}`);
+        if (zcqlRes && zcqlRes.length > 0) {
+          return zcqlRes.map(r => {
+            const u = extractRowData(r, tableName);
+            return {
+              id: u.ROWID ? String(u.ROWID) : u.id,
+              email: u.email || u.EMAIL,
+              name: u.name || u.NAME,
+              role: u.role || u.ROLE || 'builder',
+              organization: u.organization || u.ORGANIZATION || '',
+              avatarUrl: u.avatarUrl || u.AVATARURL || '',
+              mfaEnabled: u.mfaEnabled === 'true' || u.mfaEnabled === true,
+              createdAt: u.CREATEDTIME || u.createdAt,
+              lastLoginAt: u.lastLoginAt || u.lasttLoginAt
+            };
+          });
+        }
+      } catch (e) {
+        console.warn('getAllUsersFromStore ZCQL error:', e.message);
+      }
     }
   }
 
