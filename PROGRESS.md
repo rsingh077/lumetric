@@ -327,6 +327,31 @@ Tracking systematic execution of backlog tasks to elevate Lumatric from ~5.8/10 
 
 ---
 
+### [UX Wiring — Dark Mode + i18n + Skeletons + Pagination + Motion Finish]
+- **Status**: Completed
+- **Changes**:
+  1. **Provider Hierarchy Mounted in Root Layout (`layout.tsx`)**:
+     - Wrapped the application in `<ThemeProvider>` and `<LanguageProvider>` around `<AppProvider><AppShell>{children}</AppShell></AppProvider>`.
+     - Preserved inline `<head>` theme bootstrap script ensuring zero Flash of Unstyled Content (FOUC) on cold start.
+  2. **State Deduplication in `AppContext.tsx`**:
+     - Removed 156 lines of duplicated theme and language state; unified `AppContext` to consume and transparently forward `useTheme()` and `useLanguage()`.
+     - Maintained 100% backward-compatibility for all existing `useApp()` callers.
+  3. **Interactive 3-State Theme Mode & Language Switcher in Header (`Header.tsx`)**:
+     - Updated header theme toggle to 3-state cycle (`dark` → `light` → `system`) with visual indicators (`🌙`, `☀️`, `💻`).
+     - Wired language selector dropdown to dispatch runtime `setLanguage(lang.code)`.
+  4. **Theme & Localization Controls in Settings (`settings/page.tsx`)**:
+     - Added dedicated "Theme & Language" tab with interactive cards for Light Mode, Dark Mode, and System Sync.
+     - Added 4 language selection cards (English, Français, Español, Deutsch) with live regional formatting previews for numbers, currency, and timestamps.
+  5. **Skeleton Loaders Across Views**:
+     - Replaced bare "Loading..." text with ARIA-labeled `<SkeletonCard />`, `<SkeletonTable />`, and `<SkeletonChart />` components across datasets, profile modals, and dynamic route boundaries.
+  6. **Pagination Controls**:
+     - Upgraded tabular inspection in `DataInspectSection.tsx` with page-size selector (25/50/100 rows), previous/next buttons, and jump-to-page input.
+     - Configured 10-item pagination for cryptographic audit entries in `UserAuthProfileModal.tsx`.
+  7. **Accessibility & Reduced-Motion (`globals.css`)**:
+     - Verified `@media (prefers-reduced-motion: reduce)` rule strictly clamps all animations and transitions to `0.01ms !important`.
+
+---
+
 ## Rubric Self-Assessment (Final Post-W0–W5 Target ≥9.5 Verification)
 
 | Criterion | Weight | Pre-P0 | Post-P0 | Post-P1 | Post-W5 (Final) | Status / Notes |

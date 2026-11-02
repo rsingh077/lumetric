@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { StatusBadge, Button, Input } from '@/components/ui';
+import { StatusBadge, Button, Input, SkeletonCard, SkeletonTable } from '@/components/ui';
 import { LumetricAuthService, AuthUser, validateEmailAuthenticity } from '@/lib/auth';
 import { useApp } from '@/contexts/AppContext';
 
@@ -1430,7 +1430,10 @@ export function UserAuthProfileModal({
               )}
 
               {loadingConnectors ? (
-                <div className="text-center py-6 text-xs text-[var(--lm-text-secondary)]">Loading connectors...</div>
+                <div className="space-y-2.5">
+                  <SkeletonCard lines={2} />
+                  <SkeletonCard lines={2} />
+                </div>
               ) : (
                 <div className="space-y-2.5">
                   {connectors.map((c) => (
@@ -1466,10 +1469,10 @@ export function UserAuthProfileModal({
               </div>
 
               {loadingAudit ? (
-                <div className="space-y-2">
-                  <div className="h-16 rounded-2xl bg-[var(--lm-bg-secondary)]/80 animate-pulse border border-[var(--lm-border-default)]" />
-                  <div className="h-16 rounded-2xl bg-[var(--lm-bg-secondary)]/80 animate-pulse border border-[var(--lm-border-default)]" />
-                  <div className="h-16 rounded-2xl bg-[var(--lm-bg-secondary)]/80 animate-pulse border border-[var(--lm-border-default)]" />
+                <div className="space-y-2" aria-label="Loading audit logs">
+                  <SkeletonCard lines={2} />
+                  <SkeletonCard lines={2} />
+                  <SkeletonCard lines={2} />
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1481,7 +1484,7 @@ export function UserAuthProfileModal({
                     <>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
                         {auditLogs
-                          .slice((auditPage - 1) * 5, auditPage * 5)
+                          .slice((auditPage - 1) * 10, auditPage * 10)
                           .map((log) => (
                             <div key={log.id} className="p-3 rounded-2xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-1">
                               <div className="flex items-center justify-between text-xs">
@@ -1493,10 +1496,10 @@ export function UserAuthProfileModal({
                             </div>
                           ))}
                       </div>
-                      {auditLogs.length > 5 && (
+                      {auditLogs.length > 10 && (
                         <div className="flex items-center justify-between pt-2 text-xs">
                           <span className="text-[var(--lm-text-tertiary)] font-mono text-[11px]">
-                            Showing {((auditPage - 1) * 5) + 1}–{Math.min(auditPage * 5, auditLogs.length)} of {auditLogs.length} entries
+                            Showing {((auditPage - 1) * 10) + 1}–{Math.min(auditPage * 10, auditLogs.length)} of {auditLogs.length} entries
                           </span>
                           <div className="flex items-center gap-1.5">
                             <button
@@ -1508,12 +1511,12 @@ export function UserAuthProfileModal({
                               ← Prev
                             </button>
                             <span className="px-2 font-mono text-[11px] text-[var(--lm-text-primary)]">
-                              {auditPage} / {Math.ceil(auditLogs.length / 5)}
+                              {auditPage} / {Math.ceil(auditLogs.length / 10)}
                             </span>
                             <button
                               type="button"
-                              disabled={auditPage >= Math.ceil(auditLogs.length / 5)}
-                              onClick={() => setAuditPage((p) => Math.min(Math.ceil(auditLogs.length / 5), p + 1))}
+                              disabled={auditPage >= Math.ceil(auditLogs.length / 10)}
+                              onClick={() => setAuditPage((p) => Math.min(Math.ceil(auditLogs.length / 10), p + 1))}
                               className="px-2.5 py-1 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] font-semibold text-[11px] disabled:opacity-40 cursor-pointer text-[var(--lm-text-primary)]"
                             >
                               Next →
@@ -1543,7 +1546,9 @@ export function UserAuthProfileModal({
               )}
 
               {loadingUsers ? (
-                <div className="text-center py-6 text-xs text-[var(--lm-text-secondary)]">Loading accounts...</div>
+                <div className="p-2">
+                  <SkeletonTable rows={4} cols={3} />
+                </div>
               ) : (
                 <div className="space-y-2 max-h-56 overflow-y-auto">
                   {allUsers.map((u) => (

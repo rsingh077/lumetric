@@ -48,8 +48,8 @@ export const Header = React.memo(function Header() {
     setAuthModalOpen,
     authModalMode,
     logout,
-    theme,
-    toggleTheme,
+    themeMode,
+    setTheme,
     language,
     setLanguage,
   } = useApp();
@@ -397,15 +397,24 @@ export const Header = React.memo(function Header() {
             )}
           </div>
 
-          {/* Dark / Light Mode Toggle */}
+          {/* 3-State Theme Mode Cycle (Dark -> Light -> System) */}
           <button
             type="button"
-            onClick={() => toggleTheme()}
+            onClick={() => {
+              const next = themeMode === 'dark' ? 'light' : themeMode === 'light' ? 'system' : 'dark';
+              setTheme(next);
+            }}
             className="p-2 rounded-xl text-[var(--lm-text-secondary)] hover:bg-[var(--lm-bg-secondary)] hover:text-[var(--lm-text-primary)] transition-all apple-pressable cursor-pointer text-xs"
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            aria-label="Toggle dark mode"
+            title={
+              themeMode === 'dark'
+                ? 'Theme: Dark (click for Light)'
+                : themeMode === 'light'
+                ? 'Theme: Light (click for System)'
+                : 'Theme: System (click for Dark)'
+            }
+            aria-label={`Cycle theme mode. Current: ${themeMode}`}
           >
-            {theme === 'dark' ? '☀️' : '🌙'}
+            {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '💻'}
           </button>
 
 

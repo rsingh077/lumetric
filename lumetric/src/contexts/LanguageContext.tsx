@@ -174,7 +174,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('lumetric_lang') as AppLanguage | null;
+      const stored = (localStorage.getItem('lumetric_language') || localStorage.getItem('lumetric_lang')) as AppLanguage | null;
       if (stored === 'en' || stored === 'fr' || stored === 'es' || stored === 'de') {
         setLanguageState(stored);
       } else {
@@ -190,6 +190,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setLanguageState(lang);
     if (typeof window !== 'undefined') {
       try {
+        localStorage.setItem('lumetric_language', lang);
         localStorage.setItem('lumetric_lang', lang);
       } catch {}
     }
@@ -259,10 +260,16 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
+const defaultLanguageValue: LanguageContextType = {
+  language: 'en',
+  setLanguage: () => {},
+  t: (key: string) => TRANSLATIONS.en[key] || key,
+  formatNumber: (value: number) => String(value),
+  formatDate: (date: Date | string) => String(date),
+  formatCurrency: (amount: number, currency: string = 'USD') => `${currency} ${amount}`,
+};
+
 export function useLanguage(): LanguageContextType {
   const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
-  }
-  return context;
+  return context || defaultLanguageValue;
 }

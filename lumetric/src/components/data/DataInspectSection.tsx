@@ -357,18 +357,19 @@ export function DataInspectSection({
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs px-1">
             <span className="text-[var(--lm-text-tertiary)] font-mono">
               {processedRows.length === 0
-                ? 'Showing 0 records'
-                : `Showing ${((effectivePage - 1) * rowsPerPage) + 1} - ${Math.min(effectivePage * rowsPerPage, processedRows.length)} of ${processedRows.length.toLocaleString()} records`}
+                ? 'Showing 0 rows'
+                : `Showing ${((effectivePage - 1) * rowsPerPage) + 1}–${Math.min(effectivePage * rowsPerPage, processedRows.length)} of ${processedRows.length.toLocaleString()} rows`}
               {recordFilter.trim() && ` (filtered from ${activeRows.length.toLocaleString()})`}
             </span>
             {totalPages > 1 && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <Button
                   size="sm"
                   variant="secondary"
                   disabled={effectivePage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   className="rounded-xl px-3"
+                  aria-label="Previous page"
                 >
                   ← Previous
                 </Button>
@@ -381,9 +382,28 @@ export function DataInspectSection({
                   disabled={effectivePage >= totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   className="rounded-xl px-3"
+                  aria-label="Next page"
                 >
                   Next →
                 </Button>
+                <div className="flex items-center gap-1.5 pl-1 text-[var(--lm-text-secondary)] font-mono">
+                  <label htmlFor="jump-to-page" className="hidden md:inline text-[11px]">Jump to:</label>
+                  <input
+                    id="jump-to-page"
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={effectivePage}
+                    onChange={(e) => {
+                      const p = parseInt(e.target.value, 10);
+                      if (!isNaN(p) && p >= 1 && p <= totalPages) {
+                        setCurrentPage(p);
+                      }
+                    }}
+                    className="w-14 px-2 py-1 text-center font-bold bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] rounded-xl text-[var(--lm-text-primary)] focus:outline-none focus:ring-1 focus:ring-[#059669]"
+                    aria-label="Jump to page number"
+                  />
+                </div>
               </div>
             )}
           </div>

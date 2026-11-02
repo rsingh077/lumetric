@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import { AppProvider } from '@/contexts/AppContext';
 import { AppShell } from '@/components/layout/AppShell';
 
@@ -51,9 +53,13 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-full flex flex-col font-sans">
-        <AppProvider>
-          <AppShell>{children}</AppShell>
-        </AppProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            <AppProvider>
+              <AppShell>{children}</AppShell>
+            </AppProvider>
+          </LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

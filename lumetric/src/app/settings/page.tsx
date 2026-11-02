@@ -88,7 +88,20 @@ const PERMISSIONS_MATRIX: PermissionEntry[] = [
 ];
 
 export default function SettingsPage() {
-  const { currentUser, setRole, currentWorkspace, updateWorkspace, updateUserProfile, language, setLanguage } = useApp();
+  const {
+    currentUser,
+    setRole,
+    currentWorkspace,
+    updateWorkspace,
+    updateUserProfile,
+    language,
+    setLanguage,
+    themeMode,
+    setTheme,
+    formatNumber,
+    formatDate,
+    formatCurrency,
+  } = useApp();
 
   const [activeTab, setActiveTab] = useState<'general' | 'billing' | 'rbac' | 'tenant' | 'security' | 'language'>('general');
   const [roleNotice, setRoleNotice] = useState<string | null>(null);
@@ -302,14 +315,14 @@ export default function SettingsPage() {
         </button>
         <button
           onClick={() => setActiveTab('language')}
-          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+          className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === 'language'
-              ? 'border-rose-500 text-rose-500'
+              ? 'border-[#059669] text-[#059669]'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <span>🌐</span>
-          <span>Language &amp; Localization</span>
+          <span>🎨</span>
+          <span>Theme &amp; Language</span>
         </button>
       </div>
 
@@ -699,6 +712,158 @@ export default function SettingsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* TAB: THEME & LANGUAGE */}
+      {activeTab === 'language' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Theme Section */}
+          <Card padding="md" className="border-[var(--lm-border-default)] space-y-4">
+            <CardHeader>
+              <div>
+                <CardTitle>Studio Appearance &amp; Theme</CardTitle>
+                <p className="text-xs text-[var(--lm-text-secondary)] mt-1">
+                  Choose your preferred visual mode or sync automatically with your operating system preference.
+                </p>
+              </div>
+              <StatusBadge variant="neutral">
+                Current: {themeMode.toUpperCase()}
+              </StatusBadge>
+            </CardHeader>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+              {[
+                {
+                  mode: 'light' as const,
+                  label: 'Light Mode',
+                  icon: '☀️',
+                  desc: 'Crisp high-contrast daylight theme with clean surfaces.',
+                },
+                {
+                  mode: 'dark' as const,
+                  label: 'Dark Mode',
+                  icon: '🌙',
+                  desc: 'Deep slate & midnight surfaces engineered for reduced eye strain.',
+                },
+                {
+                  mode: 'system' as const,
+                  label: 'System Sync',
+                  icon: '💻',
+                  desc: 'Automatically matches your operating system daylight preference.',
+                },
+              ].map((item) => {
+                const isActive = themeMode === item.mode;
+                return (
+                  <button
+                    key={item.mode}
+                    type="button"
+                    onClick={() => setTheme(item.mode)}
+                    className={`text-left p-4 rounded-2xl border transition-all apple-pressable cursor-pointer relative ${
+                      isActive
+                        ? 'border-[#059669] bg-[#059669]/10 shadow-sm ring-1 ring-[#059669]'
+                        : 'border-[var(--lm-border-default)] bg-[var(--lm-bg-elevated)] hover:border-[var(--lm-border-strong)]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-2xl">{item.icon}</span>
+                      {isActive && (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#059669] text-white">
+                          ✓ Active
+                        </span>
+                      )}
+                    </div>
+                    <div className="font-bold text-sm text-[var(--lm-text-primary)]">
+                      {item.label}
+                    </div>
+                    <p className="text-xs text-[var(--lm-text-secondary)] mt-1 leading-snug">
+                      {item.desc}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* Language Section */}
+          <Card padding="md" className="border-[var(--lm-border-default)] space-y-4">
+            <CardHeader>
+              <div>
+                <CardTitle>Studio Language &amp; Internationalization</CardTitle>
+                <p className="text-xs text-[var(--lm-text-secondary)] mt-1">
+                  Select your preferred language. Number formats, dates, and currency symbols adjust automatically.
+                </p>
+              </div>
+              <StatusBadge variant="neutral">
+                Locale: {language.toUpperCase()}
+              </StatusBadge>
+            </CardHeader>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5 pt-1">
+              {[
+                { code: 'en' as const, flag: '🇬🇧', label: 'English', native: 'English' },
+                { code: 'fr' as const, flag: '🇫🇷', label: 'French', native: 'Français' },
+                { code: 'es' as const, flag: '🇪🇸', label: 'Spanish', native: 'Español' },
+                { code: 'de' as const, flag: '🇩🇪', label: 'German', native: 'Deutsch' },
+              ].map((lang) => {
+                const isActive = language === lang.code;
+                return (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    onClick={() => setLanguage(lang.code)}
+                    className={`text-left p-4 rounded-2xl border transition-all apple-pressable cursor-pointer relative ${
+                      isActive
+                        ? 'border-[#059669] bg-[#059669]/10 shadow-sm ring-1 ring-[#059669]'
+                        : 'border-[var(--lm-border-default)] bg-[var(--lm-bg-elevated)] hover:border-[var(--lm-border-strong)]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-2xl">{lang.flag}</span>
+                      {isActive && (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#059669] text-white">
+                          ✓ Active
+                        </span>
+                      )}
+                    </div>
+                    <div className="font-bold text-sm text-[var(--lm-text-primary)]">
+                      {lang.native}
+                    </div>
+                    <p className="text-xs text-[var(--lm-text-secondary)] mt-0.5">
+                      {lang.label} ({lang.code.toUpperCase()})
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Locale Formatting Live Preview */}
+            <div className="mt-4 p-4 rounded-xl bg-[var(--lm-bg-secondary)] border border-[var(--lm-border-default)] space-y-2">
+              <span className="text-xs font-bold text-[var(--lm-text-primary)] block">
+                Live Regional Formatting Preview
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="p-2.5 rounded-lg bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)]">
+                  <span className="text-[10px] text-[var(--lm-text-secondary)] block font-medium">Standard Number</span>
+                  <span className="font-mono font-bold text-[var(--lm-text-primary)]">
+                    {formatNumber(1254300.75)}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)]">
+                  <span className="text-[10px] text-[var(--lm-text-secondary)] block font-medium">Currency</span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(4999.50)}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-[var(--lm-bg-elevated)] border border-[var(--lm-border-default)]">
+                  <span className="text-[10px] text-[var(--lm-text-secondary)] block font-medium">Current Date</span>
+                  <span className="font-mono font-bold text-[var(--lm-text-primary)]">
+                    {formatDate(new Date())}
+                  </span>
+                </div>
+              </div>
             </div>
           </Card>
         </div>
