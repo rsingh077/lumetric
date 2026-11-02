@@ -121,9 +121,12 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   if (
     req.path === '/api/health' ||
+    req.path === '/health' ||
     req.path === '/api/ping' ||
+    req.path === '/ping' ||
     req.path === '/' ||
     req.path === '/api/status' ||
+    req.path === '/status' ||
     req.path === '/api/version' ||
     req.path === '/api/metrics' ||
     req.path === '/api/mail/diagnostics' ||

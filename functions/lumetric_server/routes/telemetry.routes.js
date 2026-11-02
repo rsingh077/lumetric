@@ -29,7 +29,7 @@ router.get('/', (req, res) => {
 });
 
 // 2. Health Telemetry
-router.get('/api/health', (req, res) => {
+router.get(['/api/health', '/health'], (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
